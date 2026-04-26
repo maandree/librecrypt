@@ -1,0 +1,104 @@
+.TH LIBRECRYPT_DECODE 3 LIBRECRYPT
+.SH NAME
+librecrypt_decode - Decode ASCII encoding of a salt or hash result into binary
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+ssize_t \fBlibrecrypt_decode\fP(void *\fIout_buffer\fP, size_t \fIsize\fP,
+                          const char *\fIascii\fP, size_t \fIlen\fP,
+                          const unsigned char \fIlut\fP[restrict static 256],
+                          char \fIpad\fP, int \fIstrict_pad\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_decode ()
+function decodes
+.I len
+bytes of ASCII text from
+.IR ascii
+into raw binary data written to
+.IR out_buffer .
+This is used for decoding hash results and salts.
+.PP
+The
+.I lut
+argument is a reverse lookup table that maps any
+valid character (except the padding character) to
+its value in the encoding alphabet and maps any
+invalid character to
+.BR 0xFFu .
+.PP
+The
+.I pad
+argument specifies the padding character to use
+at the end, or the null byte if none.
+.PP
+If
+.I strict_pad
+is non-zero, the padding at the end is mandatory.
+.PP
+On successful completion, up to
+.I size
+bytes are written to
+.IR out_buffer .
+The return value is the number of bytes that would
+have been written if
+.I size
+was sufficiently large.
+
+.SH RETURN VALUES
+The
+.BR librecrypt_decode ()
+function returns the number of bytes that would
+have been written to
+.IR out_buffer
+if
+.I size
+was sufficiently large.
+On failure, -1 is returned and
+.IR errno
+is set to describe the error.
+
+.SH ERRORS
+The
+.BR librecrypt_decode ()
+function will fail if:
+.TP
+.B EINVAL
+.I ascii
+uses an invalid encoding.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_decode ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_decode ()
+T}	Async-signal safety	AS-Safe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_decode ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_encode (3),
+.BR librecrypt_get_encoding (3)

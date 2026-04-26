@@ -1,0 +1,96 @@
+.TH LIBRECRYPT_NEXT_ALGORITHM 3 LIBRECRYPT
+.SH NAME
+librecrypt_next_algorithm - Iterate over algorithms in a chained password hash string
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+.PP
+char *\fBlibrecrypt_next_algorithm\fP(char **\fIhash\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_next_algorithm ()
+function is called repeatedly to extract each hash
+algorithm (including its parameters) that shall be
+chained together according to a provided hash string.
+.PP
+On the initial call,
+.I *hash
+shall point to the password hash string.
+On each call the function updates
+.I *hash
+to its current parsing state. On each call except
+the final one, the string is modified by replacing
+the next instance of
+.I LIBRECRYPT_ALGORITHM_LINK_DELIMITER
+(which is
+.BR \(aq>\(aq )
+with a null byte.
+.PP
+Each call returns the next algorithm substring.
+Once all algorithms have been extracted and returned,
+.IR NULL
+is returned.
+.PP
+Except once the function has returned
+.IR NULL ,
+overwriting the terminating null byte in the previously
+returned substring
+with
+.I LIBRECRYPT_ALGORITHM_LINK_DELIMITER
+restores the original hash string.
+.PP
+Unless already stripped out before input, the last
+returned substring ends with the resulting hash.
+.PP
+.I hash
+must not be
+.IR NULL .
+
+.SH RETURN VALUES
+The
+.BR librecrypt_next_algorithm ()
+function returns a pointer to the next algorithm
+substring, or
+.IR NULL
+when no more algorithms remain.
+
+.SH ERRORS
+The
+.BR librecrypt_next_algorithm ()
+function cannot fail.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_next_algorithm ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_next_algorithm ()
+T}	Async-signal safety	AS-Safe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_next_algorithm ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_chain_length (3),
+.BR librecrypt_decompose_chain (3),
+.BR librecrypt_decompose_chain1 (3)

@@ -1,0 +1,80 @@
+.TH LIBRECRYPT_SETTINGS_PREFIX 3 LIBRECRYPT
+.SH NAME
+librecrypt_settings_prefix - Get length of settings prefix in a password hash string
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+size_t \fBlibrecrypt_settings_prefix\fP(const char *\fIhash\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_settings_prefix ()
+function returns the number of bytes, from the front of
+.IR hash ,
+that make up the algorithm configuration.
+.PP
+The string is scanned for the delimiters
+.I LIBRECRYPT_HASH_COMPOSITION_DELIMITER
+(which is
+.BR \(aq$\(aq )
+and
+.I LIBRECRYPT_ALGORITHM_LINK_DELIMITER
+(which is
+.BR \(aq>\(aq ),
+and the returned value is one byte past the
+last occurrence, or 0 if none was found.
+.PP
+.I hash
+must not be
+.IR NULL .
+
+.SH RETURN VALUES
+The
+.BR librecrypt_settings_prefix ()
+function returns the number of bytes that make up the
+settings prefix. The return value may be 0, which shall
+be treated as any other valid return value.
+.PP
+.IR &hash[r] ,
+where
+.I r
+is the return value, points to the hash result proper.
+
+.SH ERRORS
+The
+.BR librecrypt_settings_prefix ()
+function cannot fail.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_settings_prefix ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_settings_prefix ()
+T}	Async-signal safety	AS-Safe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_settings_prefix ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_chain_length (3)

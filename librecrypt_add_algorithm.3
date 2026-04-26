@@ -1,0 +1,134 @@
+.TH LIBRECRYPT_ADD_ALGORITHM 3 LIBRECRYPT
+.SH NAME
+librecrypt_add_algorithm - Append an algorithm chain to a password hash string
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+ssize_t \fBlibrecrypt_add_algorithm\fP(char *restrict \fIout_buffer\fP, size_t \fIsize\fP,
+                                 char *\fIaugend\fP, const char *restrict \fIaugment\fP,
+                                 void *\fIreserved\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+Static linking may require additional flags
+depending on enabled hash algorithms.
+
+.SH DESCRIPTION
+The
+.BR librecrypt_add_algorithm ()
+function chains together another set of hash algorithms.
+.PP
+The
+.I augend
+argument is the existing password hash string.
+If it already contains a hash result,
+a new hash result will be computed and
+any random number generation specification in
+.I augment
+will be realised.
+.PP
+The
+.I augment
+argument is a password hash setting string describing
+the additional hashing to perform.
+If it contains a hash result, that part is ignored.
+.PP
+The
+.I reserved
+parameter is reserved for future use and should be
+.IR NULL .
+.PP
+On successful completion, if
+.I size
+is positive, the output is null byte-terminated even
+if truncated.
+.PP
+On failure,
+.I out_buffer
+remains unmodified.
+.PP
+The
+.I augend
+and
+.I augment
+parameters must not be
+.IR NULL .
+The
+.I out_buffer
+parameter may only be
+.I NULL
+if if
+.I size
+is 0.
+
+.SH RETURN VALUES
+The
+.BR librecrypt_add_algorithm ()
+function returns the number of bytes that would have
+been written to
+.IR out_buffer
+if
+.I size
+was sufficiently large, excluding the terminating
+null byte.
+On failure, -1 is returned and
+.I errno
+is set to describe the error.
+
+.SH ERRORS
+The
+.BR librecrypt_add_algorithm ()
+function will fail if:
+.TP
+.B EINVAL
+.I reserved
+is not
+.IR NULL .
+.TP
+.B EINVAL
+.I augend
+or
+.I augment
+is invalid.
+.TP
+.B ERANGE
+The selected initial algorithm requires a different password length.
+.TP
+.B ENOMEM
+Failed to allocate internal scratch memory.
+.TP
+.B ENOSYS
+A selected hash algorithm is not recognised or was disabled at compile-time.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_add_algorithm ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_add_algorithm ()
+T}	Async-signal safety	AS-Unsafe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_add_algorithm ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_crypt (3),
+.BR librecrypt_make_settings (3),
+.BR librecrypt_realise_salts (3)

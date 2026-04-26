@@ -1,0 +1,70 @@
+.TH LIBRECRYPT_EQUAL 3 LIBRECRYPT
+.SH NAME
+librecrypt_equal - Compare strings in constant time
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+int \fBlibrecrypt_equal\fP(const char *\fIa\fP, const char *\fIb\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_equal ()
+function compares two null byte-terminated strings
+in constant time.
+.PP
+If the strings are of different length, the function
+returns 0 after the lengths have been measured.
+This should not happen when comparing password hashes,
+since their length is determined by the selected
+configuration.
+.PP
+.I a
+and
+.I b
+must not be
+.IR NULL .
+
+.SH RETURN VALUES
+The
+.BR librecrypt_equal ()
+function returns 1 if the strings are equal,
+and 0 otherwise.
+
+.SH ERRORS
+The
+.BR librecrypt_equal ()
+function cannot fail.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_equal ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_equal ()
+T}	Async-signal safety	AS-Safe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_equal ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_equal_binary (3)

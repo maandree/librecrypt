@@ -1,0 +1,112 @@
+.TH LIBRECRYPT_GET_ENCODING 3 LIBRECRYPT
+.SH NAME
+librecrypt_get_encoding - Get encoding alphabet for the last algorithm in a chain
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+const void *\fBlibrecrypt_get_encoding\fP(const char *\fIsettings\fP, size_t \fIlen\fP,
+                                    char *\fIpad_out\fP, int *\fIstrict_pad_out\fP, int \fIdecoding\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_get_encoding ()
+function returns the ASCII encoding used for
+the last algorithm in the algorithm chain
+specified by
+.IR settings .
+.PP
+If
+.I decoding
+is zero, the returned pointer is suitable for
+use as the
+.I lut
+parameter to
+.BR librecrypt_encode (3)
+and points to an encoding alphabet consisting
+of 64 characters repeated 4 times.
+.PP
+If
+.I decoding
+is non-zero, the returned pointer is suitable
+for use as the
+.I lut
+parameter to
+.BR librecrypt_decode (3)
+and points to a reverse lookup table mapping
+any valid character (except the padding
+character) to its value in the encoding
+alphabet and any other character to
+.BR 0xFFu .
+.PP
+On success,
+.IR *pad_out
+is set to the padding character, or to the
+null byte if there is no padding.
+.IR *strict_pad_out
+is set to 1 if padding is mandatory,
+0 otherwise.
+.IR *strict_pad_out
+is set arbitrarily to 0 or 1 if
+.IR *pad_out
+is set to the null byte.
+.PP
+.I pad_out
+and
+.I strict_pad_out
+must not be
+.IR NULL .
+
+.SH RETURN VALUES
+The
+.BR librecrypt_get_encoding ()
+function returns a pointer to the encoding
+data, or
+.IR NULL
+on failure. On failure,
+.IR errno
+is set to describe the error.
+
+.SH ERRORS
+The
+.BR librecrypt_get_encoding ()
+function will fail if:
+.TP
+.B ENOSYS
+The last algorithm in
+.I settings
+is not recognised or was disabled at compile-time.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_get_encoding ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_get_encoding ()
+T}	Async-signal safety	AS-Safe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_get_encoding ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_encode (3),
+.BR librecrypt_decode (3)

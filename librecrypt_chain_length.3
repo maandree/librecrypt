@@ -1,0 +1,69 @@
+.TH LIBRECRYPT_CHAIN_LENGTH 3 LIBRECRYPT
+.SH NAME
+librecrypt_chain_length - Get number of algorithms in a chained password hash string
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+size_t \fBlibrecrypt_chain_length\fP(const char *\fIhash\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_chain_length ()
+function returns the number of hash algorithms
+specified in the chain contained in
+.IR hash .
+Algorithms are delimited by
+.I LIBRECRYPT_ALGORITHM_LINK_DELIMITER
+(which is
+.BR "\(aq>\(aq" ).
+.PP
+.I hash
+must not be
+.IR NULL .
+
+.SH RETURN VALUES
+The
+.BR librecrypt_chain_length ()
+function returns the number of chained hash algorithms.
+The return value is always non-zero.
+
+.SH ERRORS
+The
+.BR librecrypt_chain_length ()
+function cannot fail.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_chain_length ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_chain_length ()
+T}	Async-signal safety	AS-Safe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_chain_length ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_decompose_chain (3),
+.BR librecrypt_decompose_chain1 (3),
+.BR librecrypt_next_algorithm (3)

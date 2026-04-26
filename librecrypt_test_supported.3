@@ -1,0 +1,98 @@
+.TH LIBRECRYPT_TEST_SUPPORTED 3 LIBRECRYPT
+.SH NAME
+librecrypt_test_supported - Check whether an algorithm chain is supported
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+int \fBlibrecrypt_test_supported\fP(const char *\fIphrase\fP, size_t \fIlen\fP, int \fItext\fP, const char *\fIsettings\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+Static linking may require additional flags
+depending on enabled hash algorithms.
+
+.SH DESCRIPTION
+The
+.BR librecrypt_test_supported ()
+function checks whether a hash algorithm chain is
+supported for the given input, and that each
+algorithm configuration is valid.
+.PP
+The
+.I settings
+argument is a password hash string. Algorithm
+tuning parameters and the hash result may be omitted.
+.PP
+The
+.I phrase
+argument is the password to hash.
+It may contain null bytes and may be
+.IR NULL
+even if
+.I len
+is non-zero. If
+.I phrase
+is
+.IR NULL ,
+the function checks whether the specified length
+is supported and assumes an arbitrary byte
+sequence if
+.I text
+is zero. If
+.I text
+is non-zero, UTF-8 without null bytes is assumed.
+.PP
+If
+.I phrase
+is not
+.IR NULL ,
+.I text
+is ignored.
+.PP
+.I settings
+must not be
+.IR NULL .
+
+.SH RETURN VALUES
+The
+.BR librecrypt_test_supported ()
+function returns 1 if the configuration is supported,
+and 0 otherwise.
+
+.SH ERRORS
+The
+.BR librecrypt_test_supported ()
+function cannot fail.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_test_supported ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_test_supported ()
+T}	Async-signal safety	AS-Safe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_test_supported ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_hash_binary (3),
+.BR librecrypt_hash (3),
+.BR librecrypt_crypt (3)

@@ -1,0 +1,98 @@
+.TH LIBRECRYPT_DECOMPOSE_CHAIN 3 LIBRECRYPT
+.SH NAME
+librecrypt_decompose_chain - Split a chained password hash string into algorithm components
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+size_t \fBlibrecrypt_decompose_chain\fP(char *\fIhash\fP, char **\fIchain_out_array\fP, size_t \fIsize\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_decompose_chain ()
+function decomposes the chain of hash algorithms
+specified in
+.IR hash
+into null byte-terminated substrings. The
+.IR hash
+string is modified by replacing up to
+.I size-1
+instances of
+.I LIBRECRYPT_ALGORITHM_LINK_DELIMITER
+(which is
+.BR \(aq>\(aq )
+by null bytes and storing pointers to the
+start of each substring in
+.IR chain_out_array .
+.PP
+If
+.I size
+is positive and smaller than the number of
+algorithms, then
+.I chain_out_array[size-1]
+will contain the remainder of the chain
+(still delimited by
+.IR LIBRECRYPT_ALGORITHM_LINK_DELIMITER ).
+.PP
+Unless already stripped out before input, the
+last substring ends with the resulting hash.
+.PP
+The original
+.IR hash
+string can be restored by overwriting each
+terminating null byte in all but the last
+substring stored in
+.IR chain_out_array
+with
+.IR LIBRECRYPT_ALGORITHM_LINK_DELIMITER .
+.PP
+.I hash
+must not be
+.IR NULL .
+
+.SH RETURN VALUES
+The
+.BR librecrypt_decompose_chain ()
+function returns the number of chained hashes
+(the same value as returned by
+.BR librecrypt_chain_length (3)).
+
+.SH ERRORS
+The
+.BR librecrypt_decompose_chain ()
+function cannot fail.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_decompose_chain ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_decompose_chain ()
+T}	Async-signal safety	AS-Safe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_decompose_chain ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_chain_length (3),
+.BR librecrypt_decompose_chain1 (3),
+.BR librecrypt_next_algorithm (3)

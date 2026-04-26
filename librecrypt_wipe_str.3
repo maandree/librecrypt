@@ -1,0 +1,61 @@
+.TH LIBRECRYPT_WIPE_STR 3 LIBRECRYPT
+.SH NAME
+librecrypt_wipe_str - Securely erase a string
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+void \fBlibrecrypt_wipe_str\fP(char *\fIstring\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_wipe_str ()
+function securely erases the string referenced by
+.IR string .
+.PP
+If
+.I string
+is
+.IR NULL ,
+no action is taken.
+
+.SH RETURN VALUES
+None.
+
+.SH ERRORS
+The
+.BR librecrypt_wipe_str ()
+function cannot fail.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_wipe_str ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_wipe_str ()
+T}	Async-signal safety	AS-Safe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_wipe_str ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_wipe (3)

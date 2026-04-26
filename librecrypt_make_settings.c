@@ -1,0 +1,50 @@
+/* See LICENSE file for copyright and license details. */
+#include "common.h"
+#ifndef TEST
+
+
+ssize_t
+librecrypt_make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memcost, uintmax_t timecost,
+                         int gensalt, ssize_t (*rng)(void *out, size_t n, void *user), void *user)
+{
+	const struct algorithm *algo;
+
+	if (!algorithm) {
+		algo = &librecrypt_algorithms_[0];
+		if (IS_END_OF_ALGORITHMS(algo))
+			goto enosys;
+	} else {
+		if (strchr(algorithm, LIBRECRYPT_ALGORITHM_LINK_DELIMITER)) {
+			errno = EINVAL;
+			return -1;
+		}
+		algo = librecrypt_find_first_algorithm_(algorithm, strlen(algorithm));
+		if (!algo)
+			goto enosys;
+	}
+
+	if (!rng)
+		rng = &librecrypt_rng_;
+
+	return (*algo->make_settings)(out_buffer, size, algorithm, memcost, timecost, gensalt, rng, user);
+
+enosys:
+	errno = ENOSYS;
+	return -1;
+}
+
+
+#else
+
+
+int
+main(void)
+{
+	SET_UP_ALARM();
+
+	return 0;
+}
+
+
+#endif
+/* TODO test */

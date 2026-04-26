@@ -1,0 +1,177 @@
+.TH LIBRECRYPT_MAKE_SETTINGS 3 LIBRECRYPT
+.SH NAME
+librecrypt_make_settings - Generate a password hash settings string
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+ssize_t \fBlibrecrypt_make_settings\fP(char *\fIout_buffer\fP, size_t \fIsize\fP, const char *\fIalgorithm\fP,
+                                size_t \fImemcost\fP, uintmax_t \fItimecost\fP, int \fIgensalt\fP,
+                                ssize_t (*\fIrng\fP)(void *\fIout\fP, size_t \fIn\fP, void *\fIuser\fP), void *\fIuser\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+Static linking may require additional flags
+depending on enabled hash algorithms.
+
+.SH DESCRIPTION
+The
+.BR librecrypt_make_settings ()
+function generates a password hash setting string
+and writes it to
+.IR out_buffer .
+.PP
+If
+.I algorithm
+is
+.IR NULL ,
+a default strong algorithm is selected.
+The empty string selects the deprecated DES algorithm.
+Algorithm chains are disallowed for this function.
+.PP
+The
+.I memcost
+parameter specifies an approximate memory cost in bytes.
+A default value is selected if 0 is specified.
+.PP
+The
+.I timecost
+parameter specifies a total time cost in an
+implementation-dependent, monotonic unit.
+A default value is selected if 0 is specified.
+.PP
+If
+.I gensalt
+is non-zero, random salts are included in the
+generated output, otherwise the output will only
+specify the sizes the salts shall have.
+.PP
+If
+.I gensalt
+is non-zero,
+.IR *rng ,
+or a default implementation (which tries to use
+cryptographic random number generation but has a
+non-cryptographic random number generation as a
+last resort) if
+.I rng
+is
+.IR NULL ,
+used to generate random bytes.
+.I *rng
+shall fill
+.I out
+with at least 1, and up to
+.IR n ,
+random bytes, and return the number of bytes
+written, or return -1 on failure.
+.PP
+The
+.I data
+argument is passed into the
+.IR *rng -parameter
+with the same name, as is and may be used by
+.IR *rng
+for user-defined purposes.
+.PP
+On successful completion, if
+.I size
+is positive, the output is null byte terminated
+even if truncated.
+.PP
+If
+.I rng
+is
+.IR NULL ,
+any encountered
+.BR EINTR
+is ignored (cannot happen if
+.I gensalt
+is zero); if it is encountered,
+.I errno
+will be set to
+.BR EINTR ,
+but is otherwise left unmodified unless the function
+fails due to one of the errors listed below.
+
+.SH RETURN VALUES
+The
+.BR librecrypt_make_settings ()
+function returns the number of bytes that would have
+been written to
+.IR out_buffer
+if
+.I size
+was sufficiently large, or -1 on failure and
+.I errno
+is set to describe the error.
+
+.SH ERRORS
+The
+.BR librecrypt_make_settings ()
+function will fail if:
+.TP
+.B EINVAL
+.I algorithm
+represents a chain of algorithms.
+.TP
+.B ENOSYS
+.I algorithm
+represents an algorithm that is not recognised or
+was disabled at compile-time.
+.TP
+.B ENOSYS
+.I algorithm
+is
+.IR NULL
+but all algorithms were disabled at compile-time.
+.PP
+Additionally, unless
+.I rng
+is
+.IR NULL ,
+.I *rng
+may set
+.I errno
+(if
+.I gensalt
+is non-zero).
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_make_settings ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_make_settings ()
+T}	Async-signal safety	AS-Unsafe
+.TE
+.sp
+.PP
+If
+.I gensalt
+is non-zero and
+.I rng
+is
+.RI non- NULL ,
+.I *rng
+may weaken the safety attributes.
+
+.SH HISTORY
+The
+.BR librecrypt_make_settings ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_realise_salts (3)

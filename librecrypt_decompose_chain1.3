@@ -1,0 +1,75 @@
+.TH LIBRECRYPT_DECOMPOSE_CHAIN1 3 LIBRECRYPT
+.SH NAME
+librecrypt_decompose_chain1 - Replace algorithm link delimiters with null bytes
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+size_t \fBlibrecrypt_decompose_chain1\fP(char *\fIhash\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_decompose_chain1 ()
+function replaces each
+.I LIBRECRYPT_ALGORITHM_LINK_DELIMITER
+(which is
+.BR \(aq>\(aq )
+in
+.I hash
+with a null byte. This effectively decomposes
+the string into one string per hash algorithm.
+.PP
+Unless already stripped out before input, the
+last resulting string ends with the resulting
+hash, if it was present in the input.
+.PP
+.I hash
+must not be
+.IR NULL .
+
+.SH RETURN VALUES
+The
+.BR librecrypt_decompose_chain1 ()
+function returns the number of chained hashes
+(the same value as returned by
+.BR librecrypt_chain_length (3)).
+
+.SH ERRORS
+The
+.BR librecrypt_decompose_chain1 ()
+function cannot fail.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_decompose_chain1 ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_decompose_chain1 ()
+T}	Async-signal safety	AS-Safe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_decompose_chain1 ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_chain_length (3),
+.BR librecrypt_decompose_chain (3),
+.BR librecrypt_next_algorithm (3)

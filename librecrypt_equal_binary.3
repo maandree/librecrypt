@@ -1,0 +1,65 @@
+.TH LIBRECRYPT_EQUAL_BINARY 3 LIBRECRYPT
+.SH NAME
+librecrypt_equal_binary - Compare memory segments in constant time
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+int \fBlibrecrypt_equal_binary\fP(const void *\fIa\fP, const void *\fIb\fP, size_t \fIlen\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_equal_binary ()
+function compares the first
+.I len
+bytes of
+.I a
+and
+.I b
+in constant time.
+
+.SH RETURN VALUES
+The
+.BR librecrypt_equal_binary ()
+function returns 1 if the memory segments are
+equal in their first
+.I len
+bytes, and 0 otherwise.
+
+.SH ERRORS
+The
+.BR librecrypt_equal_binary ()
+function cannot fail.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_equal_binary ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_equal_binary ()
+T}	Async-signal safety	AS-Safe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_equal_binary ()
+function was introduced in version 1.0 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_equal (3)
