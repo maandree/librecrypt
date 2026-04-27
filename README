@@ -1,0 +1,104 @@
+NAME
+	librecrypt - Offline-hardenable password hashing
+
+SYNOPSIS
+	#include <librecrypt.h>
+
+	Link with -lrecrypt. Static linking may require additional
+	flags depending on enabled hash algorithms.
+
+DESCRIPTION
+	The librecrypt library provides a unified interface for
+	several password hash functions and the ability to chain
+	password hash functions so that a weaking hashed password
+	can be hardend, without knowing the plain-text password,
+	by hashing the hash with a stronger function.
+
+	librecrypt extends crypt(3)'s password hash string syntax
+	by introducing the '>' character to specifying chaining.
+	The left-most hash function is used on the plain-text
+	password, and the next to the right, is used on the binary
+	hash result, and so on, and only the final hash is stored
+	in the string: as part of the last '>'-delimited section.
+
+	It also supports specifying a password hashing configuration
+	without specifying actual salt values, but instead how many
+	bytes of salt to generate. This done using asterisk-encoding:
+	an ASCII asterisk character ('*') followed by the number of
+	bytes encoded as a non-negative decimal number in ASCII.
+
+	The librecrypt library implements the following functions:
+
+   Password hashing functions:
+	librecrypt_crypt(3)
+		Compute password hash encoded in ASCII with settings
+		prefix.
+
+	librecrypt_hash(3)
+		Compute password hash encoded in ASCII without
+		settings prefix.
+
+	librecrypt_hash_binary(3)
+		Compute password hash in raw binary form.
+
+	librecrypt_add_algorithm(3)
+		Append an algorithm chain to a password hash string.
+
+   Password hashing configuration generation functions:
+	librecrypt_test_supported(3)
+		Check whether an algorithm chain is supported.
+
+	librecrypt_make_settings(3)
+		Generate a password hash settings string.
+
+	librecrypt_realise_salts(3)
+		Realise asterisk-encoded random salts in a settings
+		string.
+
+   Secure application helper functions:
+	librecrypt_equal(3)
+		Compare strings in constant time.
+
+	librecrypt_equal_binary(3)
+		Compare memory segments in constant time.
+
+	librecrypt_wipe(3)
+		Securely erase a memory buffer.
+
+	librecrypt_wipe_str(3)
+		Securely erase a string.
+
+   Password hash string decomposition functions (ADVANCED):
+	librecrypt_settings_prefix(3)
+		Get length of settings prefix in a password hash
+		string.
+
+	librecrypt_chain_length(3)
+		Get number of algorithms in a chained password hash
+		string.
+
+	librecrypt_decompose_chain(3)
+		Split a chained password hash string into algorithm
+		components.
+
+	librecrypt_decompose_chain1(3)
+		Replace algorithm link delimiters with null bytes.
+
+	librecrypt_next_algorithm(3)
+		Iterate over algorithms in a chained password hash
+		string.
+
+   Binary value encoding functions (ADVANCED):
+	librecrypt_encode(3)
+		Encode binary salt or hash result into ASCII.
+
+	librecrypt_decode(3)
+		Decode ASCII encoding of a salt or hash result into
+		binary.
+
+	librecrypt_get_encoding(3)
+		Get encoding alphabet for the last algorithm in a
+		chain.
+
+SEE ALSO
+	crypt(3), crypt(5)
