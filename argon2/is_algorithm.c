@@ -26,6 +26,8 @@ IF__argon2ds__SUPPORTED(DECLARE_IS_ALGORITHM(argon2ds))
 int
 main(void)
 {
+	SET_UP_ALARM();
+
 #if defined(SUPPORT_ARGON2I)
 	CHECK(argon2i, "", "", 0u);
 	CHECK(argon2i, "$argon2$", "", 0u);

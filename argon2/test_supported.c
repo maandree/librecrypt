@@ -51,6 +51,8 @@ librecrypt__argon2__test_supported(const char *phrase, size_t len, int text, con
 CONST int
 main(void)
 {
+	SET_UP_ALARM();
+
 	return 0;
 }
 

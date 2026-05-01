@@ -58,6 +58,8 @@ IF__argon2ds__SUPPORTED(DECLARE_MAKE_SETTINGS(argon2ds))
 CONST int
 main(void)
 {
+	SET_UP_ALARM();
+
 	return 0;
 }
 

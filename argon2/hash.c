@@ -28,6 +28,8 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 CONST int
 main(void)
 {
+	SET_UP_ALARM();
+
 	return 0;
 }
 
