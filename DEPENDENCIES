@@ -1,13 +1,14 @@
-Unconditional dependencies:
+Unconditional runtime dependencies:
 	libc
 
-For Argon2 support:
+For Argon2 support (runtime, build, and check dependencies):
 	libar2simplified
 	libar2
 	libblake (indirect)
 	pthread (indirect)
 
 Build dependencies:
+	libc
 	make
 	sh
 	echo
@@ -15,6 +16,11 @@ Build dependencies:
 	false
 	c99
 	ar
+
+Check dependencies:
+	libc
+	make
+	sh
 
 Install dependencies:
 	make
@@ -31,3 +37,35 @@ Notes:
 	The Open Group Base Specifications Issue 8 (the 2024 edition);
 	strict The Open Group Base Specifications Issue 7 (the 2018 edition)
 	compliance is not sufficient.
+
+	By default, all supported algorithms are enable, however you
+	change this to disable all algorithms that are not explicitly
+	enabled by setting `DEFAULT_SUPPORT` to `false` when running
+	make(1). You can enable or disable individual algorithms by
+	setting corresponding make(1) macro to `true` (to enable)
+	or `false` (to disable). The following macros are available:
+
+		SUPPORT_ARGON2I
+			The Argon2i variant of Argon2.
+			Defaults to the value of SUPPORT_ARGON2.
+
+		SUPPORT_ARGON2D
+			The Argon2d variant of Argon2.
+			Defaults to the value of SUPPORT_ARGON2.
+
+		SUPPORT_ARGON2ID
+			The Argon2id variant of Argon2.
+			Defaults to the value of SUPPORT_ARGON2.
+
+		SUPPORT_ARGON2DS
+			The Argon2ds variant of Argon2.
+			Defaults to the value of SUPPORT_ARGON2.
+
+		SUPPORT_ARGON2
+			Default value for SUPPORT_ARGON2I,
+			SUPPORT_ARGON2D, SUPPORT_ARGON2ID, and
+			SUPPORT_ARGON2DS. Disable individual
+			algorithms can be used as a security
+			precaution, but they share dependencies,
+			so you have to disable all of them to
+			remove the dependencies listed for Argon2.
