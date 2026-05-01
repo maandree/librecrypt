@@ -9,18 +9,21 @@ librecrypt_get_encoding(const char *settings, size_t len, char *pad_out, int *st
 	size_t i, start = 0u;
 	const struct algorithm *algo;
 
+	/* Find last algorithm in the chain */
 	for (i = 0u; i < len; i++)
 		if (settings[i] == LIBRECRYPT_ALGORITHM_LINK_DELIMITER)
 			start = i + 1u;
 	settings = &settings[start];
 	len -= start;
 
+	/* Identify the algorithm */
 	algo = librecrypt_find_first_algorithm_(settings, len);
 	if (!algo) {
 		errno = ENOSYS;
 		return NULL;
 	}
 
+	/* Return the algorithms salt/hash encoding format */
 	*pad_out = algo->pad;
 	*strict_pad_out = algo->strict_pad;
 	if (decoding)

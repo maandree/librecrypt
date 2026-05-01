@@ -44,6 +44,7 @@ main(void)
 
 	SET_UP_ALARM();
 
+	/* Check HASH_1 with different sizes of `chain` */
 	stpcpy(buf, HASH_1);
 	EXPECT(librecrypt_decompose_chain(buf, chain, 0u) == 1u);
 	EXPECT(!strcmp(buf, HASH_1));
@@ -56,6 +57,7 @@ main(void)
 	EXPECT(!strcmp(buf, HASH_1));
 	EXPECT(chain[0u] == buf);
 
+	/* Check HASH_2 with different sizes of `chain` */
 	stpcpy(buf, HASH_2);
 	EXPECT(librecrypt_decompose_chain(buf, chain, 0u) == 3u);
 	EXPECT(!strcmp(buf, HASH_2));
@@ -81,6 +83,7 @@ main(void)
 	EXPECT(!strcmp(chain[1u], HASH_2_B));
 	EXPECT(!strcmp(chain[2u], HASH_2_C));
 
+	/* Check HASH_3 with different sizes of `chain` */
 	stpcpy(buf, HASH_3);
 	EXPECT(librecrypt_decompose_chain(buf, chain, 0u) == 5u);
 	EXPECT(!strcmp(buf, HASH_3));

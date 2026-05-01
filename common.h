@@ -4,22 +4,36 @@
 # include <sys/auxv.h>
 # include <sys/random.h>
 #endif
+#include <sys/mman.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
 
-#include "algorithms.h"
+
+#if defined(__clang__)
+# pragma clang diagnostic ignored "-Wunsafe-buffer-usage" /* completely broken */
+# pragma clang diagnostic ignored "-Wpadded" /* don't care */
+# pragma clang diagnostic ignored "-Wdisabled-macro-expansion" /* glibc issue */
+# pragma clang diagnostic ignored "-Wc11-extensions" /* glibc issue */
+# pragma clang diagnostic ignored "-Wunknown-warning-option" /* ignoring -Wsuggest-attribute=const|pure */
+# pragma clang diagnostic ignored "-Wimplicit-void-ptr-cast" /* C++ warning, and we are in internal files */
+# pragma clang diagnostic ignored "-Wc++-keyword" /* C++ warning, and we are in internal files */
+#endif
 
 
 #if defined(__GNUC__)
 # define HIDDEN __attribute__((__visibility__("hidden")))
 # define CONST __attribute__((__const__))
+# define PURE __attribute__((__pure__))
 #else
 # define HIDDEN
 # define CONST
+# define PURE
 #endif
 
 #define NONSTRING
@@ -43,6 +57,9 @@
  * @return  :size_t                 The number of elements in `ARRAY`
  */
 #define ELEMSOF(ARRAY) (sizeof(ARRAY) / sizeof(*(ARRAY)))
+
+
+#include "algorithms.h"
 
 
 /**
@@ -76,20 +93,6 @@ enum action {
  * Hash algorithm information and implementation
  */
 struct algorithm {
-	/**
-	 * Get the number of bytes that constitute
-	 * the algorithm specification and configuration
-	 * 
-	 * @param   settings  The password hash string, containing a single algorithm
-	 * @param   len       The number of bytes in `settings`
-	 * @return            `len` if the string does not contain any hash result,
-	 *                    otherwise the offset of `settings` where the hash
-	 *                    result begins
-	 * 
-	 * This function shall be MT-Safe and AS-Safe
-	 */
-	size_t (*get_prefix)(const char *settings, size_t len);
-
 	/**
 	 * Determine if a password hash string
 	 * selects the algorithm
@@ -145,12 +148,14 @@ struct algorithm {
 	 *                    iff non-zero; ignored if `phrase` is non-`NULL`
 	 * @param   settings  The password hash string; it is allowed for algorithm
 	 *                    tuning parameters, and the hash result, to be omitted
+	 * @param   prefix    The number of bytes in `settings`
+	 * @param   len_out   Output parameter for the binary hash size, in bytes
 	 * @return            1 if the configuration is supported and correctly
 	 *                    configured, 0 otherwise
 	 * 
 	 * This function shall be MT-Safe and AS-Safe
 	 */
-	int (*test_supported)(const char *phrase, size_t len, int text, const char *settings, size_t prefix);
+	int (*test_supported)(const char *phrase, size_t len, int text, const char *settings, size_t prefix, size_t *len_out);
 
 	/**
 	 * See `librecrypt_make_settings`
@@ -191,10 +196,16 @@ struct algorithm {
 	size_t hash_size;
 
 	/**
+	 * 1 if `.hash_size` is just a default,
+	 * 0 if `.hash_size` is always used
+	 */
+	signed char flexible_hash_size;
+
+	/**
 	 * Expected argument for the `strict_pad` parameter
 	 * of the `librecrypt_decode` function
 	 */
-	int strict_pad;
+	signed char strict_pad;
 
 	/**
 	 * Expected argument for the `pad` parameter
@@ -207,12 +218,24 @@ struct algorithm {
  * Check if an `struct algorithm *` is the `END_OF_ALGORITHMS`
  * at the end of `librecrypt_algorithms_`
  */
-#define IS_END_OF_ALGORITHMS(A) (!(A)->get_prefix)
+#define IS_END_OF_ALGORITHMS(A) (!(A)->is_algorithm)
 
 /**
  * Used at the end of `librecrypt_algorithms_`
  */
-#define END_OF_ALGORITHMS {NULL, NULL, NULL, NULL, NULL, NULL, 0, 0, '\0'}
+#define END_OF_ALGORITHMS\
+	{\
+		.is_algorithm = NULL,\
+		.hash = NULL,\
+		.test_supported = NULL,\
+		.make_settings = NULL,\
+		.encoding_lut = NULL,\
+		.decoding_lut = NULL,\
+		.hash_size = 0u,\
+		.flexible_hash_size = 0,\
+		.strict_pad = 0,\
+		.pad = '\0'\
+	}
 
 /**
  * Create a concatenation of `ALPHABET` repeated
@@ -354,6 +377,58 @@ LIBRECRYPT_READ_MEM__(1, 2) LIBRECRYPT_NONNULL__ LIBRECRYPT_WUR__ HIDDEN
 const struct algorithm *librecrypt_find_first_algorithm_(const char *settings, size_t len);
 
 
+/**
+ * Function used to validate a password hash string
+ * 
+ * @param   settings  The string to validate
+ * @param   len       The number of bytes in `settings`
+ * @param   fmt       The expected format of the string, it may contain
+ *                    the metacharacter '%' (`fmt` is parsed left to right)
+ *                    to perform special string content checks:
+ *                      "%%"  - Literal '%'
+ *                      "%*"  - Any sequence of non-'$' bytes (greedly matched)
+ *                      "%s"  - String
+ *                      "%u"  - Unsigned integer that may start with a leading zeroes
+ *                      "%p"  - Unsigned integer that most not start with a leading zeroes
+ *                      "%b"  - Binary data, either encoded to ASCII or ungenerated content
+ *                              that is length specified using asterisk-notation
+ *                      "%h"  - Same as "%b", except empty content as always allowed unless
+ *                              asterisk-notation is used
+ *                      "%^s" - Same as "%^s" except with output argument
+ *                      "%^u" - Same as "%^s" except with output argument
+ *                      "%^p" - Same as "%^s" except with output argument
+ *                      "%^b" - Same as "%^s" except with output argument
+ *                      "%^h" - Same as "%^s" except with output argument
+ * @param   ...       Arguments for each use of '%' in `fmt`:
+ *                      "%%"  - None
+ *                      "%*"  - None
+ *                      "%s"  - At least one `const char *`: allowed matches (in order of preference),
+ *                              followed by a `NULL`
+ *                      "%u"  - Two `uintmax_t`: the minimum value and the maximum value
+ *                      "%p"  - Same as "%u"
+ *                      "%b"  - Two `uintmax_t`: the minimum value and the maximum value,
+ *                              one `const unsigned char dlut[static 256]`: the ASCII-encoding decoding table,
+ *                              one `char`: the padding character or `'\0'` if none may be used, and
+ *                              one `int`: whether padding must always be used unless the previous argument is `'\0'`
+ *                      "%h"  - Same as "%b"
+ *                      "%^s" - Same as "%s" but with an additional argument, as the first one:
+ *                              a `const char **` used to store the matched string
+ *                      "%^u" - Same as "%u" but with an additional argument, as the first one:
+ *                              a `uintmax_t *` used to store the encoded integer
+ *                      "%^p" - Same as "%p" but with an additional argument, as the first one:
+ *                              a `uintmax_t *` used to store the encoded integer
+ *                      "%^b" - Same as "%b" but with an additional argument, as the first one:
+ *                              a `uintmax_t *` used to store the number of encoded bytes or
+ *                              the encoded integer after the asterisk if asterisk-encoding is used
+ *                      "%^h" - Same as "%h" but with an additional argument, as the first one:
+ *                              a `uintmax_t *` used to store the number of encoded bytes or
+ *                              the encoded integer after the asterisk if asterisk-encoding is used
+ * @return            1 if `string` matches `fmt`, 0 otherwise
+ */
+LIBRECRYPT_READ_MEM__(1, 2) LIBRECRYPT_NONNULL_I__(3) LIBRECRYPT_WUR__ HIDDEN
+int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt, ...);
+
+
 
 #ifdef TEST
 # ifdef __linux__
@@ -364,7 +439,6 @@ const struct algorithm *librecrypt_find_first_algorithm_(const char *settings, s
 # include <sys/wait.h>
 # include <assert.h>
 # include <signal.h>
-# include <stdio.h>
 # include <string.h>
 # include <unistd.h>
 

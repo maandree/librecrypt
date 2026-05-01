@@ -1,5 +1,8 @@
 .POSIX:
 
+include argon2/prefix.mk
+
+
 CONFIGFILE = config.mk
 include $(CONFIGFILE)
 
@@ -35,13 +38,20 @@ OBJ_PUBLIC =\
 	librecrypt_hash.o\
 	librecrypt_crypt.o\
 	librecrypt_add_algorithm.o\
-	librecrypt_test_supported.o
+	librecrypt_test_supported.o\
 
 OBJ_PRIVATE =\
+	librecrypt_algorithms_.o\
 	librecrypt_hash_.o\
 	librecrypt_rng_.o\
 	librecrypt_fill_with_random_.o\
-	librecrypt_find_first_algorithm_.o
+	librecrypt_find_first_algorithm_.o\
+	librecrypt_check_settings_.o\
+	$(OBJ_COMMON_RFC4848S4)
+
+USE_OBJ_COMMON_RFC4848S4 =\
+	librecrypt_common_rfc4848s4_encoding_lut_.o\
+	librecrypt_common_rfc4848s4_decoding_lut_.o
 
 OBJ = $(OBJ_PUBLIC) $(OBJ_PRIVATE)
 
@@ -56,6 +66,14 @@ TEST = $(OBJ:.o=.t)
 MAN3 = $(OBJ_PUBLIC:.o=.3)
 MAN7 = librecrypt.7
 
+all:
+
+include argon2/suffix.mk
+
+SRC =\
+	$(OBJ:.o=.c)\
+	$(HDR)
+
 
 all: librecrypt.a librecrypt.$(LIBEXT) $(TEST)
 $(OBJ): $(HDR)
@@ -64,19 +82,19 @@ $(TOBJ): $(HDR)
 $(TEST): librecrypt.a
 
 .c.o:
-	$(CC) -c -o $@ $< $(CFLAGS) $(CPPFLAGS)
+	$(CC) -c -o $@ $< $(CFLAGS) $(CFLAGS_MODULES) $(CPPFLAGS) $(CPPFLAGS_MODULES)
 
 .c.lo:
-	$(CC) -fPIC -c -o $@ $< $(CFLAGS) $(CPPFLAGS)
+	$(CC) -fPIC -c -o $@ $< $(CFLAGS) $(CFLAGS_MODULES) $(CPPFLAGS) $(CPPFLAGS_MODULES)
 
 .c.to:
-	$(CC) -DTEST -c -o $@ $< $(CFLAGS) $(CPPFLAGS)
+	$(CC) -DTEST -c -o $@ $< $(CFLAGS) $(CFLAGS_MODULES) $(CPPFLAGS) $(CPPFLAGS_MODULES)
 
 .to.t:
-	$(CC) -o $@ $< librecrypt.a $(LDFLAGS)
+	$(CC) -o $@ $< librecrypt.a $(LDFLAGS) $(LDFLAGS_MODULES)
 
 .c.t:
-	$(CC) -DTEST -o $@ $< librecrypt.a $(CFLAGS) $(CPPFLAGS) $(LDFLAGS)
+	$(CC) -DTEST -o $@ $< librecrypt.a $(CFLAGS) $(CFLAGS_MODULES) $(CPPFLAGS) $(CPPFLAGS_MODULES) $(LDFLAGS) $(LDFLAGS_MODULES)
 
 librecrypt.a: $(OBJ)
 	@rm -f -- $@

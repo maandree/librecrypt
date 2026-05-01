@@ -16,7 +16,7 @@ librecrypt_fill_with_random_(void *out, size_t n, ssize_t (*rng)(void *out, size
 		r = (*rng)(buf, n, user);
 		if (r <= 0) {
 			if (!r)
-				abort();
+				abort(); /* $covered$ */
 			return -1;
 		}
 		buf = &buf[(size_t)r];
@@ -98,10 +98,12 @@ main(void)
 
 	SET_UP_ALARM();
 
+	/* Check default RNG */
 	EXPECT(librecrypt_fill_with_random_(buf1, sizeof(buf1), NULL, NULL) == 0);
 	EXPECT(librecrypt_fill_with_random_(buf2, sizeof(buf1), NULL, NULL) == 0);
 	EXPECT(memcmp(buf1, buf2, sizeof(buf1)));
 
+	/* Check stateless all-at-once RNG */
 	memset(buf1, 99, sizeof(buf1));
 	errno = 0;
 	EXPECT(librecrypt_fill_with_random_(buf1, sizeof(buf1), &zero, NULL) == 0);
@@ -109,6 +111,7 @@ main(void)
 	for (s = 0u, i = 0u; i < sizeof(buf1); i++, s++)
 		EXPECT(!buf1[i]);
 
+	/* Check stateful chunked RNG (importantly, chunks are smaller than pattern) */
 	memset(buf1, 99, sizeof(buf1));
 	s = 0u;
 	errno = 0;
@@ -117,6 +120,7 @@ main(void)
 	for (s = 0u, i = 0u; i < sizeof(buf1); i++, s++)
 		EXPECT(buf1[i] == s);
 
+	/* Check stateful one-byte-per-call RNG */
 	memset(buf1, 99, sizeof(buf1));
 	s = 0u;
 	errno = 0;
@@ -125,6 +129,7 @@ main(void)
 	for (s = 0u, i = 0u; i < sizeof(buf1); i++, s++)
 		EXPECT(buf1[i] == s);
 
+	/* Check failure in RNG */
 	memset(buf1, 99, sizeof(buf1));
 	s = 0u;
 	errno = 0;
@@ -133,6 +138,7 @@ main(void)
 	for (s = 0u, i = 0u; i < sizeof(buf1); i++, s++)
 		EXPECT(buf1[i] == 99);
 
+	/* Check function abort(3)s if RNG returns 0 */
 	EXPECT_ABORT(rv = librecrypt_fill_with_random_(buf1, sizeof(buf1), &zero_ret, NULL));
 
 	return rv;

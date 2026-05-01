@@ -30,9 +30,12 @@ librecrypt_equal_binary(const void *a, const void *b, size_t len)
 	size_t i;
 	unsigned char r = 0u;
 
+	/* For each character pair XOR is zero on and only on equality,
+	 * bitwise OR of all XORs remain 0 if and only if all where equal */
 	for (i = 0u; i < len; i++)
 		r = (unsigned char)(r | (*x++ ^ *y++));
 
+	/* Prevent compiler from returning early */
 	(*librecrypt_explicit_____)(r);
 
 	return r ? 0 : 1;

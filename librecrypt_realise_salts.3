@@ -12,8 +12,6 @@ ssize_t \fBlibrecrypt_realise_salts\fP(char *restrict \fIout_buffer\fP, size_t \
 .PP
 Link with
 .IR -lrecrypt .
-Static linking may require additional flags
-depending on enabled hash algorithms.
 
 .SH DESCRIPTION
 The
@@ -24,7 +22,9 @@ non-negative decimal number in
 and replaces each with ASCII-encoded random
 bytes (as many bytes as the number specifies),
 writing the result to
-.IR out_buffer .
+.IR out_buffer ,
+except those that are used to specify the
+desired hash size.
 .PP
 .IR *rng ,
 or a default implementation (which tries to use
@@ -105,9 +105,6 @@ function will fail if:
 .TP
 .B ERANGE
 The expected return value is greater than {SSIZE_MAX}.
-.TP
-.B EINVAL
-Asterisk-encoding was used in an invalid context.
 .TP
 .B ENOSYS
 .I settings

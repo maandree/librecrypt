@@ -13,6 +13,8 @@ int
 main(void)
 {
 	SET_UP_ALARM();
+
+	/* Check returns number of '>' plus 1 */
 	EXPECT(librecrypt_chain_length("") == 1u);
 	EXPECT(librecrypt_chain_length("a$b") == 1u);
 	EXPECT(librecrypt_chain_length(">") == 2u);
@@ -20,6 +22,7 @@ main(void)
 	EXPECT(librecrypt_chain_length("a$b>c$d>e$f") == 3u);
 	EXPECT(librecrypt_chain_length("a$b>c$d>e$f>") == 4u);
 	EXPECT(librecrypt_chain_length(">a$b>c$d>e$f>") == 5u);
+
 	return 0;
 }
 

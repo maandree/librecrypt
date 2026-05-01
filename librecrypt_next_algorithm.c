@@ -31,9 +31,10 @@ testcase_1(void)
 	EXPECT(!strcmp(s, "e$f$"));
 
 	EXPECT((a = librecrypt_next_algorithm(&s)));
-	EXPECT(s == NULL);
+	EXPECT(s == NULL); /* state is set to NULL when done */
 	EXPECT(!strcmp(a, "e$f$"));
 
+	/* Check librecrypt_next_algorithm when done returns NULL without changing state */
 	EXPECT(librecrypt_next_algorithm(&s) == NULL);
 	EXPECT(s == NULL);
 }
@@ -61,9 +62,10 @@ testcase_2(void)
 	EXPECT(!strcmp(s, ""));
 
 	EXPECT((a = librecrypt_next_algorithm(&s)));
-	EXPECT(s == NULL);
+	EXPECT(s == NULL); /* state is set to NULL when done */
 	EXPECT(!strcmp(a, ""));
 
+	/* Check librecrypt_next_algorithm when done returns NULL without changing state */
 	EXPECT(librecrypt_next_algorithm(&s) == NULL);
 	EXPECT(s == NULL);
 }

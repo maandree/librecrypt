@@ -6,7 +6,7 @@ librecrypt_settings_prefix - Get length of settings prefix in a password hash st
 .nf
 #include <librecrypt.h>
 
-size_t \fBlibrecrypt_settings_prefix\fP(const char *\fIhash\fP);
+size_t \fBlibrecrypt_settings_prefix\fP(const char *\fIhash\fP, size_t *\fIhashsize_out\fP);
 .fi
 .PP
 Link with
@@ -19,16 +19,30 @@ function returns the number of bytes, from the front of
 .IR hash ,
 that make up the algorithm configuration.
 .PP
-The string is scanned for the delimiters
-.I LIBRECRYPT_HASH_COMPOSITION_DELIMITER
-(which is
-.BR \(aq$\(aq )
-and
-.I LIBRECRYPT_ALGORITHM_LINK_DELIMITER
-(which is
-.BR \(aq>\(aq ),
-and the returned value is one byte past the
-last occurrence, or 0 if none was found.
+Unless
+.I hashsize_out
+is
+.IR NULL ,
+the value 0
+is stored in
+.I *hashsize_out
+if the output hash size is fixed for the last algorithm in
+.I hash
+or if the output hash size is not specified (either because
+.IR &hash[r] ,
+where
+.I r
+is the return value, is the null byte, and so the default
+hash size shall be used or because the information is
+malformatted), otherwise a positive value is stored in
+.IR *hashsize_out ,
+specifying the number of bytes in the binary output hash,
+as determined by the text in
+.I hash
+beyond the settings prefix.
+See the
+.B EXTENDED DESCRIPTION
+section for more information.
 .PP
 .I hash
 must not be
@@ -68,6 +82,22 @@ T{
 T}	Async-signal safety	AS-Safe
 .TE
 .sp
+
+.SH EXTENDED DESCRIPTION
+Some algorithms have flexible hash size which
+is encoded either with an actual hash (its
+length after decoding to binary is checked)
+or using asterisk-notation in place of the
+result (that is, as an asterisk
+.RI (\(aq * \(aq)
+followed by an unsigned, decimal integer,
+which may have leading zeroes). This part
+is always excluded (from the last algorithm
+in the algorithm chain in
+.IR hash )
+in the return value of the
+.BR librecrypt_settings_prefix ()
+function.
 
 .SH HISTORY
 The

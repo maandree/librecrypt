@@ -121,6 +121,29 @@ T}	Async-signal safety	AS-Unsafe
 .TE
 .sp
 
+.SH EXTENDED DESCRIPTION
+If you are using the
+.BR librecrypt_crypt (3)
+format, you just run the
+.BR librecrypt_add_algorithm ()
+function over the password hash string to get
+the augmented password hash string with an
+updated hash, however if you are using
+.BR librecrypt_hash (3)
+or
+.BR librecrypt_hash_binary (3),
+you must also (since
+.I augend
+would not contain the hash result) run
+.BR librecrypt_hash (3)
+or
+.BR librecrypt_hash_binary (3)
+over the old hash result with
+.I augment
+as the
+.I settings
+argument to get the new hash result.
+
 .SH HISTORY
 The
 .BR librecrypt_add_algorithm ()

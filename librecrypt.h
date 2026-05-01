@@ -13,21 +13,32 @@
 # define LIBRECRYPT_NONNULL__ __attribute__((__nonnull__))
 # define LIBRECRYPT_NONNULL_I__(I) __attribute__((__nonnull__(I)))
 # define LIBRECRYPT_WUR__ __attribute__((__warn_unused_result__))
-# define LIBRECRYPT_READ_STR__(S) __attribute__((__access__(read_only, S)))
-# define LIBRECRYPT_READ_MEM__(B, N) __attribute__((__access__(read_only, B, N)))
-# define LIBRECRYPT_WRITE_MEM__(B, N) __attribute__((__access__(write_only, B, N)))
-# define LIBRECRYPT_READ_WRITE_STR__(S) __attribute__((__access__(read_write, S)))
 #else
 # define LIBRECRYPT_PURE__
 # define LIBRECRYPT_NONNULL__
 # define LIBRECRYPT_NONNULL_I__(I)
 # define LIBRECRYPT_WUR__
+#endif
+#if defined(__GNUC__) && !defined(__clang__)
+# define LIBRECRYPT_READ_STR__(S) __attribute__((__access__(read_only, S)))
+# define LIBRECRYPT_READ_MEM__(B, N) __attribute__((__access__(read_only, B, N)))
+# define LIBRECRYPT_WRITE_MEM__(B, N) __attribute__((__access__(write_only, B, N)))
+# define LIBRECRYPT_READ_WRITE_STR__(S) __attribute__((__access__(read_write, S)))
+#else
 # define LIBRECRYPT_READ_STR__(S)
 # define LIBRECRYPT_READ_MEM__(B, N)
 # define LIBRECRYPT_WRITE_MEM__(B, N)
 # define LIBRECRYPT_READ_WRITE_STR__(S)
 #endif
 #define LIBRECRYPT_NONNULL_1__ LIBRECRYPT_NONNULL_I__(1)
+
+/* Silence clang's warnings for glibc */
+#if defined(__clang__)
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
+# pragma clang diagnostic ignored "-Wc11-extensions"
+# pragma clang diagnostic ignored "-Wunsafe-buffer-usage" /* as well as this one, which is completely broken */
+#endif
 
 
 /**
@@ -46,27 +57,36 @@
  * Get number of bytes in a password hash string
  * that make up the algorithm configuration
  * 
- * @param   hash  The password hash string; must not be `NULL`
- * @return        The number of bytes, from the front of `hash`,
- *                that make up the algorithm configuration; may be 0
+ * Some algorithms have flexible hash size which
+ * is encoded either with an actual hash (its
+ * length after decoding to binary is checked)
+ * or using asterisk-notation in place of the
+ * result (that is, as '*' followed by an unsigned,
+ * decimal integer, which may have leading zeroes).
+ * This part is always excluded (from the last
+ * algorithm in the algorithm chain in `hash`) in
+ * the return value.
+ * 
+ * @param   hash          The password hash string; must not be `NULL`
+ * @param   hashsize_out  Unless `NULL`; if the hash size is fixed,
+ *                        the value 0 is stored in the provided memory,
+ *                        otherwise a non-zero value will be stored,
+ *                        which is the number bytes in the output hash,
+ *                        however if the a hash or hash size is not
+ *                        available (in which case the function shall
+ *                        return `strlen(hash)` if `hash` is properly
+ *                        formatted) the value 0 is stored, indicating
+ *                        that a default hash size shall be used
+ * @return                The number of bytes, from the front of `hash`,
+ *                        that make up the algorithm configuration; may be 0
  * 
  * For the return value `r`, `&hash[r]` points to the
  * hash result proper
  * 
  * This function is MT-Safe and AS-Safe
  */
-LIBRECRYPT_READ_STR__(1) LIBRECRYPT_NONNULL__ LIBRECRYPT_WUR__ LIBRECRYPT_PURE__
-inline size_t
-librecrypt_settings_prefix(const char *hash)
-{
-	size_t i, ret = 0u;
-
-	for (i = 0u; hash[i]; i++)
-		if (hash[i] == LIBRECRYPT_HASH_COMPOSITION_DELIMITER || hash[i] == LIBRECRYPT_ALGORITHM_LINK_DELIMITER)
-			ret = i + 1u;
-
-	return ret;
-}
+LIBRECRYPT_READ_STR__(1) LIBRECRYPT_NONNULL_1__ LIBRECRYPT_WUR__ LIBRECRYPT_PURE__
+size_t librecrypt_settings_prefix(const char *hash, size_t *hashsize_out);
 
 
 /**
@@ -264,9 +284,9 @@ size_t librecrypt_encode(char *out_buffer, size_t size, const void *binary, size
 
 
 /**
- * Encode a hash result or salt in ASCII, from binary
+ * Decode a hash result or salt, from ASCII to binary
  * 
- * This is the inverse of `librecrypt_decode`
+ * This is the inverse of `librecrypt_encode`
  * 
  * @param   out_buffer  Output buffer for the raw binary data
  * @param   size        The number bytes the function may write to `out_buffer`
@@ -280,7 +300,8 @@ size_t librecrypt_encode(char *out_buffer, size_t size, const void *binary, size
  * @param   strict_pad  Zero if the padding at the end is optional, non-zero otherwise
  * @return              The number of bytes that would have been written to `out_buffer`,
  *                      if `size` was sufficiently large, -1 on failure
- * @throws  EINVAL      `ascii` uses an invalid encoding
+ * 
+ * @throws  EINVAL  `ascii` uses an invalid encoding
  * 
  * On successful completion, the N bytes is written to
  * `out_buffer` where N is the lesser of `size` and the
@@ -319,8 +340,9 @@ ssize_t librecrypt_decode(void *out_buffer, size_t size, const char *ascii, size
  *                             value of that character in the encoding alphabet,
  *                             and any other character to the value `0xFF`;
  *                          but `NULL` on failure
- * @throws  ENOSYS          The last algorithm in `settings` is not recognised
- *                          or was disabled at compile-time
+ * 
+ * @throws  ENOSYS  The last algorithm in `settings` is not recognised
+ *                  or was disabled at compile-time
  * 
  * The return type is `const char *` if `decoding` is 0,
  * and `const unsigned char *` otherwise
@@ -419,7 +441,8 @@ librecrypt_equal(const char *a, const char *b)
 /**
  * Locate all asteriskes followed by a non-negative
  * decimal number and replace each with ASCII-encded
- * random bytes (as many bytes as the number specifies)
+ * random bytes (as many bytes as the number specifies),
+ * except those used to specify the desired hash size
  * 
  * @param   out_buffer  Output buffer for the ASCII representation
  * @param   size        The number bytes the function may write to `out_buffer`
@@ -435,7 +458,6 @@ librecrypt_equal(const char *a, const char *b)
  * @return              The number of bytes that would have been written to `out_buffer`,
  *                      if `size` was sufficiently large, -1 on failure
  * @throws  ERANGE      The expected return value is greater than {SSIZE_MAX}
- * @throws  EINVAL      Asterisk-encoding was used in an invalid context
  * @throws  ENOSYS      `settings` contain an algorithm that is not recognised
  *                      or was disabled at compile-time
  * 
@@ -460,7 +482,7 @@ librecrypt_equal(const char *a, const char *b)
  * On failure, `out_buffer` may be partially written
  * 
  * The encoding depend on the algorithm, which is why
- * it can fail with `EINVAL` or `ENOSYS`
+ * it can fail with `ENOSYS`
  * 
  * When `rng` is non-`NULL`, this function inherits any
  * MT-Unsafe and AS-Unsafe properties from `*rng`, being
@@ -503,11 +525,12 @@ ssize_t librecrypt_realise_salts(char *restrict out_buffer, size_t size, const c
  *                      purposes, ignored if `rng` is `NULL` or if `gensalt` is zero
  * @return              The number of bytes that would have been written to
  *                      `out_buffer`, if `size` was sufficiently large, -1 on failure
- * @throws  EINVAL      `algorithm` represents a chain of algorithms
- * @throws  ENOSYS      `algorithm` represents an algorithm that is not
- *                      recognised or was disabled at compile-time
- * @throws  ENOSYS      `algorithm` is `NULL` but all algorithms were disabled at
- *                      compile-time
+ * 
+ * @throws  EINVAL  `algorithm` represents a chain of algorithms
+ * @throws  ENOSYS  `algorithm` represents an algorithm that is not
+ *                  recognised or was disabled at compile-time
+ * @throws  ENOSYS  `algorithm` is `NULL` but all algorithms were disabled at
+ *                  compile-time
  * 
  * If `rng` is `NULL`, any encountered `EINTR` is ignored,
  * however, if it is encountered `errno` will be set to `EINTR`,
@@ -728,6 +751,16 @@ int librecrypt_test_supported(const char *phrase, size_t len, int text, const ch
 /**
  * Chain togather another set of hash algorithms
  * 
+ * If you are using the `librecrypt_crypt` format,
+ * you just run this function over the password hash
+ * string to get the augmented one with an updated
+ * hash, however if you are using `librecrypt_hash`
+ * or `librecrypt_hash_binary`, you must also (since
+ * `augend` would not contain the hash result) run
+ * `librecrypt_hash` or `librecrypt_hash_binary` over
+ * the old hash result with `augment` as the `settings`
+ * argument to get the new hash result
+ * 
  * @param   out_buffer  Output buffer for the new password hash string
  * @param   size        The number bytes the function may write to `out_buffer`
  * @param   augend      THe existing password hash string; if it contains a
@@ -772,5 +805,9 @@ LIBRECRYPT_NONNULL_I__(3) LIBRECRYPT_NONNULL_I__(4) LIBRECRYPT_WUR__
 ssize_t librecrypt_add_algorithm(char *out_buffer, size_t size, char *augend,
                                  const char *restrict augment, void *reserved);
 
+
+#if defined(__clang__)
+# pragma clang diagnostic pop
+#endif
 
 #endif

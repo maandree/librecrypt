@@ -2,24 +2,29 @@
 /* included from "common.h" */
 
 
+#include "argon2/argon2.h"
+
+
 /* ordered by preference */
-#define LIST_ALGORITHMS(X) /* TODO add algorithms */
+#define LIST_ALGORITHMS(X)\
+	X(argon2id)\
+	X(argon2d)\
+	X(argon2i)\
+	X(argon2ds)
 
 
-#define Y(ALGO)\
-	HIDDEN size_t librecrypt__##ALGO##__get_prefix(const char *settings, size_t len);\
-	HIDDEN unsigned librecrypt__##ALGO##__is_algorithm(const char *settings, size_t len);\
-	HIDDEN int librecrypt__##ALGO##__hash(char *restrict out_buffer, size_t size, const char *phrase,\
-	                                      size_t len, const char *settings, size_t prefix, void *reserved);\
-	HIDDEN int librecrypt__##ALGO##__test_supported(const char *phrase, size_t len, int text,\
-	                                                const char *settings, size_t prefix);\
-	HIDDEN ssize_t librecrypt__##ALGO##__make_settings(char *out_buffer, size_t size, const char *algorithm,\
-	                                                   size_t memcost, uintmax_t timecost, int gensalt,\
-	                                                   ssize_t (*rng)(void *out, size_t n, void *user), void *user);\
-	NONSTRING extern const char librecrypt__##ALGO##__encoding_lut[256];\
-	extern const unsigned char librecrypt__##ALGO##__decoding_lut[256];
 
-#define X(ALGO) IF__##ALGO##__SUPPORTED(Y(ALGO))
-LIST_ALGORITHMS(X)
-#undef X
-#undef Y
+
+#ifdef REQUIRES_COMMON_RFC4848S4
+
+/**
+ * RFC 4648 §4 implementation of `struct algorithm.encoding_lut_`
+ */
+NONSTRING extern const char librecrypt_common_rfc4848s4_encoding_lut_[256u];
+
+/**
+ * RFC 4648 §4 implementation of `struct algorithm.decoding_lut_`
+ */
+extern const unsigned char librecrypt_common_rfc4848s4_decoding_lut_[256u];
+
+#endif

@@ -1,0 +1,33 @@
+Unconditional dependencies:
+	libc
+
+For Argon2 support:
+	libar2simplified
+	libar2
+	libblake (indirect)
+	pthread (indirect)
+
+Build dependencies:
+	make
+	sh
+	echo
+	true
+	false
+	c99
+	ar
+
+Install dependencies:
+	make
+	sh
+	echo
+	true
+	false
+	mkdir
+	cp
+	ln
+
+Notes:
+	make(1) must support `+=` and `!=` as defined by
+	The Open Group Base Specifications Issue 8 (the 2024 edition);
+	strict The Open Group Base Specifications Issue 7 (the 2018 edition)
+	compliance is not sufficient.

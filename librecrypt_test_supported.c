@@ -7,38 +7,35 @@ int
 librecrypt_test_supported(const char *phrase, size_t len, int text, const char *settings)
 {
 	const struct algorithm *algo;
-	size_t n, prefix;
-	int has_next;
+	size_t n;
 
+	/* For each chained algorithm*/
 	for (;;) {
-		has_next = 0;
-		for (n = 0u; settings[n]; n++) {
-			if (settings[n] == LIBRECRYPT_ALGORITHM_LINK_DELIMITER) {
-				has_next = 1;
+		/* Measure until next '>' */
+		for (n = 0u; settings[n]; n++)
+			if (settings[n] == LIBRECRYPT_ALGORITHM_LINK_DELIMITER)
 				break;
-			}
-		}
 
+		/* Identify algorithm */
 		algo = librecrypt_find_first_algorithm_(settings, n);
 		if (!algo)
 			return 0;
 
-		prefix = (*algo->get_prefix)(settings, n);
-		if (has_next && prefix < n)
+		/* Check configuration and input support, and get hash size */
+		if (!(*algo->test_supported)(phrase, len, text, settings, n, &len))
 			return 0;
 
-		if (!(*algo->test_supported)(phrase, len, text, settings, prefix))
-			return 0;
-
-		if (!has_next)
+		/* Return just process last chained algorithm */
+		if (!settings[n])
 			return 1;
 
+		/* Hashes are binary */
 		phrase = NULL;
-		len = algo->hash_size;
 		text = 0;
 
-		settings = &settings[n];
-		settings++;
+		/* Goto next algorithm */
+		settings = &settings[n]; /* conf */
+		settings++; /* '>' */
 	}
 }
 

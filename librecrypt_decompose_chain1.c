@@ -26,10 +26,15 @@ main(void)
 {
 	char buf[64u];
 	size_t n;
+
 	SET_UP_ALARM();
+
+	/* Check each '>' was replaced with NUL, and number
+	 * of '>' plus 1 (number of algorithms) was returned */
 	CHECK("", "", 1u);
 	CHECK(">", "\0", 2u);
 	CHECK("a$b>c$d>e$f", "a$b\0c$d\0e$f", 3u);
+
 	return 0;
 }
 
