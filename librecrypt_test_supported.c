@@ -47,7 +47,9 @@ int
 main(void)
 {
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

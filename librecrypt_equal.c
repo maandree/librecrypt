@@ -13,6 +13,8 @@ int
 main(void)
 {
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
+
 	EXPECT(librecrypt_equal("", "") == 1);
 	EXPECT(librecrypt_equal("", "a") == 0);
 	EXPECT(librecrypt_equal("a", "") == 0);
@@ -32,6 +34,8 @@ main(void)
 	EXPECT(librecrypt_equal("abcdefg", "abcdef") == 0);
 	EXPECT(librecrypt_equal("abcdef", "") == 0);
 	EXPECT(librecrypt_equal("", "abcdef") == 0);
+
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

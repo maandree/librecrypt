@@ -7,5 +7,7 @@ GCOV = gcov
 CFLAGS   = -g -O0 -pedantic -fprofile-arcs -ftest-coverage
 LDFLAGS += -lgcov -fprofile-arcs
 
+G =
+
 coverage: check
 	$(GCOV) -pr $(SRC) 2>&1

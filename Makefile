@@ -74,27 +74,34 @@ SRC =\
 	$(OBJ:.o=.c)\
 	$(HDR)
 
+ALL_CFLAGS   = $(CFLAGS)   $(CFLAGS_MODULES)
+ALL_CPPFLAGS = $(CPPFLAGS) $(CPPFLAGS_MODULES)
+ALL_LDFLAGS  = $(LDFLAGS)  $(LDFLAGS_MODULES)
+
+TEST_INCLUDE_PREFIX = libtest/
+include libtest/config.mk
+
 
 all: librecrypt.a librecrypt.$(LIBEXT) $(TEST)
 $(OBJ): $(HDR)
 $(LOBJ): $(HDR)
-$(TOBJ): $(HDR)
-$(TEST): librecrypt.a
+$(TOBJ): $(HDR) libtest/libtest.h
+$(TEST): $(HDR) librecrypt.a libtest/libtest.a libtest/libtest.h
 
 .c.o:
-	$(CC) -c -o $@ $< $(CFLAGS) $(CFLAGS_MODULES) $(CPPFLAGS) $(CPPFLAGS_MODULES)
+	$(CC) -c -o $@ $< $(ALL_CFLAGS) $(ALL_CPPFLAGS)
 
 .c.lo:
-	$(CC) -fPIC -c -o $@ $< $(CFLAGS) $(CFLAGS_MODULES) $(CPPFLAGS) $(CPPFLAGS_MODULES)
+	$(CC) -fPIC -c -o $@ $< $(ALL_CFLAGS) $(ALL_CPPFLAGS)
 
 .c.to:
-	$(CC) -DTEST -c -o $@ $< $(CFLAGS) $(CFLAGS_MODULES) $(CPPFLAGS) $(CPPFLAGS_MODULES)
+	$(CC) -DTEST -c -o $@ $< $(ALL_CFLAGS) $(ALL_CPPFLAGS)
 
 .to.t:
-	$(CC) -o $@ $< librecrypt.a $(LDFLAGS) $(LDFLAGS_MODULES)
+	$(CC) -o $@ $< librecrypt.a libtest/libtest.a $(G) $(ALL_LDFLAGS) $(TEST_LDFLAGS)
 
 .c.t:
-	$(CC) -DTEST -o $@ $< librecrypt.a $(CFLAGS) $(CFLAGS_MODULES) $(CPPFLAGS) $(CPPFLAGS_MODULES) $(LDFLAGS) $(LDFLAGS_MODULES)
+	$(CC) -DTEST -o $@ $< librecrypt.a libtest/libtest.a $(G) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(ALL_LDFLAGS) $(TEST_LDFLAGS)
 
 librecrypt.a: $(OBJ)
 	@rm -f -- $@
@@ -104,11 +111,18 @@ librecrypt.a: $(OBJ)
 librecrypt.$(LIBEXT): $(LOBJ)
 	$(CC) $(LIBFLAGS) -o $@ $(LOBJ) $(LDFLAGS)
 
+libtest/libtest.a:
+	+cd libtest && $(MAKE) libtest.a
+
 check: $(TEST)
+	+cd libtest && $(MAKE) check
 	@set -ex;\
 	for t in $(TEST); do\
 		$(CHECK_PREFIX) ./$$t;\
 	done
+# Setting CHECK_PREFIX is intended for developers, setting it
+# (specially to use valgrind(1)) may limit what the test code
+# is able to test
 
 install: librecrypt.a librecrypt.$(LIBEXT)
 	mkdir -p -- "$(DESTDIR)$(PREFIX)/lib"

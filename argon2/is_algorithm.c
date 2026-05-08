@@ -27,6 +27,7 @@ int
 main(void)
 {
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
 #if defined(SUPPORT_ARGON2I)
 	CHECK(argon2i, "", "", 0u);
@@ -76,6 +77,7 @@ main(void)
 	CHECK(argon2ds, "$argon2id$", "", 0u);
 #endif
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

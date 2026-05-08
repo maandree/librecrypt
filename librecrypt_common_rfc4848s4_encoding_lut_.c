@@ -17,6 +17,7 @@ main(void)
 	char c;
 
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
 	for (i = 0u; i < 64u; i++) {
 		c = librecrypt_common_rfc4848s4_encoding_lut_[i];
@@ -46,6 +47,7 @@ main(void)
 		EXPECT(librecrypt_common_rfc4848s4_decoding_lut_[(unsigned char)c] == i);
 	}
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

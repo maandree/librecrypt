@@ -44,6 +44,7 @@ main(void)
 	char *buf;
 
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
 #if defined(__GNUC__)
 # pragma GCC diagnostic ignored "-Wnonnull"
@@ -56,8 +57,9 @@ main(void)
 	buf = malloc(256u);
 	memset(buf, 99, 256u);
 	librecrypt_wipe(buf, 256u);
-	free(buf); /* TODO should test memory is wiped */
+	free(buf);
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

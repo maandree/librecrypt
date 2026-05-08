@@ -103,7 +103,10 @@ next:
 	for (i = 0u; i < n; i++)
 		if (settings[i] == LIBRECRYPT_HASH_COMPOSITION_DELIMITER)
 			prefix = i + 1u;
-	/* TODO "_" is a prefix that is being used */
+	if (n && !prefix && settings[i] == '_') {
+		/* Special case for bsdicrypt */
+		prefix = 1u;
+	}
 	if (!algo->flexible_hash_size && prefix != n)
 		goto einval;
 

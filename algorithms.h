@@ -7,10 +7,10 @@
 
 /* ordered by preference */
 #define LIST_ALGORITHMS(X)\
-	X(argon2id)\
-	X(argon2d)\
-	X(argon2i)\
-	X(argon2ds)
+	X(argon2id) /* argon2 variant:: recommended hybrid */ \
+	X(argon2i) /* argon2 variant:: data-independent: weaker against GPU/ASIC, stronger against side-channel attacks */\
+	X(argon2d) /* argon2 variant:: data-dependent: weaker against side-channel attacks, stronger against GPU/ASIC */\
+	X(argon2ds) /* argon2 variant:: data-dependent though S-box, not properly cryptoanalysed */
 
 
 

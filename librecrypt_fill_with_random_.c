@@ -95,8 +95,11 @@ main(void)
 	int rv = 0;
 
 	INIT_TEST_ABORT();
-
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
+
+	/* Check zero-request */
+	EXPECT(librecrypt_fill_with_random_(NULL, 0, NULL, NULL) == 0);
 
 	/* Check default RNG */
 	EXPECT(librecrypt_fill_with_random_(buf1, sizeof(buf1), NULL, NULL) == 0);
@@ -141,6 +144,7 @@ main(void)
 	/* Check function abort(3)s if RNG returns 0 */
 	EXPECT_ABORT(rv = librecrypt_fill_with_random_(buf1, sizeof(buf1), &zero_ret, NULL));
 
+	STOP_RESOURCE_TEST();
 	return rv;
 }
 

@@ -184,6 +184,8 @@ int
 main(void)
 {
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
+
 	CHECK("", "");
 	CHECK("\x00", "AA");
 	CHECK("\x00\x00", "AAA");
@@ -192,6 +194,8 @@ main(void)
 	CHECK("testtest", "dGVzdHRlc3Q");
 	CHECK("zy[]y21 !", "enlbXXkyMSAh");
 	CHECK("{~|~}~~~\x7f\x7f", "e358fn1+fn5/fw");
+
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

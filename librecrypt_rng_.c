@@ -171,6 +171,7 @@ main(void)
 	void *user = NULL;
 
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
 	/* Check that output is random */
 	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
@@ -182,6 +183,7 @@ main(void)
 	/* Check zero-request */
 	EXPECT(librecrypt_rng_(NULL, 0u, NULL) == 0u);
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

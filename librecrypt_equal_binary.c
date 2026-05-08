@@ -49,6 +49,8 @@ int
 main(void)
 {
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
+
 	EXPECT(librecrypt_equal_binary("", "", 0u) == 1);
 	EXPECT(librecrypt_equal_binary("", "", 1u) == 1);
 	EXPECT(librecrypt_equal_binary("a", "", 1u) == 0);
@@ -73,6 +75,8 @@ main(void)
 	EXPECT(librecrypt_equal_binary("abcdef", "abcdex", 1u) == 1);
 	EXPECT(librecrypt_equal_binary("abcdef", "abcdex", 0u) == 1);
 	EXPECT(librecrypt_equal_binary(NULL, NULL, 0u) == 1);
+
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

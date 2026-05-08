@@ -27,6 +27,7 @@ main(void)
 	size_t i;
 
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
 	/* Check NULL is supported */
 	librecrypt_wipe_str(NULL);
@@ -38,6 +39,7 @@ main(void)
 	CHECK("  hello developer  ");
 	CHECK("\1  hello developer  \1");
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

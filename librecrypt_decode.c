@@ -252,6 +252,7 @@ main(void)
 	int i;
 
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
 	/* Normal test cases */
 	check_good_padding = 1;
@@ -334,6 +335,7 @@ main(void)
 		EXPECT(errno == EINVAL);
 	}
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

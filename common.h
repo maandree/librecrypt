@@ -394,11 +394,15 @@ const struct algorithm *librecrypt_find_first_algorithm_(const char *settings, s
  *                              that is length specified using asterisk-notation
  *                      "%h"  - Same as "%b", except empty content as always allowed unless
  *                              asterisk-notation is used
- *                      "%^s" - Same as "%^s" except with output argument
- *                      "%^u" - Same as "%^s" except with output argument
- *                      "%^p" - Same as "%^s" except with output argument
- *                      "%^b" - Same as "%^s" except with output argument
- *                      "%^h" - Same as "%^s" except with output argument
+ *                      "%^s" - Same as "%s" except with output argument
+ *                      "%^u" - Same as "%u" except with output argument
+ *                      "%^p" - Same as "%p" except with output argument
+ *                      "%^b" - Same as "%b" except with one output argument: length
+ *                      "%&b" - Same as "%b" except with two output argument:
+ *                              pointer to text, text length, or NULL and binary length
+ *                      "%^h" - Same as "%h" except with one output argument: length
+ *                      "%&h" - Same as "%h" except with two output argument:
+ *                              pointer to text, text length, or NULL and binary length
  * @param   ...       Arguments for each use of '%' in `fmt`:
  *                      "%%"  - None
  *                      "%*"  - None
@@ -420,9 +424,15 @@ const struct algorithm *librecrypt_find_first_algorithm_(const char *settings, s
  *                      "%^b" - Same as "%b" but with an additional argument, as the first one:
  *                              a `uintmax_t *` used to store the number of encoded bytes or
  *                              the encoded integer after the asterisk if asterisk-encoding is used
- *                      "%^h" - Same as "%h" but with an additional argument, as the first one:
- *                              a `uintmax_t *` used to store the number of encoded bytes or
- *                              the encoded integer after the asterisk if asterisk-encoding is used
+ *                      "%&b" - Same as "%b" but with two additional arguments, as the first two:
+ *                              a `const char **` and a `uintmax_t *`: if asterisk-notation is used
+ *                              the `const char *` will be set to `NULL` and the `uintmax_t` will be
+ *                              set to the encoded number, othererwise the `const char *` will be
+ *                              set to point to the position in `settings` where the base-64 encoded
+ *                              text begins and the `uintmax_t` will be set to length of the text
+ *                              (as encoded in base-64, _not_ as decoded to binary)
+ *                      "%^h" - Same as "%^b"
+ *                      "%&h" - Same as "%&b"
  * @return            1 if `string` matches `fmt`, 0 otherwise
  */
 LIBRECRYPT_READ_MEM__(1, 2) LIBRECRYPT_NONNULL_I__(3) LIBRECRYPT_WUR__ HIDDEN
@@ -431,13 +441,13 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 
 
 #ifdef TEST
+# include "libtest/libtest.h"
 # ifdef __linux__
 #  include <sys/prctl.h>
 # endif
 # include <sys/resource.h>
 # include <sys/types.h>
 # include <sys/wait.h>
-# include <assert.h>
 # include <signal.h>
 # include <string.h>
 # include <unistd.h>
@@ -470,6 +480,21 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 	} while (0)
 # endif
 
+# define INIT_RESOURCE_TEST()\
+	do {\
+		libtest_start_tracking();\
+		libtest_force_zero_on_alloc(1);\
+		libtest_expect_zeroed_on_free(1);\
+	} while (0)
+
+# define STOP_RESOURCE_TEST()\
+	do {\
+		libtest_stop_tracking();\
+		libtest_force_zero_on_alloc(0);\
+		libtest_expect_zeroed_on_free(0);\
+		EXPECT(libtest_check_no_leaks());\
+	} while (0)
+
 # define EXPECT__(EXPR, HOW, RETEXTRACT, RETEXPECT)\
 	do {\
 		pid_t pid__;\
@@ -494,7 +519,17 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 	do {\
 		if (!(EXPR)) {\
 			fprintf(stderr, "Failure at %s:%i: %s\n", __FILE__, __LINE__, #EXPR);\
+			libtest_dump_stack("\t");\
 			exit(1);\
+		}\
+	} while (0)
+
+# define assert(EXPR)\
+	do {\
+		if (!(EXPR)) {\
+			fprintf(stderr, "Assertion failure at %s:%i: %s\n", __FILE__, __LINE__, #EXPR);\
+			libtest_dump_stack("\t");\
+			exit(2);\
 		}\
 	} while (0)
 #endif

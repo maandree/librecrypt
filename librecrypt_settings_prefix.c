@@ -21,7 +21,9 @@ librecrypt_settings_prefix(const char *hash, size_t *hashsize_out)
 	/* and get `strlen(hash)` */
 	len = i;
 
-	/* TODO "_" is a prefix that is being used */
+	/* Special case for bsdicrypt */
+	if (ret == last_offset && ret < len && hash[ret] == '_')
+		ret += 1u;
 
 	/* Return if hash size is not required */
 	if (!hashsize_out)
@@ -87,6 +89,7 @@ int
 main(void)
 {
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
 	/* Simple cases */
 	CHECK_NULL("", "result");
@@ -107,8 +110,14 @@ main(void)
 	CHECK_NULL("a$b$c>", "*2");
 	CHECK_NULL("a$b$c>*10$", "*2");
 
+	/* Special case: bsdicrypt */
+	CHECK_NULL("_", "res");
+	CHECK_NULL("_", "");
+	CHECK_NULL("$x$*10>_", "_");
+
 	/* TODO test hash size output (requires algorithms) */
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

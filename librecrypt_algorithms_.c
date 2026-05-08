@@ -38,6 +38,7 @@ main(void)
 	size_t i;
 
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
 	/* Validate algorithm entry  */
 	for (i = 0u; i < count; i++) {
@@ -89,6 +90,7 @@ main(void)
 	/* Check that the list has an end-of-list marker */
 	EXPECT(IS_END_OF_ALGORITHMS(&librecrypt_algorithms_[count]));
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

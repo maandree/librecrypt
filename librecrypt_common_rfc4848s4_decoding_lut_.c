@@ -32,6 +32,7 @@ main(void)
 	unsigned i, found[64u], invalids = 0u;
 
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
 	/* Ensure values [0, 64) are encoded exactly once each,
 	 * and that all other characters are marked as invalid */
@@ -51,6 +52,7 @@ main(void)
 	/* Match with librecrypt_common_rfc4848s4_encoding_lut_ is
 	 * tested in librecrypt_common_rfc4848s4_decoding_lut_.c */
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

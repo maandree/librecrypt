@@ -28,6 +28,7 @@ main(void)
 	size_t n;
 
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
 	/* Check each '>' was replaced with NUL, and number
 	 * of '>' plus 1 (number of algorithms) was returned */
@@ -35,6 +36,7 @@ main(void)
 	CHECK(">", "\0", 2u);
 	CHECK("a$b>c$d>e$f", "a$b\0c$d\0e$f", 3u);
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

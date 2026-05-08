@@ -529,8 +529,8 @@ ssize_t librecrypt_realise_salts(char *restrict out_buffer, size_t size, const c
  * @throws  EINVAL  `algorithm` represents a chain of algorithms
  * @throws  ENOSYS  `algorithm` represents an algorithm that is not
  *                  recognised or was disabled at compile-time
- * @throws  ENOSYS  `algorithm` is `NULL` but all algorithms were disabled at
- *                  compile-time
+ * @throws  ENOSYS  `algorithm` is `NULL` but all algorithms were
+ *                  disabled at compile-time
  * 
  * If `rng` is `NULL`, any encountered `EINTR` is ignored,
  * however, if it is encountered `errno` will be set to `EINTR`,

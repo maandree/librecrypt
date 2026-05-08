@@ -60,8 +60,8 @@ check_uint(const char *settings, size_t *off, size_t len, char min_first_digit,
 
 
 /**
- * Validate a salt or hash that's either encoded in base-64
- * or has its length encoded using asterisk-notation
+ * Validate and returns a salt or hash that's either encoded
+ * in base-64 or has its length encoded using asterisk-notation
  * 
  * This function does not check the value of any excess bit
  * in the base-64 encoding
@@ -81,7 +81,12 @@ check_uint(const char *settings, size_t *off, size_t len, char min_first_digit,
  *                           any other character to the value `0xFF`
  * @param   pad              The padding character to used at the end; the NUL byte if none
  * @param   strict_pad       Zero if the padding at the end is optional, non-zero otherwise
- * @param   out              Output parameter for the number of bytes used by the salt or hash
+ * @param   strout           Output parameter for the beginning of the base-64 text,
+ *                           set to `NULL` if asterisk-notation is used
+ * @param   lenout           Output parameter for the number of bytes in `*strout`, or if
+ *                           `*strout` is set to `NULL`, the asterisk-encoded number;
+ *                           however if `strout` is `NULL`, the number bytes used by
+ *                           the salt or hash (when in raw binary format) is stored
  * @return                   1 if the encoded value was of proper length,
  *                           a proper length was encoded using asterisk-notation, or
  *                           if `allow_empty` was non-zero, nothing was encoded;
@@ -89,7 +94,8 @@ check_uint(const char *settings, size_t *off, size_t len, char min_first_digit,
  */
 static int
 check_data(const char *settings, size_t *off, size_t len, uintmax_t min, uintmax_t max, int allow_empty,
-           const unsigned char dlut[restrict static 256], char pad, int strict_pad, uintmax_t *out)
+           const unsigned char dlut[restrict static 256], char pad, int strict_pad,
+           const char **strout, uintmax_t *lenout)
 {
 	size_t i, old_i;
 	uintmax_t q, r, n;
@@ -97,7 +103,9 @@ check_data(const char *settings, size_t *off, size_t len, uintmax_t min, uintmax
 	/* Check for asterisk-notation */
 	if (*off < len && settings[*off] == '*') {
 		++*off;
-		return check_uint(settings, off, len, '0', min, max, out);
+		if (strout)
+			*strout = NULL;
+		return check_uint(settings, off, len, '0', min, max, lenout);
 	}
 
 	settings = &settings[*off];
@@ -112,8 +120,8 @@ check_data(const char *settings, size_t *off, size_t len, uintmax_t min, uintmax
 	q = i / 4u;
 	r = i % 4u;
 	n = q * 3u + r - (r ? 1u : 0u);
-	if (out)
-		*out = n;
+	if (!strout)
+		*lenout = n;
 	/* 1 base-64 character in excees of a multiple of 4,
 	 * this is illegal because 4 characters encode 3 bytes
 	 * without any excees bits (both are 24 bits), so
@@ -139,6 +147,12 @@ check_data(const char *settings, size_t *off, size_t len, uintmax_t min, uintmax
 		}
 		if ((i != old_i || strict_pad) && r != 4u)
 			return 0;
+	}
+
+	/* Return the base-64 encoding */
+	if (strout) {
+		*strout = settings;
+		*lenout = (uintmax_t)i;
 	}
 
 	*off += i;
@@ -186,6 +200,12 @@ librecrypt_check_settings_(const char *settings, size_t len, const char *fmt, ..
 			fmt++;
 			goto outable;
 
+		} else if (fmt[1u] == '&' && (fmt[2u] == 'b' || fmt[2u] == 'h')) {
+			/* Like "%b"/"%h" except output pointer to base-64 text or decodes asterisk-notation */
+			strout = va_arg(args, const char **);
+			uout = va_arg(args, uintmax_t *);
+			goto plain_bh;
+
 		} else outable: if (fmt[1u] == 'p' || fmt[1u] == 'u') {
 			/* Unsigned integers ("%p" for leading zeros forbidden, "%u" for leading zeros allowed) */
 			uout = output ? va_arg(args, uintmax_t *) : NULL;
@@ -195,15 +215,17 @@ librecrypt_check_settings_(const char *settings, size_t len, const char *fmt, ..
 				return 0;
 			goto outable_done;
 
-		} else if (fmt[1u] == 'd' || fmt[1u] == 'h') {
-			/* Base-64 or asterisk-notation ("%d" for normal, "%h" for "" allowed) */
+		} else if (fmt[1u] == 'b' || fmt[1u] == 'h') {
+			/* Base-64 or asterisk-notation ("%b" for normal, "%h" for "" allowed) */
+			strout = NULL;
 			uout = output ? va_arg(args, uintmax_t *) : NULL;
+		plain_bh:
 			umin = va_arg(args, uintmax_t);
 			umax = va_arg(args, uintmax_t);
 			dlut = va_arg(args, const unsigned char *);
 			pad = (char)va_arg(args, int); /* `char` is promoted to `int` when passed through `...` */
 			strict_pad = va_arg(args, int);
-			if (!check_data(settings, &i, len, umin, umax, fmt[1u] == 'h', dlut, pad, strict_pad, uout))
+			if (!check_data(settings, &i, len, umin, umax, fmt[1u] == 'h', dlut, pad, strict_pad, strout, uout))
 				return 0;
 			goto outable_done;
 
@@ -244,9 +266,13 @@ librecrypt_check_settings_(const char *settings, size_t len, const char *fmt, ..
 #else
 
 
-CONST int
+int
 main(void)
 {
+	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
+
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

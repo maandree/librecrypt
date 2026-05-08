@@ -75,8 +75,12 @@ int
 main(void)
 {
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
+
 	testcase_1();
 	testcase_2();
+
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

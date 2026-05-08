@@ -5,18 +5,19 @@
 #include <libar2.h>
 
 
+#define RANGE(MIN, MAX) (uintmax_t)(MIN), (uintmax_t)(MAX)
+#define BASE64 librecrypt_common_rfc4848s4_decoding_lut_, argon2__PAD, argon2__STRICT_PAD
+
+
 int
 librecrypt__argon2__test_supported(const char *phrase, size_t len, int text, const char *settings, size_t prefix, size_t *len_out)
 {
-	uintmax_t hashsize;
+	uintmax_t hashlen;
 	int r;
 
 	/* We don't care about password content, arbitrary binary is supported */
 	(void) phrase;
 	(void) text;
-
-#define RANGE(MIN, MAX) (uintmax_t)(MIN), (uintmax_t)(MAX)
-#define BASE64 librecrypt_common_rfc4848s4_decoding_lut_, argon2__PAD, argon2__STRICT_PAD
 
 	/* Validate string format and parameters */
 	r = librecrypt_check_settings_(settings, prefix,
@@ -26,14 +27,14 @@ librecrypt__argon2__test_supported(const char *phrase, size_t len, int text, con
 		RANGE(LIBAR2_MIN_T_COST, LIBAR2_MAX_T_COST),
 		RANGE(LIBAR2_MIN_LANES, LIBAR2_MAX_LANES),
 		RANGE(LIBAR2_MIN_SALTLEN, LIBAR2_MAX_SALTLEN), BASE64,
-		&hashsize, RANGE(LIBAR2_MIN_HASHLEN, LIBAR2_MAX_HASHLEN), BASE64);
+		&hashlen, RANGE(LIBAR2_MIN_HASHLEN, LIBAR2_MAX_HASHLEN), BASE64);
 	if (!r)
 		return 0;
 
 	/* Return hash size */
-	if (!hashsize)
-		hashsize = argon2__HASH_SIZE;
-	*len_out = (size_t)hashsize;
+	if (!hashlen)
+		hashlen = argon2__HASH_SIZE;
+	*len_out = (size_t)hashlen;
 
 	/* Check password size */
 #if SIZE_MAX > UINT32_MAX
@@ -52,7 +53,9 @@ CONST int
 main(void)
 {
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 

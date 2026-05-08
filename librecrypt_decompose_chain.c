@@ -43,6 +43,7 @@ main(void)
 	size_t i;
 
 	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
 
 	/* Check HASH_1 with different sizes of `chain` */
 	stpcpy(buf, HASH_1);
@@ -149,6 +150,7 @@ main(void)
 	EXPECT(!strcmp(chain[3u], HASH_3_D));
 	EXPECT(!strcmp(chain[4u], HASH_3_E));
 
+	STOP_RESOURCE_TEST();
 	return 0;
 }
 
