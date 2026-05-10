@@ -40,11 +40,33 @@ librecrypt_find_first_algorithm_(const char *settings, size_t len)
 #else
 
 
+#define NSA "$~no~such~algorithm~$"
+
+
+#define CHECK(ALGO)\
+	do {\
+		algo = librecrypt_find_first_algorithm_(ALGO, sizeof(ALGO) - 1u);\
+		EXPECT(algo != NULL);\
+		EXPECT((*algo->is_algorithm)(ALGO, sizeof(ALGO) - 1u) > 0u);\
+		EXPECT(librecrypt_find_first_algorithm_(ALGO">"NSA, sizeof(ALGO">"NSA) - 1u) == algo);\
+	} while (0)
+
+
 int
 main(void)
 {
+	const struct algorithm *algo;
+
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
+
+	EXPECT(librecrypt_find_first_algorithm_(NSA, sizeof(NSA) - 1u) == NULL);
+	EXPECT(librecrypt_find_first_algorithm_(NSA">", sizeof(NSA">") - 1u) == NULL);
+
+	IF__argon2i__SUPPORTED(CHECK("$argon2i$"));
+	IF__argon2d__SUPPORTED(CHECK("$argon2d$"));
+	IF__argon2id__SUPPORTED(CHECK("$argon2id$"));
+	IF__argon2ds__SUPPORTED(CHECK("$argon2ds$"));
 
 	STOP_RESOURCE_TEST();
 	return 0;
@@ -52,4 +74,3 @@ main(void)
 
 
 #endif
-/* TODO test */

@@ -2,8 +2,9 @@ Unconditional runtime dependencies:
 	libc
 
 For Argon2 support (runtime, build, and check dependencies):
-	libar2simplified
-	libar2
+	libar2simplified>=1.1
+	libar2simplified>=1.1.4 (check only)
+	libar2>=1.1
 	libblake (indirect)
 	pthread (indirect)
 

@@ -4,10 +4,13 @@ include $(CONFIGFILE_PROPER)
 CC   = $(CC_PREFIX)gcc -std=c99
 GCOV = gcov
 
-CFLAGS   = -g -O0 -pedantic -fprofile-arcs -ftest-coverage
-LDFLAGS += -lgcov -fprofile-arcs
+CFLAGS      = -g -O0
+COV_CFLAGS  = --coverage
+COV_LDFLAGS = --coverage
 
 G =
 
+LIBTEST_CHECK_PREFIX = :
+
 coverage: check
-	$(GCOV) -pr $(SRC) 2>&1
+	$(GCOV) -pr -- *.gcda $(MODULES_GCDA) 2>&1

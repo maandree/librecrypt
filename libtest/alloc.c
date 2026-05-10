@@ -252,22 +252,26 @@ PURE size_t
 void
 (free)(void *ptr)
 {
-	libtest_free_is_custom = 1;
+	if (libtest_free_is_custom < 0) {
+		libtest_free_is_custom = 1;
 
-	assert(libtest_have_custom_malloc());
-	assert(libtest_have_custom_calloc());
-	assert(libtest_have_custom_realloc());
-	assert(libtest_have_custom_reallocarray());
-	assert(libtest_have_custom_valloc());
-	assert(libtest_have_custom_pvalloc());
-	assert(libtest_have_custom_memalign());
-	assert(libtest_have_custom_aligned_alloc());
-	assert(libtest_have_custom_posix_memalign());
-	assert(libtest_have_custom_strdup());
-	assert(libtest_have_custom_strndup());
-	assert(libtest_have_custom_wcsdup());
-	assert(libtest_have_custom_wcsdup());
-	assert(libtest_have_custom_memdup());
+		assert(libtest_have_custom_malloc());
+		assert(libtest_have_custom_calloc());
+		assert(libtest_have_custom_realloc());
+		assert(libtest_have_custom_reallocarray());
+		assert(libtest_have_custom_valloc());
+		assert(libtest_have_custom_pvalloc());
+		assert(libtest_have_custom_memalign());
+		assert(libtest_have_custom_aligned_alloc());
+		assert(libtest_have_custom_posix_memalign());
+		assert(libtest_have_custom_strdup());
+		assert(libtest_have_custom_strndup());
+		assert(libtest_have_custom_wcsdup());
+		assert(libtest_have_custom_wcsndup());
+		assert(libtest_have_custom_memdup());
+	}
+
+	libtest_free_is_custom = 1;
 
 	if (ptr) {
 		struct meminfo *meminfo;
@@ -285,13 +289,17 @@ void
 void
 (free_sized)(void *ptr, size_t size)
 {
-	libtest_free_sized_is_custom = 1;
+	if (libtest_free_sized_is_custom < 0) {
+		libtest_free_sized_is_custom = 1;
 
-	assert(libtest_have_custom_malloc());
-	assert(libtest_have_custom_calloc());
-	assert(libtest_have_custom_realloc());
-	assert(libtest_have_custom_reallocarray());
-	assert(libtest_have_custom_memdup());
+		assert(libtest_have_custom_malloc());
+		assert(libtest_have_custom_calloc());
+		assert(libtest_have_custom_realloc());
+		assert(libtest_have_custom_reallocarray());
+		assert(libtest_have_custom_memdup());
+	}
+
+	libtest_free_sized_is_custom = 1;
 
 	if (ptr) {
 		struct meminfo *meminfo;
@@ -307,11 +315,15 @@ void
 void
 (free_aligned_sized)(void *ptr, size_t alignment, size_t size)
 {
-	libtest_free_aligned_sized_is_custom = 1;
+	if (libtest_free_aligned_sized_is_custom < 0) {
+		libtest_free_aligned_sized_is_custom = 1;
 
-	assert(libtest_have_custom_memalign());
-	assert(libtest_have_custom_aligned_alloc());
-	assert(libtest_have_custom_posix_memalign());
+		assert(libtest_have_custom_memalign());
+		assert(libtest_have_custom_aligned_alloc());
+		assert(libtest_have_custom_posix_memalign());
+	}
+
+	libtest_free_aligned_sized_is_custom = 1;
 
 	if (ptr) {
 		struct meminfo *meminfo;

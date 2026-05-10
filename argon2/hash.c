@@ -42,7 +42,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	r = librecrypt_check_settings_(settings, prefix,
 		"$argon2%^s$%^sm=%^p,t=%^p,p=%^p$%&b$%^h",
 		&type, "id", "i", "ds", "d", NULL, /* order partially matters */
-		&version, "v=19$", "v=16$", "", NULL,
+		&version, "v=19$", "v=16$", "", NULL, /* empty string last */
 		&mcost, RANGE(LIBAR2_MIN_M_COST, LIBAR2_MAX_M_COST),
 		&tcost, RANGE(LIBAR2_MIN_T_COST, LIBAR2_MAX_T_COST),
 		&lanes, RANGE(LIBAR2_MIN_LANES, LIBAR2_MAX_LANES),
@@ -55,13 +55,13 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 
 	/* Decode salt */
 	if (!salt_encoded) /* this would be if asterisk-notation is used, but it is not */
-		abort();
+		abort(); /* $covered$ */
 	r = librecrypt_decode(NULL, 0u, salt_encoded, saltlen, BASE64);
 	if (r < 0)
-		return -1;
+		return -1; /* $covered$ (impossible) */
 	if (r > 0) {
 		/* We allow `r` to be 0, although that means saltlen is 0,
-		 * which it cannot actaully be since LIBAR2_MIN_SALTLEN is 8,
+		 * which it cannot actually be since LIBAR2_MIN_SALTLEN is 8,
 		 * but who knows the future. Of course, we cannot run this
 		 * part if `r` is 0, because we don't want to run malloc(3)
 		 * with 0 because our test's implementation of malloc(3)
@@ -73,7 +73,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 		if (!salt)
 			return -1;
 		if (librecrypt_decode(salt, (size_t)r, salt_encoded, saltlen, BASE64) != r)
-			abort();
+			abort(); /* $covered$ (impossible) */
 		saltlen = (uintmax_t)r;
 	}
 
@@ -81,7 +81,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	params.type = type[1u] == 'd' ? LIBAR2_ARGON2ID :
 	              type[1u] == 's' ? LIBAR2_ARGON2DS :
 	              type[0u] == 'i' ? LIBAR2_ARGON2I :
-	                                LIBAR2_ARGON2ID;
+	                                LIBAR2_ARGON2D;
 	params.version = version[3u] == '9' ? LIBAR2_ARGON2_VERSION_13 : /* 19 = 0x13 = 1.3 */
 	                                      LIBAR2_ARGON2_VERSION_10;  /* 16 = 0x10 = 1.0 */
 	params.t_cost = (uint_least32_t)tcost;
@@ -106,6 +106,8 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	/* Calculate hash */
 	if (libar2_hash(scratch ? scratch : out_buffer, REMOVE_CONST(phrase), len, &params, &ctx))
 		goto fail;
+	if (scratch && out_buffer)
+		memcpy(out_buffer, scratch, params.hashlen < size ? params.hashlen : size);
 
 	/* same rationale as for `ctx.autoerase_salt = 1;` */
 	if (scratch) {
@@ -132,11 +134,114 @@ fail:
 #else
 
 
-CONST int
+static int discarded_int;
+
+
+static void
+check(const char *phrase, const char *settings, const char *hash, size_t hashlen)
+{
+	size_t len = strlen(phrase);
+	size_t prefix = strlen(settings);
+	char buf[1024], expected[256];
+	ssize_t r;
+
+	assert(hashlen <= sizeof(buf));
+	assert(hashlen <= sizeof(expected));
+
+	r = librecrypt_decode(expected, sizeof(expected), hash, strlen(hash),
+	                      librecrypt_common_rfc4848s4_decoding_lut_,
+	                      argon2__PAD, argon2__STRICT_PAD);
+	assert(r > 0 && (size_t)r == hashlen);
+
+	memset(buf, 0, sizeof(buf));
+	EXPECT(librecrypt__argon2__hash(buf, sizeof(buf), phrase, len, settings, prefix, NULL) == 0);
+	EXPECT(!memcmp(expected, buf, hashlen));
+
+	memset(buf, 0, sizeof(buf));
+	EXPECT(librecrypt__argon2__hash(buf, hashlen, phrase, len, settings, prefix, NULL) == 0);
+	EXPECT(!memcmp(expected, buf, hashlen));
+
+	memset(buf, 0, sizeof(buf));
+	EXPECT(librecrypt__argon2__hash(buf, 1u, phrase, len, settings, prefix, NULL) == 0);
+	EXPECT(!memcmp(expected, buf, 1u));
+
+	EXPECT(librecrypt__argon2__hash(buf, 0u, phrase, len, settings, prefix, NULL) == 0);
+	EXPECT(librecrypt__argon2__hash(NULL, 0u, phrase, len, settings, prefix, NULL) == 0);
+}
+
+
+#define S(STR) (STR), (sizeof(STR) - 1u)
+
+
+#define CHECK(PHRASE, CONF, HASHLEN, HASH)\
+	do {\
+		check(PHRASE, CONF HASH, HASH, (size_t)HASHLEN);\
+		if ((size_t)HASHLEN == argon2__HASH_SIZE)\
+			check(PHRASE, CONF, HASH, (size_t)HASHLEN);\
+		check(PHRASE, CONF "*" #HASHLEN, HASH, (size_t)HASHLEN);\
+	} while (0)
+
+
+#define CHECK_BAD(ALGO)\
+	do {\
+		errno = 0;\
+		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, S(ALGO"m=0,t=999999999999999999,p=0$AAAABBBB$*0"), NULL) == -1);\
+		EXPECT(errno == EINVAL);\
+		\
+		/* target `if (!salt_encoded)` */\
+		EXPECT_ABORT(discarded_int = librecrypt__argon2__hash(NULL, 0u, NULL, 0u, S(ALGO"m=1024,t=10,p=1$*10$"), NULL));\
+		\
+		if (!libtest_have_custom_malloc())\
+			break;\
+		\
+		/* target `salt = malloc((size_t)r);` */\
+		libtest_set_alloc_failure_in(1u);\
+		errno = 0;\
+		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, S(ALGO"m=1024,t=10,p=1$AAAABBBBCCCCDDDD$"), NULL) == -1);\
+		EXPECT(errno == ENOMEM);\
+		\
+		/* target `scratch = malloc(scratch_size);` */\
+		libtest_set_alloc_failure_in(2u);\
+		errno = 0;\
+		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, S(ALGO"m=1024,t=10,p=1$AAAABBBBCCCCDDDD$"), NULL) == -1);\
+		EXPECT(errno == ENOMEM);\
+		\
+		/* target `libar2_hash` */\
+		libtest_set_alloc_failure_in(3u);\
+		errno = 0;\
+		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, S(ALGO"m=1024,t=10,p=1$AAAABBBBCCCCDDDD$"), NULL) == -1);\
+		EXPECT(errno == ENOMEM);\
+		\
+		assert(!libtest_get_alloc_failure_in());\
+	} while (0)
+
+
+int
 main(void)
 {
 	SET_UP_ALARM();
+	INIT_TEST_ABORT();
 	INIT_RESOURCE_TEST();
+
+#if defined(SUPPORT_ARGON2I)
+	CHECK("password",  "$argon2i$"   "m=256,t=2,p=1$c29tZXNhbHQ$",  32, "/U3YPXYsSb3q9XxHvc0MLxur+GP960kN9j7emXX8zwY");
+	CHECK("password",  "$argon2i$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, "iekCn0Y3spW+sCcFanM2xBT63UP2sghkUoHLIUpWRS8");
+	CHECK_BAD("$argon2i$");
+#endif
+#if defined(SUPPORT_ARGON2ID)
+	CHECK("password", "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, "nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4");
+	CHECK_BAD("$argon2id$");
+#endif
+#if defined(SUPPORT_ARGON2DS)
+	CHECK("",         "$argon2ds$v=16$m=""8,t=1,p=1$ICAgICAgICA$",  32, "zgdykk9ZjN5VyrW0LxGw8LmrJ1Z6fqSC+3jPQtn4n0s");
+	CHECK_BAD("$argon2ds$");
+#endif
+#if defined(SUPPORT_ARGON2D)
+	CHECK("",          "$argon2d$v=16$m=""8,t=1,p=1$ICAgICAgICA$", 100, "NjODMrWrS7zeivNNpHsuxD9c6uDmUQ6YqPRhb8H5DSNw9"
+	                                                                    "n683FUCJZ3tyxgfJpYYANI+01WT/S5zp1UVs+qNRwnkdE"
+	                                                                    "yLKZMg+DIOXVc9z1po9ZlZG8+Gp4g5brqfza3lvkR9vw");
+	CHECK_BAD("$argon2d$");
+#endif
 
 	STOP_RESOURCE_TEST();
 	return 0;
@@ -144,4 +249,3 @@ main(void)
 
 
 #endif
-/* TODO test */

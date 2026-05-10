@@ -1,4 +1,4 @@
-include common-config.mk
+include $(TEST_INCLUDE_PREFIX)common-config.mk
 
 TEST_CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_XOPEN_SOURCE=700 -D_GNU_SOURCE\
                 $(IMPLEMENT_MMAP_CPPFLAGS)

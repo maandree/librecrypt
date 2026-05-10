@@ -5,6 +5,11 @@
 #include <sys/syscall.h>
 
 
+#if !defined(__linux__)
+# errno "Don't know how to implement mmap(3), mumap(3), and mremap(3)"
+#endif
+
+
 void *
 libtest_real_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off)
 {

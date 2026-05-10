@@ -1,7 +1,7 @@
 .POSIX:
 
-CONFIGFILE = config.mk
-include $(CONFIGFILE)
+TEST_CONFIGFILE = config.mk
+include $(TEST_CONFIGFILE)
 
 OS = linux
 # Linux:   linux

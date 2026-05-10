@@ -49,11 +49,76 @@ librecrypt__argon2__test_supported(const char *phrase, size_t len, int text, con
 #else
 
 
-CONST int
+int
 main(void)
 {
+	size_t n = 99u;
+
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
+
+#define S(STR) (STR), (sizeof(STR) - 1u)
+
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$"), &n) == 1);
+	EXPECT(n == 32u);
+
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$*40"), &n) == 1);
+	EXPECT(n == 40u);
+
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$////////////"), &n) == 1);
+	EXPECT(n == 9u);
+
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$////////////AA"), &n) == 1);
+	EXPECT(n == 10u);
+
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$////////////AAA"), &n) == 1);
+	EXPECT(n == 11u);
+
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$////////////AA#"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$////"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$*40$"), &n) == 0);
+
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$CCCCBBBBAAA$*40"), &n) == 1);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$CCCCBBBBAA#$*40"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$CCCCBBBB$*40"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$AAAABBBBCCCC$*40"), &n) == 1);
+
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$v=16$m=8,t=1,p=1$*16$*40"), &n) == 1);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$v=19$m=8,t=1,p=1$*16$*40"), &n) == 1);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$v=1$m=8,t=1,p=1$*16$*40"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$v=10$m=8,t=1,p=1$*16$*40"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$v=160$m=8,t=1,p=1$*16$*40"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$v=190$m=8,t=1,p=1$*16$*40"), &n) == 0);
+
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=0$*16$"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=0,p=1$*16$"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=0,t=1,p=1$*16$"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=7,t=1,p=1$*16$"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=4294967296,t=1,p=1$*16$"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=4294967296,p=1$*16$"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=4294967295,p=1$*16$"), &n) == 1);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=16777216$*16$"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=16777215$*16$"), &n) == 1);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*4294967296$"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*4294967295$"), &n) == 1);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*8$"), &n) == 1);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*7$"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*0$"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$*4294967296"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$*4294967295"), &n) == 1);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$*4"), &n) == 1);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$*3"), &n) == 0);
+	EXPECT(librecrypt__argon2__test_supported(NULL, UINT32_MAX, 0, S("$...$m=8,t=1,p=1$*16$*0"), &n) == 0);
+
+	EXPECT(librecrypt__argon2__test_supported(NULL, 1u, 0, S("$...$m=8,t=1,p=1$*16$"), &n) == 1);
+	EXPECT(librecrypt__argon2__test_supported(NULL, 0u, 0, S("$...$m=8,t=1,p=1$*16$"), &n) == 1);
+
+	EXPECT(librecrypt__argon2__test_supported(NULL, 1u, 1, S("$...$m=8,t=1,p=1$*16$"), &n) == 1);
+	EXPECT(librecrypt__argon2__test_supported(NULL, 0u, 1, S("$...$m=8,t=1,p=1$*16$"), &n) == 1);
+
+#if SIZE_MAX > UINT32_MAX
+	EXPECT(librecrypt__argon2__test_supported(NULL, (size_t)UINT32_MAX + 1u, 0, S("$...$m=8,t=1,p=1$*16$"), &n) == 0);
+#endif
 
 	STOP_RESOURCE_TEST();
 	return 0;
@@ -61,4 +126,3 @@ main(void)
 
 
 #endif
-/* TODO test */

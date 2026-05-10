@@ -53,6 +53,7 @@ libtest_free(void *ptr, enum libtest_zero_check zero_checking)
 		for (i = 0u; i < mem->usable_alloc_size; i++) {
 			if (usable_area[i]) {
 				memory_zeroed = 0;
+				libtest_expect_zeroed = 0;
 				break;
 			}
 		}

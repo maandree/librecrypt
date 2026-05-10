@@ -70,10 +70,6 @@ all:
 
 include argon2/suffix.mk
 
-SRC =\
-	$(OBJ:.o=.c)\
-	$(HDR)
-
 ALL_CFLAGS   = $(CFLAGS)   $(CFLAGS_MODULES)
 ALL_CPPFLAGS = $(CPPFLAGS) $(CPPFLAGS_MODULES)
 ALL_LDFLAGS  = $(LDFLAGS)  $(LDFLAGS_MODULES)
@@ -89,19 +85,16 @@ $(TOBJ): $(HDR) libtest/libtest.h
 $(TEST): $(HDR) librecrypt.a libtest/libtest.a libtest/libtest.h
 
 .c.o:
-	$(CC) -c -o $@ $< $(ALL_CFLAGS) $(ALL_CPPFLAGS)
+	$(CC) -c -o $@ $< $(ALL_CFLAGS) $(COV_CFLAGS) $(ALL_CPPFLAGS) $(COV_CPPFLAGS)
 
 .c.lo:
-	$(CC) -fPIC -c -o $@ $< $(ALL_CFLAGS) $(ALL_CPPFLAGS)
+	$(CC) -fPIC -c -o $@ $< $(ALL_CFLAGS) $(COV_CFLAGS) $(ALL_CPPFLAGS) $(COV_CPPFLAGS)
 
 .c.to:
 	$(CC) -DTEST -c -o $@ $< $(ALL_CFLAGS) $(ALL_CPPFLAGS)
 
 .to.t:
-	$(CC) -o $@ $< librecrypt.a libtest/libtest.a $(G) $(ALL_LDFLAGS) $(TEST_LDFLAGS)
-
-.c.t:
-	$(CC) -DTEST -o $@ $< librecrypt.a libtest/libtest.a $(G) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(ALL_LDFLAGS) $(TEST_LDFLAGS)
+	$(CC) -o $@ $< librecrypt.a libtest/libtest.a $(G) $(ALL_LDFLAGS) $(TEST_LDFLAGS) $(COV_LDFLAGS)
 
 librecrypt.a: $(OBJ)
 	@rm -f -- $@
@@ -115,7 +108,7 @@ libtest/libtest.a:
 	+cd libtest && $(MAKE) libtest.a
 
 check: $(TEST)
-	+cd libtest && $(MAKE) check
+	+cd libtest && $(LIBTEST_CHECK_PREFIX) $(MAKE) check
 	@set -ex;\
 	for t in $(TEST); do\
 		$(CHECK_PREFIX) ./$$t;\

@@ -36,11 +36,101 @@ librecrypt_get_encoding(const char *settings, size_t len, char *pad_out, int *st
 #else
 
 
+#define NSA "$~no~such~algorithm~$"
+
+
+static int
+check_encoding_lut(const char *lut, const char *alpha)
+{
+	size_t i;
+	for (i = 0u; i < 256u; i++)
+		if (lut[i] != alpha[i % 64u])
+			return 0;
+	return 1;
+}
+
+
+static int
+check_decoding_lut(const unsigned char *lut, const char *alpha)
+{
+	size_t i, invalid_count = 0u;
+	for (i = 0u; i < 64u; i++)
+		if (lut[(unsigned char)alpha[i]] != (unsigned char)i)
+			return 0;
+	for (i = 0u; i < 256u; i++) {
+		if (lut[i] == 0xFFu)
+			invalid_count += 1u;
+		else
+			EXPECT(lut[i] < 64u);
+	}
+	return invalid_count == 256u - 64u;
+}
+
+
+#define CHECK(PREFIX, ALPHABET, PAD, STRICT_PAD) \
+	do {\
+		pad = (char)~(PAD);\
+		strict_pad = -1;\
+		elut = librecrypt_get_encoding(PREFIX, sizeof(PREFIX) - 1u, &pad, &strict_pad, 0);\
+		EXPECT(elut != NULL);\
+		EXPECT(pad == (PAD));\
+		EXPECT(strict_pad == (STRICT_PAD));\
+		EXPECT(check_encoding_lut(elut, ALPHABET));\
+		\
+		pad = (char)~(PAD);\
+		strict_pad = -1;\
+		dlut = librecrypt_get_encoding(PREFIX, sizeof(PREFIX) - 1u, &pad, &strict_pad, 1);\
+		EXPECT(dlut != NULL);\
+		EXPECT(pad == (PAD));\
+		EXPECT(strict_pad == (STRICT_PAD));\
+		EXPECT(check_decoding_lut(dlut, ALPHABET));\
+		\
+		pad = (char)~(PAD);\
+		strict_pad = -1;\
+		elut = librecrypt_get_encoding(NSA">"PREFIX, sizeof(NSA">"PREFIX) - 1u, &pad, &strict_pad, 0);\
+		EXPECT(elut != NULL);\
+		EXPECT(pad == (PAD));\
+		EXPECT(strict_pad == (STRICT_PAD));\
+		EXPECT(check_encoding_lut(elut, ALPHABET));\
+	} while (0)
+
+
+#define DIGIT "0123456789"
+#define LOWER "abcdefghijklmnopqrstuvwxyz"
+#define UPPER "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
 int
 main(void)
 {
+	const char *elut;
+	const unsigned char *dlut;
+	char pad;
+	int strict_pad;
+
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
+
+	errno = 0;
+	EXPECT(librecrypt_get_encoding(NSA, 1u, &pad, &strict_pad, 0) == NULL);
+	EXPECT(errno == ENOSYS);
+
+	errno = 0;
+	EXPECT(librecrypt_get_encoding(NSA, 1u, &pad, &strict_pad, 1) == NULL);
+	EXPECT(errno == ENOSYS);
+
+	errno = 0;
+	EXPECT(librecrypt_get_encoding(">"NSA, 1u, &pad, &strict_pad, 0) == NULL);
+	EXPECT(errno == ENOSYS);
+
+	errno = 0;
+	EXPECT(librecrypt_get_encoding(">"NSA, 1u, &pad, &strict_pad, 1) == NULL);
+	EXPECT(errno == ENOSYS);
+
+	IF__argon2i__SUPPORTED(CHECK("$argon2i$", UPPER LOWER DIGIT "+/", '=', 0);)
+	IF__argon2d__SUPPORTED(CHECK("$argon2d$", UPPER LOWER DIGIT "+/", '=', 0);)
+	IF__argon2id__SUPPORTED(CHECK("$argon2id$", UPPER LOWER DIGIT "+/", '=', 0);)
+	IF__argon2ds__SUPPORTED(CHECK("$argon2ds$", UPPER LOWER DIGIT "+/", '=', 0);)
 
 	STOP_RESOURCE_TEST();
 	return 0;
@@ -48,4 +138,3 @@ main(void)
 
 
 #endif
-/* TODO test */
