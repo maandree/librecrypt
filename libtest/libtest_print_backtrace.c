@@ -9,7 +9,8 @@
 
 
 void
-libtest_print_backtrace(FILE *fp, const char *indent, size_t first, const struct backtrace *backtrace)
+libtest_print_backtrace(FILE *fp, const char *prefix, const char *indent, size_t first,
+                        const struct backtrace *backtrace, ucontext_t *ucontext)
 {
 	static _Thread_local int recursion_guard = 0;
 	int saved_errno;
@@ -35,7 +36,21 @@ libtest_print_backtrace(FILE *fp, const char *indent, size_t first, const struct
 	recursion_guard = 1;
 	libtest_malloc_internal_usage++;
 
-	if (!backtrace) {
+	if (!prefix)
+		prefix = indent;
+	if (!indent)
+		indent = prefix;
+	if (!prefix || !indent)
+		abort();
+
+	if (backtrace) {
+		if (ucontext) {
+			abort();
+		}
+	} else if (ucontext) {
+		if (unw_init_local2(&cursor, (unw_context_t *)ucontext, UNW_INIT_SIGNAL_FRAME))
+			goto out;
+	} else {
 		if (unw_getcontext(&context))
 			goto out;
 		if (unw_init_local(&cursor, &context))
@@ -86,14 +101,15 @@ libtest_print_backtrace(FILE *fp, const char *indent, size_t first, const struct
 #endif
 
 #if defined(HAVE_LINE_INFO)
-		fprintf(fp, "%s0x%016"PRIxPTR": %s", indent, (uintptr_t)ip, funcname ? funcname : "???");
+		fprintf(fp, "%s0x%016"PRIxPTR": %s", prefix, (uintptr_t)ip, funcname ? funcname : "???");
 		if (line)
 			fprintf(fp, " (%s:%i)\n", filename, lineno);
 		else
 			fprintf(fp, "\n");
 #else
-		fprintf(fp, "%s0x%016"PRIxPTR"\n", indent, (uintptr_t)ip);
+		fprintf(fp, "%s0x%016"PRIxPTR"\n", prefix, (uintptr_t)ip);
 #endif
+		prefix = indent;
 	}
 
 #if defined(HAVE_LINE_INFO)

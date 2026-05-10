@@ -75,6 +75,7 @@ void *
 {
 	libtest_malloc_is_custom = 1;
 	assert(libtest_have_custom_free());
+	assert(libtest_have_custom_free_sized());
 
 	return common_malloc(n, FROM_MALLOC);
 }
@@ -87,6 +88,7 @@ void *
 
 	libtest_calloc_is_custom = 1;
 	assert(libtest_have_custom_free());
+	assert(libtest_have_custom_free_sized());
 
 	assert(n);
 	assert(m);
@@ -112,6 +114,7 @@ void *
 {
 	libtest_realloc_is_custom = 1;
 	assert(libtest_have_custom_free());
+	assert(libtest_have_custom_free_sized());
 
 	return common_realloc(old_ptr, new_n, FROM_REALLOC);
 }
@@ -122,6 +125,7 @@ void *
 {
 	libtest_reallocarray_is_custom = 1;
 	assert(libtest_have_custom_free());
+	assert(libtest_have_custom_free_sized());
 
 	assert(new_n);
 	assert(new_m);
@@ -182,6 +186,7 @@ void *
 {
 	libtest_memalign_is_custom = 1;
 	assert(libtest_have_custom_free());
+	assert(libtest_have_custom_free_aligned_sized());
 
 	return common_memalign(alignment, size, FROM_MEMALIGN);
 }
@@ -192,6 +197,7 @@ void *
 {
 	libtest_aligned_alloc_is_custom = 1;
 	assert(libtest_have_custom_free());
+	assert(libtest_have_custom_free_aligned_sized());
 
 	assert(alignment);
 	assert(!(size % alignment));
@@ -209,6 +215,7 @@ int
 
 	libtest_posix_memalign_is_custom = 1;
 	assert(libtest_have_custom_free());
+	assert(libtest_have_custom_free_aligned_sized());
 
 	assert(size);
 	assert(alignment);
@@ -232,8 +239,7 @@ int
 }
 
 
-PURE
-size_t
+PURE size_t
 (malloc_usable_size)(void *ptr)
 {
 	libtest_malloc_usable_size_is_custom = 1;
@@ -247,6 +253,21 @@ void
 (free)(void *ptr)
 {
 	libtest_free_is_custom = 1;
+
+	assert(libtest_have_custom_malloc());
+	assert(libtest_have_custom_calloc());
+	assert(libtest_have_custom_realloc());
+	assert(libtest_have_custom_reallocarray());
+	assert(libtest_have_custom_valloc());
+	assert(libtest_have_custom_pvalloc());
+	assert(libtest_have_custom_memalign());
+	assert(libtest_have_custom_aligned_alloc());
+	assert(libtest_have_custom_posix_memalign());
+	assert(libtest_have_custom_strdup());
+	assert(libtest_have_custom_strndup());
+	assert(libtest_have_custom_wcsdup());
+	assert(libtest_have_custom_wcsdup());
+	assert(libtest_have_custom_memdup());
 
 	if (ptr) {
 		struct meminfo *meminfo;
@@ -266,6 +287,12 @@ void
 {
 	libtest_free_sized_is_custom = 1;
 
+	assert(libtest_have_custom_malloc());
+	assert(libtest_have_custom_calloc());
+	assert(libtest_have_custom_realloc());
+	assert(libtest_have_custom_reallocarray());
+	assert(libtest_have_custom_memdup());
+
 	if (ptr) {
 		struct meminfo *meminfo;
 		meminfo = GET_MEMINFO(ptr);
@@ -282,16 +309,111 @@ void
 {
 	libtest_free_aligned_sized_is_custom = 1;
 
+	assert(libtest_have_custom_memalign());
+	assert(libtest_have_custom_aligned_alloc());
+	assert(libtest_have_custom_posix_memalign());
+
 	if (ptr) {
 		struct meminfo *meminfo;
 		meminfo = GET_MEMINFO(ptr);
 		assert(meminfo->alignment_type == CUSTOM_ALIGNMENT);
 		assert(meminfo->requested_alloc_size == size);
 		assert(meminfo->requested_alignment == alignment);
+		assert(meminfo->origin != FROM_STRDUP);
+		assert(meminfo->origin != FROM_STRNDUP);
+		assert(meminfo->origin != FROM_WCSDUP);
+		assert(meminfo->origin != FROM_WCSDUP);
 	}
 
 	libtest_free(ptr, REQUIRE_ZEROED);
 }
+
+
+char *
+(strdup)(const char *s)
+{
+	size_t n;
+	char *p;
+
+	libtest_strdup_is_custom = 1;
+	assert(libtest_have_custom_free());
+
+	n = strlen(s) + 1u;
+	p = common_memalign(_Alignof(char), n * sizeof(*s), FROM_STRDUP);
+	if (p)
+		memcpy(p, s, n * sizeof(*s));
+	return p;
+}
+
+
+char *
+(strndup)(const char *s, size_t n)
+{
+	char *p;
+
+	libtest_strndup_is_custom = 1;
+	assert(libtest_have_custom_free());
+
+	n = strnlen(s, n);
+	p = common_memalign(_Alignof(char), (n + 1u) * sizeof(*s), FROM_STRNDUP);
+	if (p) {
+		memcpy(p, s, n * sizeof(*s));
+		p[n] = '\0';
+	}
+	return p;
+}
+
+
+wchar_t *
+(wcsdup)(const wchar_t *s)
+{
+	size_t n;
+	wchar_t *p;
+
+	libtest_wcsdup_is_custom = 1;
+	assert(libtest_have_custom_free());
+
+	n = wcslen(s) + 1u;
+	p = common_memalign(_Alignof(wchar_t), n * sizeof(*s), FROM_WCSDUP);
+	if (p)
+		memcpy(p, s, n * sizeof(*s));
+	return p;
+}
+
+
+wchar_t *
+(wcsndup)(const wchar_t *s, size_t n)
+{
+	wchar_t *p;
+
+	libtest_wcsndup_is_custom = 1;
+	assert(libtest_have_custom_free());
+
+	n = wcsnlen(s, n);
+	p = common_memalign(_Alignof(wchar_t), (n + 1u) * sizeof(*s), FROM_WCSNDUP);
+	if (p) {
+		memcpy(p, s, n * sizeof(*s));
+		p[n] = 0;
+	}
+	return p;
+}
+
+
+void *
+(memdup)(const void *s, size_t n)
+{
+	char *p;
+
+	libtest_memdup_is_custom = 1;
+	assert(libtest_have_custom_free());
+	assert(libtest_have_custom_free_sized());
+
+	p = common_malloc(n, FROM_MEMDUP);
+	if (p)
+		memcpy(p, s, n);
+	return p;
+}
+
 
 
 #else
@@ -315,6 +437,11 @@ size_t (malloc_usable_size)(void *ptr);
 void (free)(void *ptr);
 void (free_sized)(void *ptr, size_t size);
 void (free_aligned_sized)(void *ptr, size_t alignment, size_t size);
+char *(strdup)(const char *s);
+char *(strndup)(const char *s, size_t n);
+wchar_t *(wcsdup)(const wchar_t *s);
+wchar_t *(wcsndup)(const wchar_t *s, size_t n);
+void *(memdup)(const void *s, size_t n);
 
 
 static void
@@ -463,14 +590,12 @@ check(int use_free)
 }
 
 
-int
-main(void)
+static void
+check_successfuls(void)
 {
 	size_t pagesize;
-
-	SET_UP_ALARM();
-
-	libtest_start_tracking();
+	char *s;
+	wchar_t *w;
 
 	check(1);
 	check(0);
@@ -495,10 +620,198 @@ main(void)
 	assert(malloc_usable_size(p) >= pagesize);
 	/* cannot be free(3)ed */
 
-	assert(libtest_check_no_leaks());
-	return 0;
+	libtest_start_tracking();
 
-	/* TODO test failures */
+	s = strdup("test string");
+	assert(s);
+	assert(malloc_usable_size(s) >= sizeof("test string"));
+	assert(GET_MEMINFO(s)->requested_alignment == _Alignof(char));
+	assert((uintptr_t)s % (uintptr_t)_Alignof(char) == 0u);
+	assert(GET_MEMINFO(s)->requested_alloc_size == sizeof("test string"));
+	EXPECT(!strcmp(s, "test string"));
+	free(s);
+
+	s = strndup("test string", 100u);
+	assert(s);
+	assert(malloc_usable_size(s) >= sizeof("test string"));
+	assert(GET_MEMINFO(s)->requested_alignment == _Alignof(char));
+	assert((uintptr_t)s % (uintptr_t)_Alignof(char) == 0u);
+	assert(GET_MEMINFO(s)->requested_alloc_size == sizeof("test string"));
+	EXPECT(!strcmp(s, "test string"));
+	free(s);
+
+	s = strndup("test string", 4u);
+	assert(s);
+	assert(malloc_usable_size(s) >= sizeof("test"));
+	assert(GET_MEMINFO(s)->requested_alignment == _Alignof(char));
+	assert((uintptr_t)s % (uintptr_t)_Alignof(char) == 0u);
+	assert(GET_MEMINFO(s)->requested_alloc_size == sizeof("test"));
+	EXPECT(!strcmp(s, "test"));
+	free(s);
+
+	s = memdup("test", 4u);
+	assert(s);
+	assert(malloc_usable_size(s) >= 4u);
+	assert(GET_MEMINFO(s)->requested_alignment == _Alignof(max_align_t));
+	assert((uintptr_t)s % (uintptr_t)_Alignof(max_align_t) == 0u);
+	assert(GET_MEMINFO(s)->requested_alloc_size == 4u);
+	EXPECT(!memcmp(s, "test", 4u));
+	free(s);
+
+	w = wcsdup((wchar_t[]){11, 22, 33, 0});
+	assert(w);
+	assert(malloc_usable_size(w) >= 4u * sizeof(wchar_t));
+	assert(GET_MEMINFO(w)->requested_alignment == _Alignof(wchar_t));
+	assert((uintptr_t)w % (uintptr_t)_Alignof(wchar_t) == 0u);
+	assert(GET_MEMINFO(w)->requested_alloc_size == 4u * sizeof(wchar_t));
+	EXPECT(!memcmp(w, (wchar_t[]){11, 22, 33, 0}, 4u * sizeof(wchar_t)));
+	free(w);
+
+	w = wcsndup((wchar_t[]){11, 22, 33, 0}, 100u);
+	assert(w);
+	assert(malloc_usable_size(w) >= 4u * sizeof(wchar_t));
+	assert(GET_MEMINFO(w)->requested_alignment == _Alignof(wchar_t));
+	assert((uintptr_t)w % (uintptr_t)_Alignof(wchar_t) == 0u);
+	assert(GET_MEMINFO(w)->requested_alloc_size == 4u * sizeof(wchar_t));
+	EXPECT(!memcmp(w, (wchar_t[]){11, 22, 33, 0}, 4u * sizeof(wchar_t)));
+	free(w);
+
+	w = wcsndup((wchar_t[]){11, 22, 33, 0}, 2u);
+	assert(w);
+	assert(malloc_usable_size(w) >= 3u * sizeof(wchar_t));
+	assert(GET_MEMINFO(w)->requested_alignment == _Alignof(wchar_t));
+	assert((uintptr_t)w % (uintptr_t)_Alignof(wchar_t) == 0u);
+	assert(GET_MEMINFO(w)->requested_alloc_size == 3u * sizeof(wchar_t));
+	EXPECT(!memcmp(w, (wchar_t[]){11, 22, 0}, 3u * sizeof(wchar_t)));
+	free(w);
+}
+
+
+static void
+check_failures(void)
+{
+	void *q;
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!malloc(1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!calloc(1u, 1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!realloc(NULL, 1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+	q = realloc(NULL, 1u);
+	assert(q);
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!realloc(q, 1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+	free(q);
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!reallocarray(NULL, 1u, 1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+	q = reallocarray(NULL, 1u, 1u);
+	assert(q);
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!reallocarray(q, 1u, 1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+	free(q);
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!memalign(1u, 1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!aligned_alloc(1u, 1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(posix_memalign(&q, sizeof(void *), 1u) == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!valloc(1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!pvalloc(1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!strdup("x"));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!strndup("x", 1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!wcsdup((wchar_t[]){1, 0}));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!wcsndup((wchar_t[]){1, 0}, 1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	EXPECT(!memdup("x", 1u));
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+}
+
+
+int
+main(void)
+{
+	SET_UP_ALARM();
+
+	libtest_start_tracking();
+
+	check_successfuls();
+	libtest_set_alloc_failure_in(1000u);
+	check_successfuls();
+	EXPECT(libtest_get_alloc_failure_in() == 1000u - 31u);
+	check_failures();
+
+	p = NULL;
+	free(p);
+
+	libtest_stop_tracking();
+	EXPECT(libtest_check_no_leaks());
+	return 0;
 }
 
 

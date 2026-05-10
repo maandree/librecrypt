@@ -30,7 +30,7 @@ check_no_memory_leaks(void)
 		        mem->usable_area, mem->requested_alloc_size);
 #ifdef WITH_BACKTRACE
 		if (mem->backtrace)
-			libtest_print_backtrace(stderr, "\tat ", 0u, mem->backtrace);
+			libtest_print_backtrace(stderr, NULL, "\tat ", 0u, mem->backtrace, NULL);
 #endif
 		fflush(stderr);
 	}

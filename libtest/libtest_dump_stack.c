@@ -10,12 +10,13 @@
 CONST
 #endif
 void
-libtest_dump_stack(const char *indent)
+libtest_dump_stack(const char *prefix, const char *indent)
 {
 #ifndef WITH_BACKTRACE
+	(void) prefix;
 	(void) indent;
 #else
-	libtest_print_backtrace(stderr, indent, 1u, NULL);
+	libtest_print_backtrace(stderr, prefix, indent, 1u, NULL, NULL);
 #endif
 }
 

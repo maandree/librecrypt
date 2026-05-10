@@ -21,6 +21,11 @@ PURE size_t (malloc_usable_size)(void *ptr);
 void (free)(void *ptr);
 void (free_sized)(void *ptr, size_t size);
 void (free_aligned_sized)(void *ptr, size_t alignment, size_t size);
+char *(strdup)(const char *s);
+char *(strndup)(const char *s, size_t n);
+wchar_t *(wcsdup)(const wchar_t *s);
+wchar_t *(wcsndup)(const wchar_t *s, size_t n);
+void *(memdup)(const void *s, size_t n);
 
 #if defined(__GNUC__)
 # pragma GCC diagnostic pop
@@ -100,6 +105,11 @@ int libtest_have_custom_valloc(void) { CHECK_CUSTOM_ALLOC(freeable_valloc, 1u); 
 int libtest_have_custom_pvalloc(void) { CHECK_CUSTOM_ALLOC(freeable_pvalloc, 1u); }
 int libtest_have_custom_memalign(void) { CHECK_CUSTOM_ALLOC(memalign, 1u, 1u); }
 int libtest_have_custom_aligned_alloc(void) { CHECK_CUSTOM_ALLOC(aligned_alloc, 1u, 1u); }
+int libtest_have_custom_strdup(void) { CHECK_CUSTOM_ALLOC(strdup, "x"); }
+int libtest_have_custom_strndup(void) { CHECK_CUSTOM_ALLOC(strndup, "x", 1u); }
+int libtest_have_custom_wcsdup(void) { CHECK_CUSTOM_ALLOC(wcsdup, (wchar_t[]){1, 0}); }
+int libtest_have_custom_wcsndup(void) { CHECK_CUSTOM_ALLOC(wcsndup, &(wchar_t){1}, 1u); }
+int libtest_have_custom_memdup(void) { CHECK_CUSTOM_ALLOC(memdup, "x", 1u); }
 
 
 int
@@ -228,6 +238,11 @@ main(void)
 	CHECK(libtest_have_custom_free);
 	CHECK(libtest_have_custom_free_sized);
 	CHECK(libtest_have_custom_free_aligned_sized);
+	CHECK(libtest_have_custom_strdup);
+	CHECK(libtest_have_custom_strndup);
+	CHECK(libtest_have_custom_wcsdup);
+	CHECK(libtest_have_custom_wcsndup);
+	CHECK(libtest_have_custom_memdup);
 
 	return 0;
 }

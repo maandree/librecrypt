@@ -11,6 +11,7 @@ include ../mk/$(OS).mk
 
 
 OBJ =\
+	$(OBJ_MMAP)\
 	alloc.o\
 	alloc_have_custom.o\
 	globals.o\
@@ -24,7 +25,10 @@ OBJ =\
 	libtest_start_tracking.o\
 	libtest_stop_tracking.o\
 	libtest_dump_stack.o\
-	$(OBJ_BACKTRACE)
+	libtest_stack_on_signal.o\
+	libtest_get_alloc_failure_in.o\
+	libtest_set_alloc_failure_in.o\
+	$(OBJ_BACKTRACE)\
 
 HDR =\
 	libtest.h\

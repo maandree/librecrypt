@@ -24,7 +24,7 @@ libtest_free(void *ptr, enum libtest_zero_check zero_checking)
 	if (!inside_free && getenv("PRETRACE_FREE")) {
 		inside_free = 1;
 		fprintf(stderr, "Deallocating: %p\n", ptr);
-		libtest_print_backtrace(stderr, "\tat ", 0u, NULL);
+		libtest_print_backtrace(stderr, NULL, "\tat ", 0u, NULL, NULL);
 		fflush(stderr);
 		inside_free = 0;
 	}
@@ -66,7 +66,7 @@ libtest_free(void *ptr, enum libtest_zero_check zero_checking)
 		fprintf(stderr, "Memory deallocated: %p\n (alloc-size=%zu, real-size=%zu)",
 		        ptr, mem->requested_alloc_size, mem->real_alloc_size);
 		if (getenv("TRACE_FREE") && !getenv("PRETRACE_FREE"))
-			libtest_print_backtrace(stderr, "\tat ", 0u, NULL);
+			libtest_print_backtrace(stderr, NULL, "\tat ", 0u, NULL, NULL);
 		fflush(stderr);
 		inside_free = 0;
 	}

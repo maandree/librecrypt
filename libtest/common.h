@@ -7,13 +7,28 @@
 #include <sys/mman.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <limits.h>
+#include <signal.h>
+#include <stdarg.h>
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string.h>
 #include <unistd.h>
+#include <wchar.h>
+
+
+#if defined(__clang__)
+# pragma clang diagnostic ignored "-Wpre-c11-compat" /* clang is being silly: it complains about _Thread_local */
+# pragma clang diagnostic ignored "-Wc++-keyword" /* clang is being silly: it complains about using wchar_t */
+# pragma clang diagnostic ignored "-Wimplicit-void-ptr-cast" /* clang is being silly: this is C, not C++ */
+# pragma clang diagnostic ignored "-Wunsafe-buffer-usage" /* completely broken warning */
+# pragma clang diagnostic ignored "-Wdisabled-macro-expansion" /* clang is being silly: it is common practice, and it complains about libc code */
+#endif
+
 
 #include "libtest.h"
 
@@ -76,6 +91,11 @@ enum memory_origin {
 	FROM_MEMALIGN,
 	FROM_ALIGNED_ALLOC,
 	FROM_POSIX_MEMALIGN,
+	FROM_STRDUP,
+	FROM_STRNDUP,
+	FROM_WCSDUP,
+	FROM_WCSNDUP,
+	FROM_MEMDUP,
 	FROM_MMAP_FILE,
 	FROM_MMAP_ANON
 };
@@ -118,6 +138,11 @@ extern volatile int libtest_malloc_usable_size_is_custom;
 extern volatile int libtest_free_is_custom;
 extern volatile int libtest_free_sized_is_custom;
 extern volatile int libtest_free_aligned_sized_is_custom;
+extern volatile int libtest_strdup_is_custom;
+extern volatile int libtest_strndup_is_custom;
+extern volatile int libtest_wcsdup_is_custom;
+extern volatile int libtest_wcsndup_is_custom;
+extern volatile int libtest_memdup_is_custom;
 
 extern struct meminfo libtest_allocs_head;
 extern struct meminfo libtest_allocs_tail;
@@ -130,6 +155,7 @@ extern int libtest_malloc_accept_leakage;
 
 extern _Thread_local size_t libtest_malloc_internal_usage;
 extern _Thread_local size_t libtest_kill_malloc_tracking;
+extern _Thread_local size_t libtest_malloc_fail_in;
 
 
 HIDDEN inline void **
@@ -146,18 +172,41 @@ HIDDEN void *libtest_alloc(struct meminfo *);
 HIDDEN void libtest_free(void *, enum libtest_zero_check);
 
 #ifdef WITH_BACKTRACE
-HIDDEN void libtest_print_backtrace(FILE *, const char *indent, size_t first, const struct backtrace *);
+HIDDEN void libtest_print_backtrace(FILE *, const char *prefix, const char *indent,
+                                    size_t first, const struct backtrace *, ucontext_t *);
 #else
-# define libtest_print_backtrace(FP, INDENT, FIRST, BACKTRACE) ((void)0)
+# define libtest_print_backtrace(FP, PREFIX, INDENT, FIRST, BACKTRACE, CONTEXT)\
+	do {\
+		(void) (FP);\
+		(void) (PREFIX);\
+		(void) (INDENT);\
+		(void) (FIRST);\
+		(void) (BACKTRACE);\
+		(void) (CONTEXT);\
+	} while (0)
 #endif
 
 
+
+#ifdef IMPLEMENT_MMAP
+void *libtest_real_mmap(void *, size_t, int, int, int, off_t);
+int libtest_real_munmap(void *, size_t);
+void *libtest_real_mremap(void *, size_t, size_t, int, ...);
+#else
+# if defined(__clang__)
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wreserved-identifier"
+# endif
 void *__mmap(void *, size_t, int, int, int, off_t);
 int __munmap(void *, size_t);
 void *__mremap(void *, size_t, size_t, int, ...);
-#define libtest_real_mmap __mmap
-#define libtest_real_munmap __munmap
-#define libtest_real_mremap __mremap
+# define libtest_real_mmap __mmap
+# define libtest_real_munmap __munmap
+# define libtest_real_mremap __mremap
+# if defined(__clang__)
+#  pragma clang diagnostic pop
+# endif
+#endif
 
 
 #define assert(EXPR)\
@@ -165,7 +214,7 @@ void *__mremap(void *, size_t, size_t, int, ...);
 		if (!(EXPR)) {\
 			libtest_malloc_internal_usage++;\
 			fprintf(stderr, "Assetion failure at %s:%i: %s\n", __FILE__, __LINE__, #EXPR);\
-			libtest_print_backtrace(stderr, "\t", 0u, NULL);\
+			libtest_print_backtrace(stderr, NULL, "\t", 0u, NULL, NULL);\
 			exit(2);\
 		}\
 	} while (0)
@@ -235,7 +284,7 @@ void *__mremap(void *, size_t, size_t, int, ...);
 		if (!(EXPR)) {\
 			libtest_malloc_internal_usage++;\
 			fprintf(stderr, "Failure at %s:%i: %s\n", __FILE__, __LINE__, #EXPR);\
-			libtest_print_backtrace(stderr, "\t", 0u, NULL);\
+			libtest_print_backtrace(stderr, NULL, "\t", 0u, NULL, NULL);\
 			exit(1);\
 		}\
 	} while (0)

@@ -16,6 +16,11 @@ volatile int libtest_malloc_usable_size_is_custom = -1;
 volatile int libtest_free_is_custom = -1;
 volatile int libtest_free_sized_is_custom = -1;
 volatile int libtest_free_aligned_sized_is_custom = -1;
+volatile int libtest_strdup_is_custom = -1;
+volatile int libtest_strndup_is_custom = -1;
+volatile int libtest_wcsdup_is_custom = -1;
+volatile int libtest_wcsndup_is_custom = -1;
+volatile int libtest_memdup_is_custom = -1;
 
 struct meminfo libtest_allocs_head;
 struct meminfo libtest_allocs_tail;
@@ -28,6 +33,7 @@ int libtest_malloc_accept_leakage = 1;
 
 _Thread_local size_t libtest_malloc_internal_usage = 0u;
 _Thread_local size_t libtest_kill_malloc_tracking = 0u;
+_Thread_local size_t libtest_malloc_fail_in = 0u;
 
 
 #else

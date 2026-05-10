@@ -519,7 +519,7 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 	do {\
 		if (!(EXPR)) {\
 			fprintf(stderr, "Failure at %s:%i: %s\n", __FILE__, __LINE__, #EXPR);\
-			libtest_dump_stack("\t");\
+			libtest_dump_stack(NULL, "\t");\
 			exit(1);\
 		}\
 	} while (0)
@@ -528,7 +528,7 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 	do {\
 		if (!(EXPR)) {\
 			fprintf(stderr, "Assertion failure at %s:%i: %s\n", __FILE__, __LINE__, #EXPR);\
-			libtest_dump_stack("\t");\
+			libtest_dump_stack(NULL, "\t");\
 			exit(2);\
 		}\
 	} while (0)

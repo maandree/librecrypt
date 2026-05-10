@@ -62,7 +62,7 @@ libtest_alloc(struct meminfo *meminfo)
 	size_t bookkeeping;
 	int saved_errno;
 #ifdef WITH_BACKTRACE
-	size_t backtrace_realignment;
+	size_t backtrace_realignment = 0u; /* initialised to make clang(1) happy */
 	size_t i, backtrace_n;
 	unw_cursor_t cursor;
 	unw_context_t context;
@@ -121,6 +121,12 @@ libtest_alloc(struct meminfo *meminfo)
 	bookkeeping -= meminfo->actual_alignment;
 
 	/* Allocate memory */
+	if (!libtest_malloc_internal_usage) {
+		if (libtest_malloc_fail_in && !--libtest_malloc_fail_in) {
+			errno = ENOMEM;
+			return NULL;
+		}
+	}
 	base_ptr = mmap_anon(meminfo->real_alloc_size);
 	if (!base_ptr)
 		return NULL;
@@ -151,6 +157,13 @@ libtest_alloc(struct meminfo *meminfo)
 	/* Store usable size */
 	meminfo->usable_alloc_size = meminfo->real_alloc_size;
 	meminfo->usable_alloc_size -= (size_t)((char *)ret_ptr - (char *)base_ptr);
+
+	/* See CEVEATS section in mmap(2) */
+	if (meminfo->usable_alloc_size > PTRDIFF_MAX) {
+		assert(!libtest_real_munmap(base_ptr, meminfo->real_alloc_size));
+		errno = ENOMEM;
+		return NULL;
+	}
 
 	/* Store book-keeping */
 	meminfo->usable_area = ret_ptr;
@@ -183,7 +196,7 @@ libtest_alloc(struct meminfo *meminfo)
 		libtest_malloc_internal_usage++;
 		fprintf(stderr, "Memory allocated: %p (alloc-size=%zu, real-size=%zu, leak-allowed=%i)\n",
 		        ret_ptr, meminfo->requested_alloc_size, meminfo->real_alloc_size, meminfo->accept_leakage);
-		libtest_print_backtrace(stderr, "\tat ", 0u, NULL);
+		libtest_print_backtrace(stderr, NULL, "\tat ", 0u, NULL, NULL);
 		fflush(stderr);
 		libtest_malloc_internal_usage--;
 	}
