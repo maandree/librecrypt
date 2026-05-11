@@ -1,4 +1,5 @@
 /* See LICENSE file for copyright and license details. */
+#include <setjmp.h>
 #include <stddef.h>
 #include <signal.h>
 
@@ -402,3 +403,20 @@ size_t libtest_get_alloc_failure_in(void);
  * a real failure)
  */
 void libtest_set_alloc_failure_in(size_t n);
+
+
+extern unsigned char *libtest_random_pattern;
+extern size_t libtest_random_pattern_length;
+extern size_t libtest_random_pattern_offset;
+
+#if defined(__linux__)
+extern int libtest_getrandom_real;
+extern int libtest_getrandom_error;
+extern size_t libtest_getrandom_max_return;
+#endif
+
+extern int libtest_getentropy_real;
+extern int libtest_getentropy_error;
+extern size_t libtest_getentropy_calls;
+extern int libtest_getentropy_jmp_val;
+extern jmp_buf libtest_getentropy_jmp;

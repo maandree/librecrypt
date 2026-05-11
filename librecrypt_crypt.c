@@ -13,11 +13,84 @@ librecrypt_crypt(char *restrict out_buffer, size_t size, const char *phrase, siz
 #else
 
 
+static void
+check(const char *phrase, const char *settings, const char *hash)
+{
+	size_t hashlen = strlen(hash);
+	size_t len = strlen(phrase);
+	char buf[1024];
+
+	assert(hashlen <= sizeof(buf));
+
+	memset(buf, 0, sizeof(buf));
+	EXPECT(librecrypt_crypt(buf, sizeof(buf), phrase, len, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(!memcmp(hash, buf, hashlen + 1u));
+
+	memset(buf, 0, sizeof(buf));
+	EXPECT(librecrypt_crypt(buf, hashlen + 1u, phrase, len, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(!memcmp(hash, buf, hashlen + 1u));
+
+	memset(buf, 0, sizeof(buf));
+	EXPECT(librecrypt_crypt(buf, hashlen, phrase, len, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(!memcmp(hash, buf, hashlen - 1u));
+	EXPECT(!buf[hashlen]);
+
+	memset(buf, 0, sizeof(buf));
+	EXPECT(librecrypt_crypt(buf, 2u, phrase, len, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(!memcmp(hash, buf, 1u));
+	EXPECT(!buf[1u]);
+
+	memset(buf, 0, sizeof(buf));
+	EXPECT(librecrypt_crypt(buf, 1u, phrase, len, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(!buf[0u]);
+
+	EXPECT(librecrypt_crypt(buf, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(librecrypt_crypt(NULL, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
+}
+
+
+#define CHECK(PHRASE, CONF, HASHLEN, IS_DEFAULT_HASHLEN, HASH)\
+	do {\
+		check(PHRASE, CONF HASH, CONF HASH);\
+		check(PHRASE, CONF "*" #HASHLEN, CONF HASH);\
+		if (IS_DEFAULT_HASHLEN)\
+			check(PHRASE, CONF, CONF HASH);\
+	} while (0)
+
+
+#define CHECK_BAD(ALGO)\
+	do {\
+		errno = 0;\
+		EXPECT(librecrypt_crypt(NULL, 0u, NULL, 0u, ALGO"m=0,t=999999999999999999,p=0$AAAABBBB$*0", NULL) == -1);\
+		EXPECT(errno == EINVAL);\
+	} while (0)
+
+
 int
 main(void)
 {
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
+
+#if defined(SUPPORT_ARGON2I)
+	CHECK("password",  "$argon2i$"   "m=256,t=2,p=1$c29tZXNhbHQ$",  32, 1, "/U3YPXYsSb3q9XxHvc0MLxur+GP960kN9j7emXX8zwY");
+	CHECK("password",  "$argon2i$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, 1, "iekCn0Y3spW+sCcFanM2xBT63UP2sghkUoHLIUpWRS8");
+	CHECK_BAD("$argon2i$");
+#endif
+#if defined(SUPPORT_ARGON2ID)
+	CHECK("password", "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, 1, "nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4");
+	CHECK_BAD("$argon2id$");
+#endif
+#if defined(SUPPORT_ARGON2DS)
+	CHECK("",         "$argon2ds$v=16$m=""8,t=1,p=1$ICAgICAgICA$",  32, 1, "zgdykk9ZjN5VyrW0LxGw8LmrJ1Z6fqSC+3jPQtn4n0s");
+	CHECK_BAD("$argon2ds$");
+#endif
+#if defined(SUPPORT_ARGON2D)
+	CHECK("",          "$argon2d$v=16$m=""8,t=1,p=1$ICAgICAgICA$", 100, 0, "NjODMrWrS7zeivNNpHsuxD9c6uDmUQ6YqPRhb8H5DSNw9"
+	                                                                       "n683FUCJZ3tyxgfJpYYANI+01WT/S5zp1UVs+qNRwnkdE"
+	                                                                       "yLKZMg+DIOXVc9z1po9ZlZG8+Gp4g5brqfza3lvkR9vw");
+	CHECK_BAD("$argon2d$");
+#endif
 
 	STOP_RESOURCE_TEST();
 	return 0;
@@ -25,4 +98,5 @@ main(void)
 
 
 #endif
-/* TODO test */
+/* TODO test chaining */
+/* TODO test salt generation */

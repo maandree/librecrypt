@@ -41,7 +41,7 @@ librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, siz
 	size_t hash_size, digit, quotient, remainder;
 	int has_next, phrase_scratch_i = 0;
 	ssize_t r_len;
-	int r;
+	int r, saved_errno;
 	void *new;
 
 	/* Ensure the reserved parameter is NULL */
@@ -269,12 +269,18 @@ next:
 	}
 
 	/* Erase and deallocate scratch memory */
-	librecrypt_wipe(phrase_scratches[0u], phrase_scratch_sizes[0u]);
-	librecrypt_wipe(phrase_scratches[1u], phrase_scratch_sizes[1u]);
-	librecrypt_wipe_str(settings_scratch);
-	free(phrase_scratches[0u]);
-	free(phrase_scratches[1u]);
-	free(settings_scratch);
+	if (phrase_scratches[0u]) {
+		librecrypt_wipe(phrase_scratches[0u], phrase_scratch_sizes[0u]);
+		free(phrase_scratches[0u]);
+	}
+	if (phrase_scratches[1u]) {
+		librecrypt_wipe(phrase_scratches[1u], phrase_scratch_sizes[1u]);
+		free(phrase_scratches[1u]);
+	}
+	if (settings_scratch) {
+		librecrypt_wipe_str(settings_scratch);
+		free(settings_scratch);
+	}
 
 	/* NUL-terminate output if it is a string (`out_buffer` is offset at every write to it) */
 	if (size && action != BINARY_HASH)
@@ -285,12 +291,20 @@ next:
 einval:
 	errno = EINVAL;
 fail:
-	librecrypt_wipe(phrase_scratches[0u], phrase_scratch_sizes[0u]);
-	librecrypt_wipe(phrase_scratches[1u], phrase_scratch_sizes[1u]);
-	librecrypt_wipe_str(settings_scratch);
-	free(phrase_scratches[0u]);
-	free(phrase_scratches[1u]);
-	free(settings_scratch);
+	saved_errno = errno;
+	if (phrase_scratches[0u]) {
+		librecrypt_wipe(phrase_scratches[0u], phrase_scratch_sizes[0u]);
+		free(phrase_scratches[0u]);
+	}
+	if (phrase_scratches[1u]) {
+		librecrypt_wipe(phrase_scratches[1u], phrase_scratch_sizes[1u]);
+		free(phrase_scratches[1u]);
+	}
+	if (settings_scratch) {
+		librecrypt_wipe_str(settings_scratch);
+		free(settings_scratch);
+	}
+	errno = saved_errno;
 	return -1;
 }
 
@@ -298,8 +312,26 @@ fail:
 #else
 
 
-/* Tested via librecrypt_hash_binary, librecrypt_hash, and librecrypt_crypt */
-CONST int main(void) { return 0; }
+/* Mainly tested via librecrypt_hash_binary, librecrypt_hash, and librecrypt_crypt */
+
+
+int
+main(void)
+{
+	SET_UP_ALARM();
+	INIT_RESOURCE_TEST();
+
+	errno = 0;
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$", &(char){0}, ASCII_CRYPT) == -1);
+	EXPECT(errno == EINVAL);
+
+	errno = 0;
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$", NULL, ASCII_CRYPT) == -1);
+	EXPECT(errno == ENOSYS);
+
+	STOP_RESOURCE_TEST();
+	return 0;
+}
 
 
 #endif

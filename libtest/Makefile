@@ -28,6 +28,7 @@ OBJ =\
 	libtest_stack_on_signal.o\
 	libtest_get_alloc_failure_in.o\
 	libtest_set_alloc_failure_in.o\
+	random.o\
 	$(OBJ_BACKTRACE)\
 
 HDR =\

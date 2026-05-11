@@ -2,11 +2,21 @@
 #include "common.h"
 #ifndef TEST
 
-#include <sys/syscall.h>
-
-
 #if !defined(__linux__)
 # errno "Don't know how to implement mmap(3), mumap(3), and mremap(3)"
+#endif
+
+
+#ifdef SYS_mmap2
+# define IF_MMAP2(A) (A)
+#else
+# define IF_MMAP2(A) ((void)0)
+#endif
+
+#if defined(__x86_64__) && defined(__ILP32__) /* x32 */
+# define SYSCALL_ARG_MAX LLONG_MAX
+#else
+# define SYSCALL_ARG_MAX LONG_MAX
 #endif
 
 
@@ -15,20 +25,15 @@ libtest_real_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off
 {
 	size_t pagesize = libtest_get_pagesize();
 
+	IF_MMAP2(assert(pagesize == 4096u));
 	if (off < 0 || off % (off_t)pagesize)
 		goto einval;
-	off /= (off_t)pagesize;
+	IF_MMAP2(off /= (off_t)pagesize);
 
-#if defined(__x86_64__) && defined(__ILP32__) /* x32 */
-	if (off > LLONG_MAX)
+	if (off > SYSCALL_ARG_MAX)
 		goto einval;
-#else
-	if (off > LONG_MAX)
-		goto einval;
-#endif
 
 #ifdef SYS_mmap2
-	assert(pagesize == 4096u);
 	return (void *)syscall(SYS_mmap2, addr, len, prot, flags, fd, off);
 #else
 	return (void *)syscall(SYS_mmap, addr, len, prot, flags, fd, off);

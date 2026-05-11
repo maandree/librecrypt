@@ -1,0 +1,7 @@
+libtest_alloc should overallocate and fill the extra data with random
+bytes and store a checksum which libtest_free should use to determine
+if and out of bounds write has been performed. This requires
+libtest_alloc only sets the unusable memory size to what has been
+required (rounded up to the next page size multiple for pvalloc). It
+may also be a good idea to allocate a few bytes before the returned
+address.

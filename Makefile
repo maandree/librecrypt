@@ -149,3 +149,4 @@ clean:
 .SUFFIXES: .lo .o .c .to .t
 
 .PHONY: all check install uninstall clean
+.PHONY: libtest/libtest.a

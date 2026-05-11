@@ -4,6 +4,10 @@
 # include <libunwind.h>
 # include <elfutils/libdwfl.h>
 #endif
+#if defined(__linux__)
+# include <sys/random.h>
+# include <sys/syscall.h>
+#endif
 #include <sys/mman.h>
 #include <errno.h>
 #include <inttypes.h>

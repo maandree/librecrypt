@@ -448,6 +448,7 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 # include <sys/resource.h>
 # include <sys/types.h>
 # include <sys/wait.h>
+# include <setjmp.h>
 # include <signal.h>
 # include <string.h>
 # include <unistd.h>
