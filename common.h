@@ -45,6 +45,11 @@
 #endif
 
 
+#if defined(POSIX_CLOSE_RESTART) && !defined(__linux__)
+# define close(fd) posix_close(fd, 0)
+#endif
+
+
 /**
  * Used for literal commas in macro calls
  */
@@ -447,6 +452,7 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 # endif
 # include <sys/resource.h>
 # include <sys/types.h>
+# include <sys/uio.h>
 # include <sys/wait.h>
 # include <setjmp.h>
 # include <signal.h>

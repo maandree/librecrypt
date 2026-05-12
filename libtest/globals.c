@@ -21,6 +21,9 @@ volatile int libtest_strndup_is_custom = -1;
 volatile int libtest_wcsdup_is_custom = -1;
 volatile int libtest_wcsndup_is_custom = -1;
 volatile int libtest_memdup_is_custom = -1;
+volatile int libtest_mmap_is_custom = -1;
+volatile int libtest_munmap_is_custom = -1;
+volatile int libtest_mremap_is_custom = -1;
 
 struct meminfo libtest_allocs_head;
 struct meminfo libtest_allocs_tail;

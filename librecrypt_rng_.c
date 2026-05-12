@@ -96,7 +96,7 @@ librecrypt_rng_(void *out, size_t n, void *user)
 			/* /dev/urandom cannot be exhausted, your system
 			 * has been compromised if this happens */
 			/* TODO we should probably warn the user */
-			abort();
+			abort(); /* $covered$ */
 		}
 	}
 
@@ -128,16 +128,16 @@ no_urandom:
 	 * allocation. A few bit's are always 0, but that's not
 	 * a big deal. */
 	random_ptr = mmap(NULL, 1u, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_UNINITIALIZED, -1, 0);
-	if (random_ptr != MAP_FAILED) {
+	if (random_ptr == MAP_FAILED) {
+		random_ptr = malloc(1u); /* NULL is OK (MAP_FAILED was actually also OK) */
+		random_addr = (uintptr_t)random_ptr;
+		state ^= (unsigned int)random_addr;
+		free(random_ptr);
+	} else {
 		random_addr = (uintptr_t)random_ptr;
 		state ^= (unsigned int)random_addr;
 		munmap(random_ptr, 1u);
-		goto have_initial_seed; /* just using goto to simplify the #if'ing */
 	}
-	random_ptr = malloc(1u); /* NULL is OK (MAP_FAILED was actually also OK) */
-	random_addr = (uintptr_t)random_ptr;
-	state ^= (unsigned int)random_addr;
-	free(random_ptr);
 
 have_initial_seed:
 	/* and always do a time-based reseed in case of multithreading,
@@ -175,6 +175,7 @@ int
 (open)(const char *path, int flags, ...)
 {
 	mode_t mode = 0;
+	va_list args;
 
 	open_calls += 1u;
 
@@ -186,13 +187,149 @@ int
 	}
 
 	if ((flags & O_CREAT) || (flags & O_TMPFILE) == O_TMPFILE) {
-		va_list args;
 		va_start(args, flags);
 		mode = va_arg(args, mode_t);
 		va_end(args);
 	}
 
 	return openat(AT_FDCWD, path, flags, mode);
+}
+
+
+static int read_error = 0;
+static size_t read_max_return = SIZE_MAX;
+
+ssize_t
+(read)(int fd, void *buf, size_t n)
+{
+	struct iovec iov;
+
+	if (n > read_max_return)
+		n = read_max_return;
+
+	if (read_error) {
+		errno = read_error;
+		if (read_error == EINTR)
+			read_error = 0;
+		return -1;
+	}
+
+	iov.iov_base = buf;
+	iov.iov_len = n;
+	return readv(fd, &iov, 1);
+}
+
+
+static int clock_gettime_error = 0;
+
+int
+(clock_gettime)(clockid_t clockid, struct timespec *tp)
+{
+	(void) clockid;
+
+	if (clock_gettime_error) {
+		errno = clock_gettime_error;
+		return -1;
+	}
+
+	memset(tp, 0, sizeof(*tp));
+	return 0;
+}
+
+
+#if defined(__linux__) && defined(AT_RANDOM)
+static int getauxval_error = 0;
+
+unsigned long
+(getauxval)(unsigned long type)
+{
+	/* We don't want to read from after the first NULL
+	 * in the environment variable list provided by the
+	 * kernel, because (1) this function may be executed
+	 * before `main` so we cannot copy the auxiliary
+	 * vector in `main` and use that, (2) if this function
+	 * is executed before `main`, we don't know if
+	 * environ(3) has been set up by libc, and (3) we
+	 * cannot know if environ(3) is it's original pointer
+	 * without addition elements when this function is
+	 * executed. Therefore we use /proc/self/auxv instead. */
+
+	size_t saved_open_calls = open_calls;
+	int saved_open_error = open_error;
+	int saved_read_error = read_error;
+	size_t saved_read_max_return = read_max_return;
+	size_t *aux;
+	unsigned char buf[2u * sizeof(*aux)];
+	size_t off;
+	ssize_t r;
+	int fd;
+	unsigned long ret = 0u;
+
+	if (getauxval_error) {
+		errno = getauxval_error;
+		return 0;
+	}
+
+	open_error = 0;
+	read_error = 0;
+	read_max_return = SIZE_MAX;
+
+	fd = open("/proc/self/auxv", O_RDONLY);
+
+	if (fd < 0) {
+		errno = ENOENT;
+		goto out;
+	}
+
+	aux = (unsigned long *)buf;
+	for (off = 0u;;) {
+		r = read(fd, &buf[off], sizeof(buf) - off);
+		if (r <= 0) {
+			if (r && errno == EINTR)
+				continue;
+			errno = ENOENT;
+			goto out_close;
+		}
+		off += (size_t)r;
+		if (off < sizeof(buf))
+			continue;
+		off = 0u;
+		if (aux[0] == type)
+			break;
+	}
+
+	ret = aux[1];
+out_close:
+	close(fd);
+out:
+	open_calls = saved_open_calls;
+	open_error = saved_open_error;	
+	read_error = saved_read_error;
+	read_max_return = saved_read_max_return;
+	return ret;
+}
+#endif
+
+
+static size_t rand_r_calls = 0u;
+static int rand_r_clean_seed = 0;
+
+int
+(rand_r)(unsigned int *seedp)
+{
+	int ret;
+
+	rand_r_calls += 1u;
+
+	if (*seedp)
+		srand(*seedp);
+	ret = rand();
+
+	*seedp = (unsigned int)ret;
+	if (rand_r_clean_seed)
+		*seedp = 0u;
+
+	return ret;
 }
 
 
@@ -225,8 +362,6 @@ test_oversized(void)
 int
 main(void)
 {
-	/* TODO test failure cases */
-
 	unsigned char buf1[1024u];
 	unsigned char buf2[sizeof(buf1)];
 	ssize_t n1, n2;
@@ -237,14 +372,26 @@ main(void)
 
 	open_calls = 0u;
 
+#define CHECK1()\
+	do {\
+		n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);\
+		EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));\
+		EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));\
+	} while (0)
+
+#define CHECK2()\
+	do {\
+		n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);\
+		n2 = librecrypt_rng_(buf2, sizeof(buf2), &user);\
+		EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));\
+		EXPECT(n2 >= 128 && (size_t)n2 <= sizeof(buf2));\
+		EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));\
+	} while (0)
+
 	/* TODO Test with output pattern (useful for other tests) */
 
 	/* Check that output is random */
-	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
-	n2 = librecrypt_rng_(buf2, sizeof(buf2), &user);
-	EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));
-	EXPECT(n2 >= 128 && (size_t)n2 <= sizeof(buf2));
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	CHECK2();
 
 #if defined(__linux__)
 	libtest_getentropy_calls = 0u;
@@ -252,9 +399,7 @@ main(void)
 	/* Check with short getrandom(3) */
 	errno = 0;
 	libtest_getrandom_max_return = 1u;
-	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
-	EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	CHECK1();
 	libtest_getrandom_max_return = SIZE_MAX;
 	EXPECT(libtest_getentropy_calls == 0u);
 	EXPECT(errno == 0);
@@ -262,9 +407,7 @@ main(void)
 	/* Check with getrandom(3) with EINTR */
 	errno = 0;
 	libtest_getrandom_error = EINTR;
-	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
-	EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	CHECK1();
 	assert(!libtest_getrandom_error);
 	EXPECT(libtest_getentropy_calls == 0u);
 	EXPECT(errno == EINTR);
@@ -272,9 +415,7 @@ main(void)
 	/* Check with getrandom(3) with ENOSYS */
 	errno = 0;
 	libtest_getrandom_error = ENOSYS;
-	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
-	EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	CHECK1();
 	assert(libtest_getrandom_error == ENOSYS);
 	EXPECT(libtest_getentropy_calls > 0u);
 	libtest_getentropy_calls = 0u;
@@ -283,9 +424,7 @@ main(void)
 	/* Check with getrandom(3) other error */
 	errno = 0;
 	libtest_getrandom_error = EDOM;
-	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
-	EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	CHECK1();
 	assert(libtest_getrandom_error == EDOM);
 	EXPECT(libtest_getentropy_calls > 0u);
 	libtest_getentropy_calls = 0u;
@@ -295,9 +434,7 @@ main(void)
 	/* Check with getrandom(3) zero return */
 	errno = 0;
 	libtest_getrandom_max_return = 0u;
-	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
-	EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	CHECK1();
 	libtest_getrandom_max_return = SIZE_MAX;
 	EXPECT(libtest_getentropy_calls > 0u);
 	libtest_getentropy_calls = 0u;
@@ -310,9 +447,7 @@ main(void)
 	/* Check with getentropy(3) with EINTR */
 	errno = 0;
 	libtest_getentropy_error = EINTR;
-	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
-	EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	CHECK1();
 	assert(!libtest_getentropy_error);
 	EXPECT(libtest_getentropy_calls > 0u);
 	libtest_getentropy_calls = 0u;
@@ -321,9 +456,7 @@ main(void)
 	/* Check with getentropy(3) with ENOSYS */
 	errno = 0;
 	libtest_getentropy_error = ENOSYS;
-	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
-	EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	CHECK1();
 	assert(libtest_getentropy_error == ENOSYS);
 	EXPECT(libtest_getentropy_calls > 0u);
 	libtest_getentropy_calls = 0u;
@@ -332,9 +465,7 @@ main(void)
 	/* Check with getentropy(3) other error */
 	errno = 0;
 	libtest_getentropy_error = EDOM;
-	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
-	EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	CHECK1();
 	assert(libtest_getentropy_error == EDOM);
 	EXPECT(libtest_getentropy_calls > 0u);
 	libtest_getentropy_calls = 0u;
@@ -345,54 +476,108 @@ main(void)
 	assert(open_calls > 0u);
 	open_calls = 0u;
 	errno = 0;
-	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
-	n2 = librecrypt_rng_(buf2, sizeof(buf2), &user);
-	EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));
-	EXPECT(n2 >= 128 && (size_t)n2 <= sizeof(buf2));
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	CHECK2();
 	EXPECT(libtest_getentropy_calls > 0u);
 	libtest_getentropy_calls = 0u;
 	EXPECT(errno == 0);
 	libtest_getentropy_real = 1;
 	EXPECT(open_calls == 0u);
 
-	/* TODO Check with getentropy(3) with small buffer */
+	/* Check with getentropy(3) with small buffer */
+	n1 = librecrypt_rng_(buf1, 64u, NULL);
+	EXPECT(n1 == 64u);
+	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
 
 	/* Don't use getentropy(3) for reminder of the test */
 	libtest_getentropy_error = ENOSYS;
 
 	/* Check with urandom(4) */
+	rand_r_calls = 0;
 	errno = 0;
-	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
-	n2 = librecrypt_rng_(buf2, sizeof(buf2), &user);
-	EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));
-	EXPECT(n2 >= 128 && (size_t)n2 <= sizeof(buf2));
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	CHECK2();
 	EXPECT(errno == 0);
-	/* TODO check that rand(3) was not called */
+	EXPECT(rand_r_calls == 0u);
 
 	/* Check with urandom(4) not available */
 	open_calls = 0;
 	open_error = ENOENT;
-	n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);
-	n2 = librecrypt_rng_(buf2, sizeof(buf2), &user);
-	EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));
-	EXPECT(n2 >= 128 && (size_t)n2 <= sizeof(buf2));
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	CHECK2();
 	assert(open_error == ENOENT);
 	open_error = 0;
 	EXPECT(open_calls > 0u);
 
-	/* TODO Check with urandom(4) read(3) EINTR */
-	/* TODO Check with urandom(4) read(3) EIO */
-	/* TODO Check with urandom(4) read(3) exhaustion */
+	/* Check with urandom(4) read(3) failure */
+	read_error = EBADF;
+	errno = 0;
+	CHECK1();
+	EXPECT(errno == 0);
+	assert(read_error == EBADF);
+	read_error = 0;
+
+	/* Check with urandom(4) read(3) EINTR */
+	read_error = EINTR;
+	errno = 0;
+	CHECK1();
+	EXPECT(errno == EINTR);
+	assert(read_error == 0);
+
+	/* Check with urandom(4) short read(3) */
+	read_max_return = 1u;
+	CHECK1();
+	assert(read_max_return == 1u);
+	read_max_return = SIZE_MAX;
+
+	/* Check with urandom(4) read(3) exhaustion */
+	read_max_return = 0u;
+	EXPECT_ABORT(n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL));
+	read_max_return = SIZE_MAX;
 
 	/* Don't use urandom(4) for reminder of the test */
 	open_error = ENOENT;
 
-	/* TODO Check with rand(3) */
-	/* TODO Check with mmap(3) failure */
-	/* TODO Check with clock_gettime(3) failure */
+	rand_r_clean_seed = 1;
+
+	/* Check with rand(3) */
+	rand_r_calls = 0u;
+	errno = 0;
+	CHECK2();
+	EXPECT(errno == 0);
+	assert(rand_r_calls > 0u);
+
+#if defined(__linux__) && defined(AT_RANDOM)
+	getauxval_error = ENOENT;
+
+	/* Check with getauxval(3) failure */
+	assert(getauxval(AT_RANDOM) == 0u);
+	assert(getauxval_error == ENOENT);
+	errno = 0;
+	CHECK1();
+	EXPECT(errno == 0);
+#endif
+
+	/* Check with mmap(3) failure */
+	if (libtest_have_custom_mmap()) {
+		libtest_set_alloc_failure_in(1u);
+		errno = 0;
+		CHECK1();
+		EXPECT(errno == 0);
+		assert(libtest_get_alloc_failure_in() == 0u);
+	}
+
+#if defined(__linux__) && defined(AT_RANDOM)
+	getauxval_error = 0;
+#endif
+
+	/* Check with clock_gettime(3) failure */
+	clock_gettime_error = EDOM;
+	errno = 0;
+	CHECK1();
+	EXPECT(errno == 0);
+	EXPECT(clock_gettime_error == EDOM);
+	clock_gettime_error = 0;
+
+	assert(rand_r_clean_seed == 1);
+	rand_r_clean_seed = 0;
 
 	/* Check zero-request */
 	errno = 0;
@@ -400,6 +585,9 @@ main(void)
 	EXPECT(errno == 0);
 
 	test_oversized();
+
+	/* So that gcov can report coverage */
+	open_error = 0;
 
 	STOP_RESOURCE_TEST();
 	return 0;

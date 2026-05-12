@@ -24,6 +24,7 @@ void *
 libtest_real_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off)
 {
 	size_t pagesize = libtest_get_pagesize();
+	uintptr_t ret;
 
 	IF_MMAP2(assert(pagesize == 4096u));
 	if (off < 0 || off % (off_t)pagesize)
@@ -34,10 +35,11 @@ libtest_real_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off
 		goto einval;
 
 #ifdef SYS_mmap2
-	return (void *)syscall(SYS_mmap2, addr, len, prot, flags, fd, off);
+	ret = (uintptr_t)syscall(SYS_mmap2, addr, len, prot, flags, fd, off);
 #else
-	return (void *)syscall(SYS_mmap, addr, len, prot, flags, fd, off);
+	ret = (uintptr_t)syscall(SYS_mmap, addr, len, prot, flags, fd, off);
 #endif
+	return (void *)ret;
 
 einval:
 	errno = EINVAL;
@@ -48,7 +50,7 @@ einval:
 int
 libtest_real_munmap(void *addr, size_t len)
 {
-	return syscall(SYS_munmap, addr, len);
+	return (int)syscall(SYS_munmap, addr, len);
 }
 
 
@@ -57,6 +59,7 @@ libtest_real_mremap(void *old_addr, size_t old_len, size_t new_len, int flags, .
 {
 	va_list args;
 	void *new_addr = NULL;
+	uintptr_t ret;
 
 	if (flags & MREMAP_FIXED) {
 		va_start(args, flags);
@@ -64,7 +67,8 @@ libtest_real_mremap(void *old_addr, size_t old_len, size_t new_len, int flags, .
 		va_end(args);
 	}
 
-	return (void *)syscall(SYS_mremap, old_addr, old_len, new_len, flags, new_addr);
+	ret = (uintptr_t)syscall(SYS_mremap, old_addr, old_len, new_len, flags, new_addr);
+	return (void *)ret;
 }
 
 

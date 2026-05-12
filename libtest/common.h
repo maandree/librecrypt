@@ -147,6 +147,9 @@ extern volatile int libtest_strndup_is_custom;
 extern volatile int libtest_wcsdup_is_custom;
 extern volatile int libtest_wcsndup_is_custom;
 extern volatile int libtest_memdup_is_custom;
+extern volatile int libtest_mmap_is_custom;
+extern volatile int libtest_munmap_is_custom;
+extern volatile int libtest_mremap_is_custom;
 
 extern struct meminfo libtest_allocs_head;
 extern struct meminfo libtest_allocs_tail;
@@ -174,6 +177,7 @@ libtest_base_pointer(void *ptr)
 HIDDEN size_t libtest_get_pagesize(void);
 HIDDEN void *libtest_alloc(struct meminfo *);
 HIDDEN void libtest_free(void *, enum libtest_zero_check);
+HIDDEN int libtest_check_custom_mmap(void);
 
 #ifdef WITH_BACKTRACE
 HIDDEN void libtest_print_backtrace(FILE *, const char *prefix, const char *indent,

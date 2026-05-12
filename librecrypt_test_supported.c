@@ -9,7 +9,7 @@ librecrypt_test_supported(const char *phrase, size_t len, int text, const char *
 	const struct algorithm *algo;
 	size_t n;
 
-	/* For each chained algorithm*/
+	/* For each chained algorithm */
 	for (;;) {
 		/* Measure until next '>' */
 		for (n = 0u; settings[n]; n++)

@@ -324,6 +324,25 @@ int libtest_have_custom_free_sized(void);
  */
 int libtest_have_custom_free_aligned_sized(void);
 
+/**
+ * Test whether mmap(3), munmap(3), and mremap(3) has
+ * been overridden, allowing allocations to be tracked,
+ * and memory allocation failures to be injected
+ * 
+ * Tools like valgrind(1) prevent resource allocation
+ * functions from being overridden as they may override
+ * such functions themselves in order to detect leaks
+ * and invalid memory access patterns
+ * 
+ * @return  1 if all three overridden,
+ *          0 if none have been overridden
+ * 
+ * The case that only some of the three functions have
+ * been overriden, those will redirect to the real
+ * implementation and identify as non-overridden
+ */
+int libtest_have_custom_mmap(void);
+
 
 /**
  * Print a stack trace, to standard error, provided

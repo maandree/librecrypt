@@ -178,12 +178,16 @@ librecrypt_check_settings_(const char *settings, size_t len, const char *fmt, ..
 	while (*fmt) {
 		if (*fmt != '%') {
 			/* Normal literal character */
-			if (i == len || settings[i++] != *fmt++)
+			if (i == len)
+				return 0;
+			if (settings[i++] != *fmt++)
 				return 0;
 
 		} else if (fmt[1u] == '%') {
 			/* '%'-escaped literal '%' ("%%") */
-			if (i == len || settings[i++] != '%')
+			if (i == len)
+				return 0;
+			if (settings[i++] != '%')
 				return 0;
 			fmt = &fmt[2u];
 
@@ -238,12 +242,14 @@ librecrypt_check_settings_(const char *settings, size_t len, const char *fmt, ..
 				if (!str)
 					return 0;
 				n = strlen(str);
-				if (n <= len - i && !strncmp(&settings[i], str, n)) {
-					if (strout)
-						*strout = str;
-					i += n;
-					break;
-				}
+				if (n > len - i)
+					continue;
+				if (strncmp(&settings[i], str, n))
+					continue;
+				if (strout)
+					*strout = str;
+				i += n;
+				break;
 			}
 			while ((str = va_arg(args, const char *)));
 			goto outable_done;
@@ -647,6 +653,7 @@ main(void)
 
 	EXPECT(librecrypt_check_settings_("%", 1u, "%%") == 1);
 	EXPECT(librecrypt_check_settings_("%", 0u, "%%") == 0);
+	EXPECT(librecrypt_check_settings_("x", 1u, "%%") == 0);
 
 	EXPECT(librecrypt_check_settings_("hello", 5u, "%*") == 1);
 	EXPECT(librecrypt_check_settings_("hello$world", 11u, "%*$world") == 1);

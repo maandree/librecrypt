@@ -427,6 +427,121 @@ void *
 }
 
 
+int
+libtest_check_custom_mmap(void)
+{
+	static _Thread_local int in_check_custom_mmap = 0;
+	char *volatile test_dummy = NULL;
+
+	if (in_check_custom_mmap)
+		return libtest_mmap_is_custom;
+	in_check_custom_mmap = 1;
+
+	if (libtest_mmap_is_custom >= 0 &&
+	    libtest_mremap_is_custom >= 0 &&
+	    libtest_munmap_is_custom >= 0) {
+		if (libtest_mmap_is_custom & libtest_mremap_is_custom & libtest_munmap_is_custom)
+			goto custom;
+		goto real_deallocated;
+	}
+
+	test_dummy = mmap(NULL, 1u, PROT_READ | PROT_WRITE,
+	                  MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	assert(test_dummy != MAP_FAILED);
+	assert(test_dummy != NULL);
+	*test_dummy = 0;
+
+	if (libtest_mmap_is_custom == 0)
+		goto real;
+
+	if (libtest_mremap_is_custom < 0) {
+		test_dummy = mremap(test_dummy, 1u, 1u, MREMAP_MAYMOVE);
+		assert(test_dummy != MAP_FAILED);
+		assert(test_dummy != NULL);
+	}
+	if (libtest_mremap_is_custom == 0)
+		goto real;
+
+	if (libtest_munmap_is_custom < 0)
+		assert(!munmap(test_dummy, 1u));
+	if (libtest_munmap_is_custom == 0)
+		goto real_deallocated;
+
+custom:
+	in_check_custom_mmap = 0;
+	return 1;
+
+real:
+	assert(!munmap(test_dummy, 1u));
+real_deallocated:
+	in_check_custom_mmap = 0;
+	libtest_mmap_is_custom = 0;
+	libtest_mremap_is_custom = 0;
+	libtest_munmap_is_custom = 0;
+	return 0;
+}
+
+
+void *
+(mmap)(void *addr, size_t len, int prot, int flags, int fd, off_t off)
+{
+	/* TODO implement tracking */
+
+	libtest_mmap_is_custom = 1;
+	if (!libtest_check_custom_mmap())
+		goto real;
+
+	if (!libtest_malloc_internal_usage) {
+		if (libtest_malloc_fail_in && !--libtest_malloc_fail_in) {
+			errno = ENOMEM;
+			return MAP_FAILED;
+		}
+	}
+
+real:
+	return libtest_real_mmap(addr, len, prot, flags, fd, off);
+}
+
+
+int
+(munmap)(void *addr, size_t len)
+{
+	libtest_munmap_is_custom = 1;
+	if (!libtest_check_custom_mmap())
+		goto real;
+
+real:
+	return libtest_real_munmap(addr, len);
+}
+
+
+void *
+(mremap)(void *old_addr, size_t old_len, size_t new_len, int flags, ...)
+{
+	va_list args;
+	void *new_addr = NULL;
+
+	if (flags & MREMAP_FIXED) {
+		va_start(args, flags);
+		new_addr = va_arg(args, void *);
+		va_end(args);
+	}
+
+	libtest_mremap_is_custom = 1;
+	if (!libtest_check_custom_mmap())
+		goto real;
+
+	if (!libtest_malloc_internal_usage) {
+		if (libtest_malloc_fail_in && !--libtest_malloc_fail_in) {
+			errno = ENOMEM;
+			return MAP_FAILED;
+		}
+	}
+
+real:
+	return libtest_real_mremap(old_addr, old_len, new_len, flags, new_addr);
+}
+
 
 #else
 
@@ -454,6 +569,9 @@ char *(strndup)(const char *s, size_t n);
 wchar_t *(wcsdup)(const wchar_t *s);
 wchar_t *(wcsndup)(const wchar_t *s, size_t n);
 void *(memdup)(const void *s, size_t n);
+void *(mmap)(void *addr, size_t len, int prot, int flags, int fd, off_t off);
+int (munmap)(void *addr, size_t len);
+void *(mremap)(void *old_addr, size_t old_len, size_t new_len, int flags, ...);
 
 
 static void
@@ -599,6 +717,8 @@ check(int use_free)
 		free(p);
 	else
 		free_aligned_sized(p, sizeof(void *), 11u);
+
+	/* TODO mmap, munmap, mremap */
 }
 
 
@@ -696,6 +816,8 @@ check_successfuls(void)
 	assert(GET_MEMINFO(w)->requested_alloc_size == 3u * sizeof(wchar_t));
 	EXPECT(!memcmp(w, (wchar_t[]){11, 22, 0}, 3u * sizeof(wchar_t)));
 	free(w);
+
+	/* TODO mmap, munmap, mremap */
 }
 
 
@@ -802,6 +924,8 @@ check_failures(void)
 	EXPECT(!memdup("x", 1u));
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
+
+	/* TODO mmap, munmap, mremap */
 }
 
 

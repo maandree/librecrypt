@@ -42,8 +42,8 @@ OBJ_PUBLIC =\
 
 OBJ_PRIVATE =\
 	librecrypt_algorithms_.o\
-	librecrypt_hash_.o\
 	librecrypt_rng_.o\
+	librecrypt_hash_.o\
 	librecrypt_fill_with_random_.o\
 	librecrypt_find_first_algorithm_.o\
 	librecrypt_check_settings_.o\
@@ -91,7 +91,7 @@ $(TEST): $(HDR) librecrypt.a libtest/libtest.a libtest/libtest.h
 	$(CC) -fPIC -c -o $@ $< $(ALL_CFLAGS) $(COV_CFLAGS) $(ALL_CPPFLAGS) $(COV_CPPFLAGS)
 
 .c.to:
-	$(CC) -DTEST -c -o $@ $< $(ALL_CFLAGS) $(ALL_CPPFLAGS)
+	$(CC) -DTEST -c -o $@ $< $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(COV_CPPFLAGS)
 
 .to.t:
 	$(CC) -o $@ $< librecrypt.a libtest/libtest.a $(G) $(ALL_LDFLAGS) $(TEST_LDFLAGS) $(COV_LDFLAGS)
@@ -141,6 +141,7 @@ uninstall:
 	-cd -- "$(DESTDIR)$(MANPREFIX)/man7/" && rm -f -- $(MAN7)
 
 clean:
+	+cd libtest && $(MAKE) clean
 	-rm -f -- *.o *.a *.lo *.su *.so *.so.* *.dll *.dylib
 	-rm -f -- *.gch *.gcov *.gcno *.gcda *.$(LIBEXT)
 	-rm -f -- *.to *.t

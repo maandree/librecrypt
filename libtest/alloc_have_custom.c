@@ -26,6 +26,9 @@ char *(strndup)(const char *s, size_t n);
 wchar_t *(wcsdup)(const wchar_t *s);
 wchar_t *(wcsndup)(const wchar_t *s, size_t n);
 void *(memdup)(const void *s, size_t n);
+void *(mmap)(void *addr, size_t len, int prot, int flags, int fd, off_t off);
+int (munmap)(void *addr, size_t len);
+void *(mremap)(void *old_addr, size_t old_len, size_t new_len, int flags, ...);
 
 #if defined(__GNUC__)
 # pragma GCC diagnostic pop
@@ -210,6 +213,16 @@ libtest_have_custom_free_aligned_sized(void)
 }
 
 
+int
+libtest_have_custom_mmap(void)
+{
+	static int r = -1;
+	if (r < 0)
+		r = libtest_check_custom_mmap();
+	return r;
+}
+
+
 #else
 
 
@@ -243,6 +256,7 @@ main(void)
 	CHECK(libtest_have_custom_wcsdup);
 	CHECK(libtest_have_custom_wcsndup);
 	CHECK(libtest_have_custom_memdup);
+	CHECK(libtest_have_custom_mmap);
 
 	return 0;
 }

@@ -4,9 +4,9 @@ include $(CONFIGFILE_PROPER)
 CC   = $(CC_PREFIX)gcc -std=c99
 GCOV = gcov
 
-CFLAGS      = -g -O0
-COV_CFLAGS  = --coverage
-COV_LDFLAGS = --coverage
+COV_CPPFLAGS = -DCOVERAGE_TEST
+COV_CFLAGS   = --coverage -g -O0
+COV_LDFLAGS  = --coverage -g -O0
 
 G =
 

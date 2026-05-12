@@ -68,8 +68,10 @@ librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, siz
 		/* Generate the salts */
 		r_len = librecrypt_realise_salts(out_buffer, size, settings, rng, NULL);
 		if (r_len < 0) {
-			if (errno == ERANGE)
+			if (errno == ERANGE) {
 				errno = ENOMEM;
+				return -1;
+			}
 			return -1;
 		} else if ((size_t)r_len >= size) {
 			settings_scratch = malloc((size_t)r_len + 1u);
