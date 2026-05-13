@@ -717,8 +717,6 @@ check(int use_free)
 		free(p);
 	else
 		free_aligned_sized(p, sizeof(void *), 11u);
-
-	/* TODO mmap, munmap, mremap */
 }
 
 
@@ -728,6 +726,7 @@ check_successfuls(void)
 	size_t pagesize;
 	char *s;
 	wchar_t *w;
+	void *q;
 
 	check(1);
 	check(0);
@@ -817,7 +816,12 @@ check_successfuls(void)
 	EXPECT(!memcmp(w, (wchar_t[]){11, 22, 0}, 3u * sizeof(wchar_t)));
 	free(w);
 
-	/* TODO mmap, munmap, mremap */
+	p = mmap(NULL, 1u, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	assert(p != MAP_FAILED);
+	p = mremap(p, 1u, 2u, 0);
+	assert(p != MAP_FAILED);
+	assert(malloc_usable_size(p) >= 6u);
+	asser(!munmap(p, 2u));
 }
 
 
@@ -826,55 +830,64 @@ check_failures(void)
 {
 	void *q;
 
-	libtest_set_alloc_failure_in(1u);
+	libtest_set_alloc_failure_in(2u);
+	p = malloc(1u);
+	EXPECT(p);
+	free(p);
+	assert(libtest_get_alloc_failure_in() == 1u);
 	errno = 0;
-	EXPECT(!malloc(1u));
+	p = malloc(1u);
+	EXPECT(!p);
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
 
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!calloc(1u, 1u));
+	p = calloc(1u, 1u);
+	EXPECT(!p);
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
 
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!realloc(NULL, 1u));
+	p = realloc(NULL, 1u);
+	EXPECT(!p);
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
-	q = realloc(NULL, 1u);
-	assert(q);
+	p = realloc(NULL, 1u);
+	assert(p);
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!realloc(q, 1u));
+	EXPECT(!realloc(p, 1u));
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
-	free(q);
+	free(p);
 
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
 	EXPECT(!reallocarray(NULL, 1u, 1u));
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
-	q = reallocarray(NULL, 1u, 1u);
-	assert(q);
+	p = reallocarray(NULL, 1u, 1u);
+	assert(p);
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!reallocarray(q, 1u, 1u));
+	EXPECT(!reallocarray(p, 1u, 1u));
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
-	free(q);
+	free(p);
 
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!memalign(1u, 1u));
+	p = memalign(1u, 1u);
+	EXPECT(!p);
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
 
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!aligned_alloc(1u, 1u));
+	p = aligned_alloc(1u, 1u);
+	EXPECT(!p);
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
 
@@ -885,47 +898,69 @@ check_failures(void)
 
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!valloc(1u));
+	p = valloc(1u);
+	EXPECT(!p);
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
 
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!pvalloc(1u));
+	p = pvalloc(1u);
+	EXPECT(!p);
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
 
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!strdup("x"));
+	p = strdup("x");
+	EXPECT(!p);
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
 
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!strndup("x", 1u));
+	p = strndup("x", 1u);
+	EXPECT(!p);
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
 
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!wcsdup((wchar_t[]){1, 0}));
+	p = wcsdup((wchar_t[]){1, 0});
+	EXPECT(!p);
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
 
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!wcsndup((wchar_t[]){1, 0}, 1u));
+	p = wcsndup((wchar_t[]){1, 0}, 1u);
+	EXPECT(!p);
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
 
 	libtest_set_alloc_failure_in(1u);
 	errno = 0;
-	EXPECT(!memdup("x", 1u));
+	p = memdup("x", 1u);
+	EXPECT(!p);
 	EXPECT(errno == ENOMEM);
 	EXPECT(!libtest_get_alloc_failure_in());
 
-	/* TODO mmap, munmap, mremap */
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	p = mmap(NULL, 1u, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	EXPECT(p == MAP_FAILED);
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+
+	p = mmap(NULL, 1u, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	assert(p != MAP_FAILED);
+	q = p;
+	libtest_set_alloc_failure_in(1u);
+	errno = 0;
+	p = mremap(p, 1u, 2u, 0);
+	EXPECT(errno == ENOMEM);
+	EXPECT(!libtest_get_alloc_failure_in());
+	munmap(q, 1u);
 }
 
 

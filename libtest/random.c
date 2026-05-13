@@ -12,9 +12,12 @@ genpattern(void *buf, size_t size)
 {
 	unsigned char *out = buf;
 	size_t n;
+	ssize_t ret;
 
 	if (size > (size_t)SSIZE_MAX)
 		size = (size_t)SSIZE_MAX;
+
+	ret = (ssize_t)size;
 
 	if (libtest_random_pattern_length) {
 		while (size) {
@@ -33,7 +36,7 @@ genpattern(void *buf, size_t size)
 			out[0] = (unsigned char)rand();
 	}
 
-	return (ssize_t)size;
+	return ret;
 }
 
 

@@ -126,7 +126,7 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
 			/* Write padding charaters */
 			right = right < size ? right : size;
 			for (i = 0u; i < right; i++)
-				out_buffer[right] = pad;
+				out_buffer[right] = pad; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
 			out_buffer = &out_buffer[right];
 			size -= right;
 		}

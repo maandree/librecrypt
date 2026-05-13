@@ -525,9 +525,11 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 # define EXPECT(EXPR)\
 	do {\
 		if (!(EXPR)) {\
+			int test_expect_saved_errno__ = errno;\
 			libtest_expect_zeroed_on_free(0);\
 			libtest_stop_tracking();\
-			fprintf(stderr, "Failure at %s:%i: %s\n", __FILE__, __LINE__, #EXPR);\
+			fprintf(stderr, "Failure at %s:%i: %s (errno = %i)\n",\
+			       __FILE__, __LINE__, #EXPR, test_expect_saved_errno__);\
 			libtest_dump_stack(NULL, "\t");\
 			exit(1);\
 		}\
@@ -538,7 +540,8 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 		if (!(EXPR)) {\
 			libtest_expect_zeroed_on_free(0);\
 			libtest_stop_tracking();\
-			fprintf(stderr, "Assertion failure at %s:%i: %s\n", __FILE__, __LINE__, #EXPR);\
+			fprintf(stderr, "Assertion failure at %s:%i: %s\n",\
+			       __FILE__, __LINE__, #EXPR);\
 			libtest_dump_stack(NULL, "\t");\
 			exit(2);\
 		}\

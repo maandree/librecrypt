@@ -75,7 +75,7 @@ librecrypt_rng_(void *out, size_t n, void *user)
 	fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC | O_CLOFORK);
 	if (fd < 0)
 		goto no_urandom; /* this is a goto to make coverage test more comprehensive */
-	/* TODO we should make sure this is a character special device */
+	/* TODO we should make sure this is a character special device and validate output */
 	for (;;) {
 		r = read(fd, buf, n);
 		if (r < 0) {
@@ -347,11 +347,10 @@ test_oversized(void)
 	buf[0] = 99;
 
 	libtest_getentropy_jmp_val = 1;
-	if (!setjmp(libtest_getentropy_jmp)) {
+	if (!setjmp(libtest_getentropy_jmp))
 		EXPECT(librecrypt_rng_(buf, beyond_ssize_max, NULL) == 9999);
-	} else {
+	else
 		jumped = 1;
-	}
 	EXPECT(jumped);
 
 	EXPECT(buf[0] == 99);
@@ -365,6 +364,7 @@ main(void)
 	unsigned char buf1[1024u];
 	unsigned char buf2[sizeof(buf1)];
 	ssize_t n1, n2;
+	size_t i;
 	void *user = NULL;
 
 	SET_UP_ALARM();
@@ -388,7 +388,25 @@ main(void)
 		EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));\
 	} while (0)
 
-	/* TODO Test with output pattern (useful for other tests) */
+	/* Test with output pattern (useful for other tests) */
+#if defined(__linux__)
+	libtest_getrandom_real = 0;
+#endif
+	libtest_getentropy_real = 0;
+	libtest_random_pattern = buf2;
+	libtest_random_pattern_offset = 0u;
+	libtest_random_pattern_length = 32u;
+	for (i = 0u; i < sizeof(buf2); i++)
+		buf2[i] = (unsigned char)(i % libtest_random_pattern_length * 3u + 1u);
+	EXPECT(librecrypt_rng_(buf1, 128u, NULL) == 128);
+	EXPECT(!memcmp(buf1, buf2, 128u));
+	libtest_random_pattern = NULL;
+	libtest_random_pattern_offset = 0u;
+	libtest_random_pattern_length = 0u;
+#if defined(__linux__)
+	libtest_getrandom_real = 1;
+#endif
+	libtest_getentropy_real = 1;
 
 	/* Check that output is random */
 	CHECK2();

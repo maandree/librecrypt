@@ -27,17 +27,6 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	/* Not yet used */
 	(void) reserved;
 
-	/* Gives us memory allocation and threading support;
-	 * so we don't have to implement any of that ourselves */
-	libar2simplified_init_context(&ctx);
-	/* Configure automatic erasure of input memory */
-	ctx.autoerase_message = 0; /* allows `phrase` to be read-only */
-	ctx.autoerase_secret = 0; /* alloes to params.key, which we are not using, but maybe in the future */
-	ctx.autoerase_associated_data = 0; /* alloes to params.ad, which we are not using, but maybe in the future */
-	ctx.autoerase_salt = 1; /* since we are decoding the salt, we do a memory allocation,
-	                         * and our testing always checks that allocated memory is earse;
-	                         * it doesn't really matter, but it's paranoid, and that's good */
-
 	/* Parse `settings` */
 	r = librecrypt_check_settings_(settings, prefix,
 		"$argon2%^s$%^sm=%^p,t=%^p,p=%^p$%&b$%^h",
@@ -52,6 +41,35 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 		errno = EINVAL;
 		return -1;
 	}
+
+	/* If not output, will just validate the input and return 0 */
+	if (!size) {
+		/* Argon2 has a maximum passphrase length of 2³²-1 */
+#if SIZE_MAX > UINT32_MAX
+		if (len > (size_t)UINT32_MAX) {
+			errno = EINVAL;
+			return -1;
+		}
+#endif
+		/* This is important because the caller may have skipped calculating
+		 * an intermediate hash, and instead pass `NULL` (= assume non-text)
+		 * to us as `phrase`, but leave `len` non-zero is it can be validated,
+		 * because we are not provided any output buffer so the input passphrase
+		 * does not affect us. So we must return so that libar2_hash(3) does
+		 * not attempt to read the passphrase from `NULL`. */
+		return 0;
+	}
+
+	/* Gives us memory allocation and threading support;
+	 * so we don't have to implement any of that ourselves */
+	libar2simplified_init_context(&ctx);
+	/* Configure automatic erasure of input memory */
+	ctx.autoerase_message = 0; /* allows `phrase` to be read-only */
+	ctx.autoerase_secret = 0; /* alloes to params.key, which we are not using, but maybe in the future */
+	ctx.autoerase_associated_data = 0; /* alloes to params.ad, which we are not using, but maybe in the future */
+	ctx.autoerase_salt = 1; /* since we are decoding the salt, we do a memory allocation,
+	                         * and our testing always checks that allocated memory is earse;
+	                         * it doesn't really matter, but it's paranoid, and that's good */
 
 	/* Decode salt */
 	if (!salt_encoded) /* this would be if asterisk-notation is used, but it is not */
@@ -140,13 +158,14 @@ static int discarded_int;
 static void
 check(const char *phrase, const char *settings, const char *hash, size_t hashlen)
 {
-	size_t len = strlen(phrase);
+	size_t i, len = strlen(phrase);
 	size_t prefix = strlen(settings);
 	char buf[1024], expected[256];
 	ssize_t r;
 
 	assert(hashlen <= sizeof(buf));
 	assert(hashlen <= sizeof(expected));
+	assert(2u * hashlen <= sizeof(buf));
 
 	r = librecrypt_decode(expected, sizeof(expected), hash, strlen(hash),
 	                      librecrypt_common_rfc4848s4_decoding_lut_,
@@ -161,12 +180,15 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 	EXPECT(librecrypt__argon2__hash(buf, hashlen, phrase, len, settings, prefix, NULL) == 0);
 	EXPECT(!memcmp(expected, buf, hashlen));
 
-	memset(buf, 0, sizeof(buf));
-	EXPECT(librecrypt__argon2__hash(buf, 1u, phrase, len, settings, prefix, NULL) == 0);
-	EXPECT(!memcmp(expected, buf, 1u));
-
 	EXPECT(librecrypt__argon2__hash(buf, 0u, phrase, len, settings, prefix, NULL) == 0);
 	EXPECT(librecrypt__argon2__hash(NULL, 0u, phrase, len, settings, prefix, NULL) == 0);
+
+	for (i = 1u; i <= hashlen * 2u; i++) {
+		memset(buf, 0, sizeof(buf));
+		EXPECT(librecrypt__argon2__hash(buf, i, phrase, len, settings, prefix, NULL) == 0);
+		EXPECT(!memcmp(expected, buf, i < hashlen ? i : hashlen));
+	}
+
 }
 
 
@@ -182,14 +204,30 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 	} while (0)
 
 
+#if SIZE_MAX > UINT32_MAX
+# define CHECK_MEGAPASSPHRASE(ALGO)\
+	libtest_set_alloc_failure_in(3u);\
+	errno = 0;\
+	EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, (size_t)UINT32_MAX + 1u,\
+					S(ALGO"m=1024,t=10,p=1$ABCDabcdABCDabcd$"), NULL) == -1);\
+	EXPECT(errno == EINVAL)
+#else
+# define CHECK_MEGAPASSPHRASE(ALGO)\
+	((void)0)
+#endif
+
+
+#define COMMON buf, 1u, NULL, 0u
 #define CHECK_BAD(ALGO)\
 	do {\
 		errno = 0;\
-		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, S(ALGO"m=0,t=999999999999999999,p=0$AAAABBBB$*0"), NULL) == -1);\
+		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=0,t=999999999999999999,p=0$AAAABBBB$*0"), NULL) == -1);\
 		EXPECT(errno == EINVAL);\
 		\
+		CHECK_MEGAPASSPHRASE(ALGO);\
+		\
 		/* target `if (!salt_encoded)` */\
-		EXPECT_ABORT(discarded_int = librecrypt__argon2__hash(NULL, 0u, NULL, 0u, S(ALGO"m=1024,t=10,p=1$*10$"), NULL));\
+		EXPECT_ABORT(discarded_int = librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$*10$"), NULL));\
 		\
 		if (!libtest_have_custom_malloc())\
 			break;\
@@ -197,19 +235,19 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 		/* target `salt = malloc((size_t)r);` */\
 		libtest_set_alloc_failure_in(1u);\
 		errno = 0;\
-		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, S(ALGO"m=1024,t=10,p=1$AAAABBBBCCCCDDDD$"), NULL) == -1);\
+		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$AAAABBBBCCCCDDDD$"), NULL) == -1);\
 		EXPECT(errno == ENOMEM);\
 		\
 		/* target `scratch = malloc(scratch_size);` */\
 		libtest_set_alloc_failure_in(2u);\
 		errno = 0;\
-		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, S(ALGO"m=1024,t=10,p=1$AAAABBBBCCCCDDDD$"), NULL) == -1);\
+		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$BBBBCCCCDDDDAAAA$"), NULL) == -1);\
 		EXPECT(errno == ENOMEM);\
 		\
 		/* target `libar2_hash` */\
 		libtest_set_alloc_failure_in(3u);\
 		errno = 0;\
-		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, S(ALGO"m=1024,t=10,p=1$AAAABBBBCCCCDDDD$"), NULL) == -1);\
+		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$CCCCDDDDAAAABBBB$"), NULL) == -1);\
 		EXPECT(errno == ENOMEM);\
 		\
 		assert(!libtest_get_alloc_failure_in());\
@@ -219,6 +257,8 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 int
 main(void)
 {
+	char buf[1024];
+
 	SET_UP_ALARM();
 	INIT_TEST_ABORT();
 	INIT_RESOURCE_TEST();

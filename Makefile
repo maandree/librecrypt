@@ -91,7 +91,7 @@ $(TEST): $(HDR) librecrypt.a libtest/libtest.a libtest/libtest.h
 	$(CC) -fPIC -c -o $@ $< $(ALL_CFLAGS) $(COV_CFLAGS) $(ALL_CPPFLAGS) $(COV_CPPFLAGS)
 
 .c.to:
-	$(CC) -DTEST -c -o $@ $< $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(COV_CPPFLAGS)
+	$(CC) -DTEST -c -o $@ $< $(G) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(COV_CPPFLAGS)
 
 .to.t:
 	$(CC) -o $@ $< librecrypt.a libtest/libtest.a $(G) $(ALL_LDFLAGS) $(TEST_LDFLAGS) $(COV_LDFLAGS)

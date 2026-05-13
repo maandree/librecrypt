@@ -33,8 +33,10 @@ librecrypt_settings_prefix(const char *hash, size_t *hashsize_out)
 		goto zero;
 	/* Return 0 as hash size if algorithm cannot be identified or has fixed hash size */
 	algo = librecrypt_find_first_algorithm_(&hash[last_offset], len - last_offset);
-	if (!algo || !algo->flexible_hash_size)
+	if (!algo)
 		goto zero;
+	if (!algo->flexible_hash_size)
+		goto zero; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
 
 	/* Get the hash size */
 	if (!librecrypt_check_settings_(&hash[ret], len - ret, "%^b",
@@ -61,14 +63,6 @@ out:
 		EXPECT(librecrypt_settings_prefix(PREFIX, NULL) == sizeof(PREFIX) - 1u); \
 	} while (0)
 
-#if 0
-#define CHECK_ASTERISK(PREFIX, SUFFIX, HASH)\
-	do {\
-		size_t hashsize = 99999u;\
-		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX #HASH, &hashsize) == sizeof(PREFIX) - 1u);\
-		EXPECT(hashsize == HASH##u);\
-	} while (0)
-
 #define CHECK_ZERO(PREFIX, SUFFIX)\
 	do {\
 		size_t hashsize = 99999u;\
@@ -76,13 +70,12 @@ out:
 		EXPECT(hashsize == 0u);\
 	} while (0)
 
-#define CHECK_HASHED(PREFIX, SUFFIX, HASH)\
+#define CHECK_HASH(PREFIX, SUFFIX, HASH)\
 	do {\
 		size_t hashsize = 99999u;\
 		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, &hashsize) == sizeof(PREFIX) - 1u);\
 		EXPECT(hashsize == HASH##u);\
 	} while (0)
-#endif
 
 
 int
@@ -115,7 +108,46 @@ main(void)
 	CHECK_NULL("_", "");
 	CHECK_NULL("$x$*10>_", "_");
 
-	/* TODO test hash size output (requires algorithms) */
+	/* Check without hash */
+	CHECK_ZERO("a$b$", "");
+	CHECK_ZERO("a$b$>", "");
+	CHECK_ZERO("a$b$x>", "");
+	CHECK_ZERO("a$b$*10>", "");
+
+	/* Check without invalid algorithm */
+	CHECK_ZERO("$~no~such~algorithm~$", "hash");
+
+	/* Check without hash and hashlen */
+#if defined(SUPPORT_ARGON2I)
+	CHECK_HASH("$argon2i$m=8,t=1,p=1$*99$", "*100", 100);
+	CHECK_HASH("x$*99>$argon2i$m=8,t=1,p=1$*99$", "*100", 100);
+	CHECK_HASH("$argon2i$m=8,t=1,p=1$*99$", "NineByteHash", 9);
+	CHECK_HASH("x$*99>$argon2i$m=8,t=1,p=1$*99$", "NineByteHash", 9);
+#endif
+#if defined(SUPPORT_ARGON2ID)
+	CHECK_HASH("$argon2id$m=8,t=1,p=1$*99$", "*100", 100);
+	CHECK_HASH("x$*99>$argon2id$m=8,t=1,p=1$*99$", "*100", 100);
+	CHECK_HASH("$argon2id$m=8,t=1,p=1$*99$", "NineByteHash", 9);
+	CHECK_HASH("x$*99>$argon2id$m=8,t=1,p=1$*99$", "NineByteHash", 9);
+#endif
+#if defined(SUPPORT_ARGON2D)
+	CHECK_HASH("$argon2d$m=8,t=1,p=1$*99$", "*100", 100);
+	CHECK_HASH("x$*99>$argon2d$m=8,t=1,p=1$*99$", "*100", 100);
+	CHECK_HASH("$argon2d$m=8,t=1,p=1$*99$", "NineByteHash", 9);
+	CHECK_HASH("x$*99>$argon2d$m=8,t=1,p=1$*99$", "NineByteHash", 9);
+#endif
+#if defined(SUPPORT_ARGON2DS)
+	CHECK_HASH("$argon2ds$m=8,t=1,p=1$*99$", "*100", 100);
+	CHECK_HASH("x$*99>$argon2ds$m=8,t=1,p=1$*99$", "*100", 100);
+	CHECK_HASH("$argon2ds$m=8,t=1,p=1$*99$", "NineByteHash", 9);
+	CHECK_HASH("x$*99>$argon2ds$m=8,t=1,p=1$*99$", "NineByteHash", 9);
+#endif
+
+	/* Check without invalid hash */
+	IF__argon2i__SUPPORTED(CHECK_ZERO("$argon2i$m=8,t=1,p=1$*99$", "#");)
+	IF__argon2d__SUPPORTED(CHECK_ZERO("$argon2d$m=8,t=1,p=1$*99$", "#");)
+	IF__argon2id__SUPPORTED(CHECK_ZERO("$argon2id$m=8,t=1,p=1$*99$", "#");)
+	IF__argon2ds__SUPPORTED(CHECK_ZERO("$argon2ds$m=8,t=1,p=1$*99$", "#");)
 
 	STOP_RESOURCE_TEST();
 	return 0;

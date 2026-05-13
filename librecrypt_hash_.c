@@ -8,7 +8,7 @@ zero_generator(void *out, size_t n, void *user)
 {
 	(void) user;
 	if (n > (size_t)SSIZE_MAX)
-		n = (size_t)SSIZE_MAX;
+		n = (size_t)SSIZE_MAX; /* $covered$ (impossible, but covered otherwise) */
 	memset(out, 0, n);
 	return (ssize_t)n;
 }
@@ -17,14 +17,28 @@ zero_generator(void *out, size_t n, void *user)
 static int
 has_asterisk_encoded_salt(const char *settings)
 {
-	const char *asterisk;
-	/* Check whether there is an asterisk */
-	asterisk = strchr(settings, '*');
-	if (!asterisk)
-		return 0;
-	/* Check that the first asterisk is not part of the hash result
-	 * (would specify hash size) rather than be a salt */
-	return !!strchr(&asterisk[1u], LIBRECRYPT_HASH_COMPOSITION_DELIMITER);
+	int asterisk = 0;
+	for (; *settings; settings++) {
+		if (*settings == '*') {
+			/* Require digit after '*' to recognise as asterisk-encoding */
+			if ('0' <= settings[1u] && settings[1u] <= '9') {
+				settings++;
+				asterisk = 1;
+			}
+		} else if (*settings == LIBRECRYPT_HASH_COMPOSITION_DELIMITER) {
+			/* If asterisk was found before a '$' in an algorithm
+			 * it it was for the salt (or other random parameter) */
+			if (asterisk)
+				return 1;
+		} else if (*settings == LIBRECRYPT_ALGORITHM_LINK_DELIMITER) {
+			/* If asterisk was found between '$' and '>', it was
+			 * the hash size specificiation */
+			asterisk = 0;
+		}
+	}
+	/* If asterisk was found after the last '$' or '>', or if
+	 * there was no '$', it was the hash size specificiation */
+	return 0;
 }
 
 
@@ -78,7 +92,7 @@ librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, siz
 			if (!settings_scratch)
 				return -1;
 			if (librecrypt_realise_salts(settings_scratch, (size_t)r_len + 1u, settings, rng, NULL) != r_len)
-				abort();
+				abort(); /* $covered$ (impossible) */
 			settings = settings_scratch;
 		}
 	}
@@ -107,15 +121,15 @@ next:
 			prefix = i + 1u;
 	if (n && !prefix && settings[i] == '_') {
 		/* Special case for bsdicrypt */
-		prefix = 1u;
+		prefix = 1u; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
 	}
 	if (!algo->flexible_hash_size && prefix != n)
-		goto einval;
+		goto einval; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
 
 	/* Get hash size */
 	if (!algo->flexible_hash_size) {
 		/* fixed */
-		hash_size = algo->hash_size;
+		hash_size = algo->hash_size; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
 	} else if (prefix == n) {
 		/* default */
 		hash_size = algo->hash_size;
@@ -144,6 +158,7 @@ next:
 				break;
 		hash_size = i - prefix;
 		if (algo->pad && algo->strict_pad) {
+			/* $covered{$ (TODO we currently don't have an algorithm to trigger this) */
 			for (; i < n; i++)
 				if (settings[i] != algo->pad)
 					break;
@@ -151,6 +166,7 @@ next:
 				goto einval;
 			if (i - prefix - hash_size >= 4u)
 				goto einval;
+			/* $covered}$ */
 		}
 		if (i != n)
 			goto einval;
@@ -224,7 +240,7 @@ next:
 			ascii_len = hash_size % 3u;
 			if (ascii_len) {
 				if (algo->pad && algo->strict_pad)
-					ascii_len = 4u; /* padding to for bytes */
+					ascii_len = 4u; /* padding to for bytes */ /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
 				else
 					ascii_len += 1u; /* 3n+m bytes: 4n+m+1 chars, unless m=0 */
 			}
@@ -260,7 +276,7 @@ next:
 		/* For `librecrypt_crypt`: add '>' to the password hash string */
 		if (action == ASCII_CRYPT) {
 			ret += 1u;
-			if (size) {
+			if (size > 1u) {
 				*out_buffer++ = LIBRECRYPT_ALGORITHM_LINK_DELIMITER;
 				size -= 1u;
 			}
@@ -320,6 +336,20 @@ fail:
 int
 main(void)
 {
+#define SALT "saltSALTsaltSALTsaltSALTsaltSALTsaltSALT"
+#define LARGE "99999999999999999999999999999999999999999999999999999999999999999999999999"
+#define X2(X) X">"X
+#define X3(X) X">"X">"X
+#define X4(X) X">"X">"X">"X
+
+	char buf[1024];
+	char buf1[sizeof(buf)];
+	char buf2[sizeof(buf)];
+	char buf3[sizeof(buf)];
+	char sbuf[160];
+	size_t i, n;
+	ssize_t r, r1, r1b, r1c, r2, r3;
+
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
 
@@ -330,6 +360,143 @@ main(void)
 	errno = 0;
 	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$", NULL, ASCII_CRYPT) == -1);
 	EXPECT(errno == ENOSYS);
+
+	errno = 0;
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$*100$", NULL, ASCII_CRYPT) == -1);
+	EXPECT(errno == ENOSYS);
+
+#if defined(SUPPORT_ARGON2ID)
+# define ARGON2ID_PREFIX "$argon2id$v=19$m=8,t=1,p=1$"
+# define ARGON2ID_STR ARGON2ID_PREFIX SALT"$*32"
+
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, "!"ARGON2ID_STR, NULL, ASCII_CRYPT) == -1);
+	EXPECT(errno == ENOSYS);
+
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, ARGON2ID_PREFIX"*"LARGE"$", NULL, ASCII_CRYPT) == -1);
+	EXPECT(errno == ENOMEM);
+
+	r = librecrypt_hash_(NULL, 0u, "hello", 5u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT);
+	EXPECT(r > 0);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT) == r);
+	for (i = 0u; i <= sizeof(sbuf); i++)
+		EXPECT(librecrypt_hash_(sbuf, i, NULL, 0u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT) == r);
+
+	if (libtest_have_custom_malloc()) {
+		/* target if-statement in zero_generator, using alloc failure as guarding;
+		 * however librecrypt_realise_salts should return ERANGE, which
+		 * librecrypt_hash_ coverts to ENOMEM */
+		libtest_set_alloc_failure_in(1u);
+		r = (ssize_t)snprintf(buf, sizeof(buf), "%s*%zu$", ARGON2ID_PREFIX, (size_t)SSIZE_MAX + 1u);
+		assert(r > 0 && r < sizeof(buf));
+		errno = 0;
+		EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, buf, NULL, ASCII_CRYPT) == -1);
+		EXPECT(errno == ENOMEM);
+		libtest_set_alloc_failure_in(0u);
+
+		/* target settings_scratch */
+		errno = 0;
+		libtest_set_alloc_failure_in(1u);
+		EXPECT(librecrypt_hash_(NULL, 0, "hello", 5u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT) == -1);
+		EXPECT(errno == ENOMEM);
+		EXPECT(libtest_get_alloc_failure_in() == 0u);
+
+		/* target phrase_scratches */
+		errno = 0;
+		libtest_set_alloc_failure_in(1u);
+		EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT) == -1);
+		EXPECT(errno == ENOMEM);
+		EXPECT(libtest_get_alloc_failure_in() == 0u);
+
+		/* target *algo->hash */
+		errno = 0;
+		libtest_set_alloc_failure_in(2u);
+		EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT) == -1);
+		EXPECT(errno == ENOMEM);
+		EXPECT(libtest_get_alloc_failure_in() == 0u);
+
+		/* target deallocation of settings_scratch */
+		errno = 0;
+		libtest_set_alloc_failure_in(2u);
+		EXPECT(librecrypt_hash_(buf, 1u, "hello", 5u, ARGON2ID_PREFIX"*1000$>"ARGON2ID_STR, NULL, ASCII_CRYPT) == -1);
+		EXPECT(errno == ENOMEM);
+		EXPECT(libtest_get_alloc_failure_in() == 0u);
+
+		/* target deallocation of phrase_scratches[1] */
+		libtest_set_alloc_failure_in(SIZE_MAX);
+		EXPECT(librecrypt_hash_(buf, 1u, "hello", 5u, X3(ARGON2ID_STR), NULL, ASCII_CRYPT) > 0);
+		n = SIZE_MAX - libtest_get_alloc_failure_in();
+		errno = 0;
+		libtest_set_alloc_failure_in(n);
+		EXPECT(librecrypt_hash_(buf, 1u, "hello", 5u, X3(ARGON2ID_STR), NULL, ASCII_CRYPT) == -1);
+		EXPECT(errno == ENOMEM);
+		EXPECT(libtest_get_alloc_failure_in() == 0u);
+
+	}
+
+	memset(buf1, 99, sizeof(buf1));
+	r1 = librecrypt_hash_(buf1, sizeof(buf1), NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT);
+	EXPECT(r1 > 0);
+	EXPECT(r1 > 2 * (ssize_t)sizeof(ARGON2ID_STR));
+	r1b = librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X3(ARGON2ID_STR), NULL, ASCII_CRYPT);
+	EXPECT(r1b > 0);
+	EXPECT(r1b == r1 + 1 * (ssize_t)sizeof(ARGON2ID_STR));
+	r1c = librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X4(ARGON2ID_STR), NULL, ASCII_CRYPT);
+	EXPECT(r1c > 0);
+	EXPECT(r1c == r1 + 2 * (ssize_t)sizeof(ARGON2ID_STR));
+
+	memset(buf2, 99, sizeof(buf2));
+	EXPECT((r2 = librecrypt_hash_(buf2, sizeof(buf2), NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_HASH)) > 0);
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X3(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X4(ARGON2ID_STR), NULL, ASCII_HASH == r2));
+	EXPECT(r2 < r1);
+
+	memset(buf3, 99, sizeof(buf3));
+	EXPECT((r3 = librecrypt_hash_(buf3, sizeof(buf3), NULL, 0u, X2(ARGON2ID_STR), NULL, BINARY_HASH)) > 0);
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X3(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X4(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
+	EXPECT(r3 < r2);
+
+	assert((size_t)r1 < sizeof(buf) - 11u);
+	for (i = (size_t)r1 + 11u; i < SIZE_MAX; i--) {
+		if (i <= (size_t)r1 + 10u) {
+			memset(buf, 88, sizeof(buf));
+			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT) == r1);
+			if (i) {
+				n = i - 1u < (size_t)r1 ? i - 1u : (size_t)r1;
+				EXPECT(!memcmp(buf, buf1, n));
+				EXPECT(buf[n] == '\0');
+			}
+		}
+		if (i <= (size_t)r2 + 10u) {
+			memset(buf, 88, sizeof(buf));
+			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
+			if (i) {
+				n = i - 1u < (size_t)r2 ? i - 1u : (size_t)r2;
+				EXPECT(!memcmp(buf, buf2, n));
+				EXPECT(buf[n] == '\0');
+			}
+		}
+		if (i <= (size_t)r3 + 10u) {
+			memset(buf, 88, sizeof(buf));
+			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
+			EXPECT(!memcmp(buf, buf3, i < (size_t)r3 ? i : (size_t)r3));
+		}
+	}
+
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT) == r1);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X3(ARGON2ID_STR), NULL, ASCII_CRYPT) == r1b);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X4(ARGON2ID_STR), NULL, ASCII_CRYPT) == r1c);
+
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X3(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X4(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
+
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X2(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X3(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X4(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
+#endif
 
 	STOP_RESOURCE_TEST();
 	return 0;
