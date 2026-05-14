@@ -80,19 +80,19 @@ main(void)
 	INIT_RESOURCE_TEST();
 
 	errno = 0;
-	EXPECT(librecrypt_make_settings(NULL, 0, ">", 0u, 0u, 0, NULL, NULL) == -1);
+	EXPECT(librecrypt_make_settings(NULL, 0u, ">", 0u, 0u, 0, NULL, NULL) == -1);
 	EXPECT(errno == EINVAL);
 	errno = 0;
-	EXPECT(librecrypt_make_settings(NULL, 0, "$argon2id$>", 0u, 0u, 0, NULL, NULL) == -1);
+	EXPECT(librecrypt_make_settings(NULL, 0u, "$argon2id$>", 0u, 0u, 0, NULL, NULL) == -1);
 	EXPECT(errno == EINVAL);
 	errno = 0;
-	EXPECT(librecrypt_make_settings(NULL, 0, ">$argon2id$", 0u, 0u, 0, NULL, NULL) == -1);
+	EXPECT(librecrypt_make_settings(NULL, 0u, ">$argon2id$", 0u, 0u, 0, NULL, NULL) == -1);
 	EXPECT(errno == EINVAL);
 	errno = 0;
-	EXPECT(librecrypt_make_settings(NULL, 0, "$argon2id$>$argon2id$", 0u, 0u, 0, NULL, NULL) == -1);
+	EXPECT(librecrypt_make_settings(NULL, 0u, "$argon2id$>$argon2id$", 0u, 0u, 0, NULL, NULL) == -1);
 	EXPECT(errno == EINVAL);
 	errno = 0;
-	EXPECT(librecrypt_make_settings(NULL, 0, "$~no~such~algorithm~$", 0u, 0u, 0, NULL, NULL) == -1);
+	EXPECT(librecrypt_make_settings(NULL, 0u, "$~no~such~algorithm~$", 0u, 0u, 0, NULL, NULL) == -1);
 	EXPECT(errno == ENOSYS);
 
 #if defined(SUPPORT_ARGON2I)
@@ -136,7 +136,7 @@ main(void)
 #endif
 
 	if (any_supported) {
-		EXPECT(librecrypt_make_settings(NULL, 0, NULL, 0u, 0u, 0, NULL, NULL) > 0);
+		EXPECT(librecrypt_make_settings(NULL, 0u, NULL, 0u, 0u, 0, NULL, NULL) > 0);
 		EXPECT(librecrypt_make_settings(buf, sizeof(buf), NULL, 0u, 0u, 0, NULL, NULL) > 0);
 
 		if (any_salted) {
@@ -169,7 +169,7 @@ main(void)
 		EXPECT(strcmp(buf, buf2));
 	} else {
 		errno = 0;
-		EXPECT(librecrypt_make_settings(NULL, 0, NULL, 0u, 0u, 0, NULL, NULL) == -1);
+		EXPECT(librecrypt_make_settings(NULL, 0u, NULL, 0u, 0u, 0, NULL, NULL) == -1);
 		EXPECT(errno == ENOSYS);
 	}
 

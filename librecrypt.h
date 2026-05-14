@@ -800,9 +800,9 @@ int librecrypt_test_supported(const char *phrase, size_t len, int text, const ch
  * 
  * This function is MT-Safe but AS-Unsafe
  */
-LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_WRITE_STR__(3) LIBRECRYPT_READ_STR__(4)
+LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_STR__(3) LIBRECRYPT_READ_STR__(4)
 LIBRECRYPT_NONNULL_I__(3) LIBRECRYPT_NONNULL_I__(4) LIBRECRYPT_WUR__
-ssize_t librecrypt_add_algorithm(char *out_buffer, size_t size, char *augend,
+ssize_t librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
                                  const char *restrict augment, void *reserved);
 
 

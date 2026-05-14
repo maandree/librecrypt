@@ -99,7 +99,7 @@ main(void)
 	INIT_RESOURCE_TEST();
 
 	/* Check zero-request */
-	EXPECT(librecrypt_fill_with_random_(NULL, 0, NULL, NULL) == 0);
+	EXPECT(librecrypt_fill_with_random_(NULL, 0u, NULL, NULL) == 0);
 
 	/* Check default RNG */
 	EXPECT(librecrypt_fill_with_random_(buf1, sizeof(buf1), NULL, NULL) == 0);

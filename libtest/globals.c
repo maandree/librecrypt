@@ -30,9 +30,9 @@ struct meminfo libtest_allocs_tail;
 int libtest_allocs_list_inited = 0;
 atomic_flag libtest_allocs_list_spinlock = ATOMIC_FLAG_INIT;
 
-int libtest_zero_on_alloc = 0;
-int libtest_expect_zeroed = 0;
-int libtest_malloc_accept_leakage = 1;
+_Thread_local int libtest_zero_on_alloc = 0;
+_Thread_local int libtest_expect_zeroed = 0;
+_Thread_local int libtest_malloc_accept_leakage = 1;
 
 _Thread_local size_t libtest_malloc_internal_usage = 0u;
 _Thread_local size_t libtest_kill_malloc_tracking = 0u;

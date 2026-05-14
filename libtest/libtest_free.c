@@ -57,6 +57,16 @@ libtest_free(void *ptr, enum libtest_zero_check zero_checking)
 				break;
 			}
 		}
+		if (!memory_zeroed && mem->backtrace) {
+			libtest_malloc_internal_usage++;
+			inside_free = 1;
+			fprintf(stderr, "Memory not zeroed out before deallocation: %p\n", ptr);
+#ifdef WITH_BACKTRACE
+			libtest_print_backtrace(stderr, "\tAllocated at ", "\t          at ",
+			                        0u, mem->backtrace, NULL);
+#endif
+			inside_free = 0;
+		}
 		assert(memory_zeroed);
 	}
 

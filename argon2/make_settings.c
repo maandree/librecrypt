@@ -309,8 +309,8 @@ check_aborts(ssize_t (*gen)(char *, size_t, const char *, size_t, uintmax_t,
 {
 #define SHORTTEXT "------------------------------------------------------------------------"
 #define LONGTEXT SHORTTEXT SHORTTEXT SHORTTEXT SHORTTEXT SHORTTEXT SHORTTEXT SHORTTEXT
-	EXPECT_ABORT(discarded_ssize = (*gen)(NULL, 0, "argon2i$", 0u, 0u, 0, NULL, NULL));
-	EXPECT_ABORT(discarded_ssize = (*gen)(NULL, 0, "$argon2"LONGTEXT"$", 0u, 0u, 0, NULL, NULL));
+	EXPECT_ABORT(discarded_ssize = (*gen)(NULL, 0u, "argon2i$", 0u, 0u, 0, NULL, NULL));
+	EXPECT_ABORT(discarded_ssize = (*gen)(NULL, 0u, "$argon2"LONGTEXT"$", 0u, 0u, 0, NULL, NULL));
 }
 
 

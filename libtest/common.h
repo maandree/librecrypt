@@ -157,9 +157,9 @@ extern struct meminfo libtest_allocs_tail;
 extern int libtest_allocs_list_inited;
 extern atomic_flag libtest_allocs_list_spinlock;
 
-extern int libtest_zero_on_alloc;
-extern int libtest_expect_zeroed;
-extern int libtest_malloc_accept_leakage;
+extern _Thread_local int libtest_zero_on_alloc;
+extern _Thread_local int libtest_expect_zeroed;
+extern _Thread_local int libtest_malloc_accept_leakage;
 
 extern _Thread_local size_t libtest_malloc_internal_usage;
 extern _Thread_local size_t libtest_kill_malloc_tracking;

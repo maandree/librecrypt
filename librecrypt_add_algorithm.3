@@ -6,8 +6,8 @@ librecrypt_add_algorithm - Append an algorithm chain to a password hash string
 .nf
 #include <librecrypt.h>
 
-ssize_t \fBlibrecrypt_add_algorithm\fP(char *restrict \fIout_buffer\fP, size_t \fIsize\fP,
-                                 char *\fIaugend\fP, const char *restrict \fIaugment\fP,
+ssize_t \fBlibrecrypt_add_algorithm\fP(char *\fIout_buffer\fP, size_t \fIsize\fP,
+                                 const char *\fIaugend\fP, const char *restrict \fIaugment\fP,
                                  void *\fIreserved\fP);
 .fi
 .PP

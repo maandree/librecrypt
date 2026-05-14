@@ -123,6 +123,22 @@ binary.
 Get encoding alphabet for the last algorithm in a
 chain.
 
+.SH NOTES
+Using
+.BR librecrypt_add_algorithm (3)
+to hash existing password
+hashes should be used as a transitional mitigation strategy
+when replaing an old password hash function. Once the password
+is available in clear text, it should be hashed anew using
+only the new password hash function: this will both increase
+security and reducing login it, allowing for stronger hash
+function configurations. This is especially important if the
+password is actually a key and longer than the old hash. It
+is also a good idea to force password reset, and lock any
+account that hasn't reset its password, because it is
+possibly that the old password hashes has been leaked and it
+will force a fresh hashing even one counts that seldom log in.
+
 .SH SEE ALSO
 .BR crypt (3),
 .BR crypt (5)

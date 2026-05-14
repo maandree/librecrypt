@@ -7,17 +7,26 @@
 /**
  * Start tracking resources which `libtest_check_no_leaks`
  * will detect if they are not released
+ * 
+ * Memory resource tracking will only be started for the
+ * calling thread
  */
 void libtest_start_tracking(void);
 
 /**
  * Stop tracking resources, so that `libtest_check_no_leaks`
  * will not detect if they are not released
+ * 
+ * Memory resource tracking will only be stop for the
+ * calling thread
  */
 void libtest_stop_tracking(void);
 
 /**
  * Check for resource leaks
+ * 
+ * Memory leaks are detected for all threads with
+ * tracking enabled, not just the calling thread
  * 
  * Any leak will be printed to standard error
  * 
@@ -30,6 +39,8 @@ int libtest_check_no_leaks(void);
  * Make all overriden memory allocation functions
  * full the usable memory area with null bytes,
  * or disable this feature
+ *
+ * The setting applies only to the calling thread
  * 
  * @param  enabled  1 to enable, 0 to disable
  */
@@ -39,6 +50,8 @@ void libtest_force_zero_on_alloc(int enabled);
  * Make all overriden memory deallocation functions
  * check that the entire usable memory area is filled
  * with null bytes, or disable this feature
+ * 
+ * The setting applies only to the calling thread
  * 
  * @param  enabled  1 to enable, 0 to disable
  */

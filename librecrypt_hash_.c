@@ -397,7 +397,7 @@ main(void)
 		/* target settings_scratch */
 		errno = 0;
 		libtest_set_alloc_failure_in(1u);
-		EXPECT(librecrypt_hash_(NULL, 0, "hello", 5u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT) == -1);
+		EXPECT(librecrypt_hash_(NULL, 0u, "hello", 5u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT) == -1);
 		EXPECT(errno == ENOMEM);
 		EXPECT(libtest_get_alloc_failure_in() == 0u);
 

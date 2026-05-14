@@ -11,6 +11,9 @@ struct fd {
 static size_t nopened = 0u;
 static struct fd *opened = NULL;
 
+static atomic_flag spinlock = ATOMIC_FLAG_INIT;
+static int tracking_state = -1;
+
 
 static int
 cmp_fd(const void *av, const void *bv)
@@ -60,6 +63,14 @@ libtest_fd_tracking(int action)
 	int accept_memleak = libtest_malloc_accept_leakage;
 	size_t i, j;
 	char *path;
+	int old_tracking_state;
+
+	SPINLOCK(spinlock);
+	old_tracking_state = tracking_state;
+	tracking_state = action;
+	SPINUNLOCK(spinlock);
+	if (old_tracking_state == action)
+		return 1;
 
 	/* so libtest doesn't complain about us not zeroing before freeing,
 	 * and so it will not report memory leaks in fprintf from our

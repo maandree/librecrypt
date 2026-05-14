@@ -19,6 +19,7 @@ libtest_print_backtrace(FILE *fp, const char *prefix, const char *indent, size_t
         unw_context_t context;
         Dwarf_Addr ip;
 	size_t i;
+	unsigned int old_alarm;
 #if defined(HAVE_LINE_INFO)
 	Dwfl_Callbacks callbacks;
 	char *debuginfo_path = NULL;
@@ -32,6 +33,9 @@ libtest_print_backtrace(FILE *fp, const char *prefix, const char *indent, size_t
 
 	if (recursion_guard)
 		return;
+
+	old_alarm = alarm(1u);
+
 	saved_errno = errno;
 	recursion_guard = 1;
 	libtest_malloc_internal_usage++;
@@ -121,6 +125,8 @@ out:
 	libtest_malloc_internal_usage--;
 	recursion_guard = 0;
 	errno = saved_errno;
+
+	alarm(old_alarm);
 }
 
 
