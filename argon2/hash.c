@@ -224,13 +224,13 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=0,t=999999999999999999,p=0$AAAABBBB$*0"), NULL) == -1);\
 		EXPECT(errno == EINVAL);\
 		\
-		CHECK_MEGAPASSPHRASE(ALGO);\
-		\
 		/* target `if (!salt_encoded)` */\
 		EXPECT_ABORT(discarded_int = librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$*10$"), NULL));\
 		\
 		if (!libtest_have_custom_malloc())\
 			break;\
+		\
+		CHECK_MEGAPASSPHRASE(ALGO);\
 		\
 		/* target `salt = malloc((size_t)r);` */\
 		libtest_set_alloc_failure_in(1u);\

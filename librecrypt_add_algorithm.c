@@ -56,13 +56,15 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 			}
 			min = prefix2 < size ? prefix2 : size;
 			memcpy(out_buffer, augment, min);
+			out_buffer = &out_buffer[min];
+			size -= min;
 			if (hashsize2) {
-				r_int = snprintf(&out_buffer[min], size + 1u, "*%zu", hashsize2);
+				r_int = snprintf(out_buffer, size + 1u, "*%zu", hashsize2);
 				if (r_int < 2)
 					abort(); /* $covered$ (impossible reliably) */
 				ret += (size_t)r_int;
 			} else {
-				out_buffer[min] = '\0';
+				out_buffer[0u] = '\0';
 			}
 		} else {
 			if (!hashsize2)
@@ -109,7 +111,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 		r = librecrypt_decode(NULL, 0u, &augend[prefix1], len, lut, pad, strict_pad);
 		if (r <= 0) {
 			if (!r)
-				abort();
+				abort(); /* $covered$ (impossible: would have taken the (!augend[prefix1])-path) */
 			return -1;
 		}
 		phraselen = (size_t)r;
@@ -119,7 +121,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 		if (!phrase)
 			return -1;
 		if (librecrypt_decode(phrase, phraselen, &augend[prefix1], len, lut, pad, strict_pad) != r)
-			abort();
+			abort(); /* $covered$ (impossible) */
 	}
 
 	/* Chain the hash algorithms: write `augent` */
@@ -148,7 +150,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 		librecrypt_wipe(phrase, phraselen);
 		free(phrase);
 		if (!r)
-			abort();
+			abort(); /* $covered$ (impossible) */
 		return -1;
 	}
 	ret += (size_t)r;
@@ -253,11 +255,33 @@ main(void)
 	CHECK("$argon2d$m=8,t=1,p=1$"SALT1"$", "$argon2i$m=8,t=4,p=2$*20$*32",
 	      "$argon2d$m=8,t=1,p=1$"SALT1"$>" "$argon2i$m=8,t=4,p=2$*20$*32");
 
+	CHECK("$argon2d$m=8,t=1,p=1$"SALT1"$", "$argon2i$m=8,t=4,p=2$*20$"HASH1,
+	      "$argon2d$m=8,t=1,p=1$"SALT1"$>" "$argon2i$m=8,t=4,p=2$*20$"ASTRA);
+
+	CHECK("$argon2d$m=8,t=1,p=1$$", "$argon2i$m=8,t=4,p=2$$",
+	      "$argon2d$m=8,t=1,p=1$$>" "$argon2i$m=8,t=4,p=2$$");
+
+	errno = 0;
+	EXPECT(librecrypt_add_algorithm(buf, sizeof(buf), "$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1,
+	                                "$argon2i$m=8,t=4,p=1$$", NULL) == -1);
+	EXPECT(errno == EINVAL);
+
+	errno = 0;
+	EXPECT(librecrypt_add_algorithm(NULL, 0u, "$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1,
+	                                "$argon2i$m=8,t=4,p=1$$", NULL) == -1);
+	EXPECT(errno == EINVAL);
+
+	/* we just don't want to crash on this one, don't care if it pretends
+	 * everything is fine or if it sets errno to EINVAL and returns -1 */
+	EXPECT(librecrypt_add_algorithm(NULL, 0u, "$argon2d$m=8,t=1,p=1$"ASTRA"$"HASH1,
+	                                "$argon2i$m=8,t=4,p=1$"SALT2"$", NULL) > -2);
+
 	lut = librecrypt_get_encoding("$argon2d$", sizeof("$argon2d$") - 1u, &pad, &strict_pad, 1);
 	assert(lut);
 	r = librecrypt_decode(phrase, sizeof(phrase), HASH1, strlen(HASH1), lut, pad, strict_pad);
 	assert(r > 0 && (size_t)r <= sizeof(phrase));
 	phraselen = (size_t)r;
+
 	stpcpy(expected, "$argon2d$m=8,t=1,p=1$"SALT1"$"ASTRA">$argon2i$m=8,t=4,p=1$"SALT2"$");
 	r = librecrypt_hash(&expected[strlen(expected)], sizeof(expected) - strlen(expected),
 	                    phrase, phraselen, "$argon2i$m=8,t=4,p=1$"SALT2"$*32", NULL);
@@ -267,7 +291,33 @@ main(void)
 	CHECK("$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1,
 	      "$argon2i$m=8,t=4,p=1$"SALT2"$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", expected);
 
+	if (libtest_have_custom_malloc()) {
+		libtest_set_alloc_failure_in(1u);
+		errno = 0;
+		EXPECT(librecrypt_add_algorithm(buf, sizeof(buf), "$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1,
+		                                "$argon2d$m=8,t=1,p=1$"SALT2"$", NULL) == -1);
+		EXPECT(errno == ENOMEM);
+		assert(libtest_get_alloc_failure_in() == 0u);
+	}
+
+	errno = 0;
+	EXPECT(librecrypt_add_algorithm(buf, sizeof(buf),
+	                                "$argon2d$m=8,t=1,p=1$"SALT1"$"
+	                                "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+	                                "$argon2d$m=8,t=1,p=1$"SALT2"$", NULL) == -1);
+	EXPECT(errno == EINVAL);
+
 #endif
+
+	errno = 0;
+	EXPECT(librecrypt_add_algorithm(buf, sizeof(buf), "$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1,
+	                                "$~no~such~algorithm~$", NULL) == -1);
+	EXPECT(errno == ENOSYS);
+
+	errno = 0;
+	EXPECT(librecrypt_add_algorithm(buf, sizeof(buf), "$~no~such~algorithm~$"HASH1,
+	                                "$argon2d$m=8,t=1,p=1$"SALT1"$", NULL) == -1);
+	EXPECT(errno == ENOSYS);
 
 	STOP_RESOURCE_TEST();
 	return 0;
@@ -275,8 +325,3 @@ main(void)
 
 
 #endif
-/* TODO test with hash but asterisk-salt on augend */
-/* TODO test with asterisk-salt on augment */
-/* TODO test with empty salt */
-/* TODO test with salts that are not multiple of 4 base64 characters */
-/* TODO test with hashes that are not multiple of 4 base64 characters */
