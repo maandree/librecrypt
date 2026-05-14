@@ -14,10 +14,10 @@ librecrypt_hash_binary(char *restrict out_buffer, size_t size, const char *phras
 
 
 static void
-check(const char *phrase, const char *settings, const char *hash, size_t hashlen)
+check(const char *phrase, const char *settings, const char *chain, const char *hash, size_t hashlen)
 {
 	size_t len = strlen(phrase);
-	char buf[1024], expected[256], pad;
+	char buf[1024], buf2[sizeof(buf)], expected[256], pad;
 	int strict_pad;
 	const void *lut;
 	ssize_t r;
@@ -45,15 +45,20 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 
 	EXPECT(librecrypt_hash_binary(buf, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
 	EXPECT(librecrypt_hash_binary(NULL, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
+
+	EXPECT(librecrypt_hash_binary(buf, sizeof(buf), expected, hashlen, settings, NULL) == (ssize_t)hashlen);
+	errno = 0;
+	EXPECT(librecrypt_hash_binary(buf2, sizeof(buf2), phrase, len, chain, NULL) == (ssize_t)hashlen);
+	EXPECT(!memcmp(buf, buf2, hashlen));
 }
 
 
 #define CHECK(PHRASE, CONF, HASHLEN, IS_DEFAULT_HASHLEN, HASH)\
 	do {\
-		check(PHRASE, CONF HASH, HASH, (size_t)HASHLEN);\
-		check(PHRASE, CONF "*" #HASHLEN, HASH, (size_t)HASHLEN);\
+		check(PHRASE, CONF HASH, CONF "*" #HASHLEN ">" CONF HASH, HASH, (size_t)HASHLEN);\
+		check(PHRASE, CONF "*" #HASHLEN, CONF "*" #HASHLEN ">" CONF "*" #HASHLEN, HASH, (size_t)HASHLEN);\
 		if (IS_DEFAULT_HASHLEN)\
-			check(PHRASE, CONF, HASH, (size_t)HASHLEN);\
+			check(PHRASE, CONF, CONF ">" CONF, HASH, (size_t)HASHLEN);\
 	} while (0)
 
 
@@ -100,4 +105,3 @@ main(void)
 
 
 #endif
-/* TODO test chaining */

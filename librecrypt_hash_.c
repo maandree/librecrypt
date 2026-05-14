@@ -14,7 +14,7 @@ zero_generator(void *out, size_t n, void *user)
 }
 
 
-static int
+PURE static int
 has_asterisk_encoded_salt(const char *settings)
 {
 	int asterisk = 0;
@@ -87,14 +87,13 @@ librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, siz
 				return -1;
 			}
 			return -1;
-		} else if ((size_t)r_len >= size) {
-			settings_scratch = malloc((size_t)r_len + 1u);
-			if (!settings_scratch)
-				return -1;
-			if (librecrypt_realise_salts(settings_scratch, (size_t)r_len + 1u, settings, rng, NULL) != r_len)
-				abort(); /* $covered$ (impossible) */
-			settings = settings_scratch;
 		}
+		settings_scratch = malloc((size_t)r_len + 1u);
+		if (!settings_scratch)
+			return -1;
+		if (librecrypt_realise_salts(settings_scratch, (size_t)r_len + 1u, settings, rng, NULL) != r_len)
+			abort(); /* $covered$ (impossible) */
+		settings = settings_scratch;
 	}
 
 next:
@@ -389,7 +388,7 @@ main(void)
 		 * librecrypt_hash_ coverts to ENOMEM */
 		libtest_set_alloc_failure_in(1u);
 		r = (ssize_t)snprintf(buf, sizeof(buf), "%s*%zu$", ARGON2ID_PREFIX, (size_t)SSIZE_MAX + 1u);
-		assert(r > 0 && r < sizeof(buf));
+		assert(r > 0 && r < (ssize_t)sizeof(buf));
 		errno = 0;
 		EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, buf, NULL, ASCII_CRYPT) == -1);
 		EXPECT(errno == ENOMEM);
@@ -501,6 +500,7 @@ main(void)
 	STOP_RESOURCE_TEST();
 	return 0;
 }
+/* TODO test mixed algorithm chaining */
 
 
 #endif

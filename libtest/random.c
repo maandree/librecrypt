@@ -3,9 +3,9 @@
 #ifndef TEST
 
 
-unsigned char *libtest_random_pattern = NULL;
-size_t libtest_random_pattern_length = 0u;
-size_t libtest_random_pattern_offset = 0u;
+const unsigned char *volatile libtest_random_pattern = NULL;
+volatile size_t libtest_random_pattern_length = 0u;
+volatile size_t libtest_random_pattern_offset = 0u;
 
 static ssize_t
 genpattern(void *buf, size_t size)
@@ -41,9 +41,9 @@ genpattern(void *buf, size_t size)
 
 
 #if defined(__linux__)
-int libtest_getrandom_real = 1;
-int libtest_getrandom_error = 0;
-size_t libtest_getrandom_max_return = SIZE_MAX;
+volatile int libtest_getrandom_real = 1;
+volatile int libtest_getrandom_error = 0;
+volatile size_t libtest_getrandom_max_return = SIZE_MAX;
 
 ssize_t
 (getrandom)(void *buf, size_t size, unsigned int flags)
@@ -71,10 +71,10 @@ ssize_t
 #endif
 
 
-int libtest_getentropy_real = 1;
-int libtest_getentropy_error = 0;
-size_t libtest_getentropy_calls = 0u;
-int libtest_getentropy_jmp_val = 0;
+volatile int libtest_getentropy_real = 1;
+volatile int libtest_getentropy_error = 0;
+volatile size_t libtest_getentropy_calls = 0u;
+volatile int libtest_getentropy_jmp_val = 0;
 jmp_buf libtest_getentropy_jmp;
 
 int
