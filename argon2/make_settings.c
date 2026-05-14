@@ -47,7 +47,8 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 	algolen = p ? (size_t)(p - algorithm) : strlen(algorithm);
 	if (algolen > 32u) /* just some small value absolute will fit all variants */
 		abort(); /* $covered$ */
-	if (p++ && *p++ == 'v') {
+	if (p && p[1u] == 'v') {
+		p = &p[2u];
 		if (!strncmp(p, "=16", 3u) && (!p[3u] || p[3u] == '$'))
 			version = "16";
 		else if (!strncmp(p, "=19", 3u) && (!p[3u] || p[3u] == '$'))
@@ -81,7 +82,8 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 	} else {
 		ret += len = sizeof("*16") - 1u;
 		min = size ? MIN(len, size - 1u) : 0u;
-		memcpy(out_buffer, "*16", min);
+		if (min)
+			memcpy(out_buffer, "*16", min);
 	}
 	out_buffer = &out_buffer[min];
 	size -= min;
@@ -89,7 +91,8 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 	/* Add tag size (size of hash result) */
 	ret += len = sizeof("$*32") - 1u;
 	min = size ? MIN(len, size - 1u) : 0u;
-	memcpy(out_buffer, "$*32", min);
+	if (min)
+		memcpy(out_buffer, "$*32", min);
 	out_buffer = &out_buffer[min];
 	size -= min;
 

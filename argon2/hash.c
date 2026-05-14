@@ -100,8 +100,9 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	              type[1u] == 's' ? LIBAR2_ARGON2DS :
 	              type[0u] == 'i' ? LIBAR2_ARGON2I :
 	                                LIBAR2_ARGON2D;
-	params.version = version[3u] == '9' ? LIBAR2_ARGON2_VERSION_13 : /* 19 = 0x13 = 1.3 */
-	                                      LIBAR2_ARGON2_VERSION_10;  /* 16 = 0x10 = 1.0 */
+	params.version = !*version            ? LIBAR2_ARGON2_VERSION_10 :
+	                   version[3u] == '9' ? LIBAR2_ARGON2_VERSION_13 : /* 19 = 0x13 = 1.3 */
+	                                        LIBAR2_ARGON2_VERSION_10;  /* 16 = 0x10 = 1.0 */
 	params.t_cost = (uint_least32_t)tcost;
 	params.m_cost = (uint_least32_t)mcost;
 	params.lanes = (uint_least32_t)lanes;

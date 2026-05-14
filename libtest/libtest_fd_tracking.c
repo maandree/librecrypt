@@ -134,11 +134,11 @@ next:
 		new_nopened = 0u;
 	}
 
+	free(opened);
 	if (action >= 0) {
 		opened = new_opened;
 		nopened = new_nopened;
 	} else {
-		free(opened);
 		opened = NULL;
 		nopened = 0u;
 	}

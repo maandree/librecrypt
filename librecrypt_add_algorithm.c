@@ -67,8 +67,15 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 				out_buffer[0u] = '\0';
 			}
 		} else {
+#if defined(__GNUC__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 			if (!hashsize2)
 				goto out;
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
+#endif
 			r_int = snprintf(NULL, 0u, "*%zu", hashsize2);
 			if (r_int < 2)
 				abort(); /* $covered$ (impossible reliably) */
@@ -126,7 +133,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 
 	/* Chain the hash algorithms: write `augent` */
 	min = MIN(prefix1, size);
-	if (out_buffer != augend)
+	if (out_buffer != augend && min)
 		memmove(out_buffer, augend, min);
 	out_buffer = &out_buffer[min];
 	size -= min;

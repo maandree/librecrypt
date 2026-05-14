@@ -34,6 +34,9 @@
 # pragma clang diagnostic ignored "-Wunsafe-buffer-usage" /* completely broken warning */
 # pragma clang diagnostic ignored "-Wdisabled-macro-expansion" /* clang is being silly: it is common practice, and it complains about libc code */
 #endif
+#if defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Winline"
+#endif
 
 
 #include "libtest.h"
@@ -229,6 +232,7 @@ void *__mremap(void *, size_t, size_t, int, ...);
 
 #define assert(EXPR)\
 	do {\
+		atomic_thread_fence(memory_order_seq_cst);\
 		if (!(EXPR)) {\
 			libtest_malloc_internal_usage++;\
 			fprintf(stderr, "Assetion failure at %s:%i: %s\n", __FILE__, __LINE__, #EXPR);\
@@ -299,6 +303,7 @@ void *__mremap(void *, size_t, size_t, int, ...);
 
 # define EXPECT(EXPR)\
 	do {\
+		atomic_thread_fence(memory_order_seq_cst);\
 		if (!(EXPR)) {\
 			libtest_malloc_internal_usage++;\
 			fprintf(stderr, "Failure at %s:%i: %s\n", __FILE__, __LINE__, #EXPR);\

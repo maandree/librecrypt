@@ -74,7 +74,7 @@ libtest_free(void *ptr, enum libtest_zero_check zero_checking)
 #ifdef WITH_BACKTRACE
 	if (!inside_free && getenv("TRACE_MALLOC")) {
 		inside_free = 1;
-		fprintf(stderr, "Memory deallocated: %p\n (alloc-size=%zu, real-size=%zu)",
+		fprintf(stderr, "Memory deallocated: %p (alloc-size=%zu, real-size=%zu)\n",
 		        ptr, mem->requested_alloc_size, mem->real_alloc_size);
 		if (getenv("TRACE_FREE") && !getenv("PRETRACE_FREE"))
 			libtest_print_backtrace(stderr, NULL, "\tat ", 0u, NULL, NULL);

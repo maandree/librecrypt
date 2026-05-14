@@ -184,7 +184,8 @@ next:
 		}
 		min = size ? MIN(size - 1u, prefix) : 0u;
 		size -= min;
-		memcpy(out_buffer, settings, min);
+		if (min)
+			memcpy(out_buffer, settings, min);
 		out_buffer = &out_buffer[min];
 		ret += prefix;
 	}
@@ -386,7 +387,7 @@ main(void)
 	for (i = 0u; i <= sizeof(sbuf); i++) {
 		CANARY_FILL(sbuf);
 		EXPECT(librecrypt_hash_(sbuf, i, NULL, 0u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT) == r);
-		CANARY_X_CHECK(sbuf, (size_t)r, MIN(i, 32u));
+		CANARY_X_CHECK(sbuf, MIN(i, (size_t)r), MIN(i, 32u));
 	}
 
 	if (libtest_have_custom_malloc()) {
@@ -475,7 +476,7 @@ main(void)
 				EXPECT(!memcmp(buf, buf1, n));
 				EXPECT(buf[n] == '\0');
 			}
-			CANARY_X_CHECK(buf, (size_t)r1, MIN(i, 32u));
+			CANARY_X_CHECK(buf, MIN(i, (size_t)r1), MIN(i, 32u));
 		}
 		if (i <= (size_t)r2 + 10u) {
 			CANARY_C_FILL(88, buf);
@@ -485,7 +486,7 @@ main(void)
 				EXPECT(!memcmp(buf, buf2, n));
 				EXPECT(buf[n] == '\0');
 			}
-			CANARY_X_CHECK(buf, (size_t)r2, MIN(i, 32u));
+			CANARY_X_CHECK(buf, MIN(i, (size_t)r2), MIN(i, 32u));
 		}
 		if (i <= (size_t)r3 + 10u) {
 			CANARY_C_FILL(88, buf);

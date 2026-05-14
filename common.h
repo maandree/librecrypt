@@ -24,6 +24,9 @@
 # pragma clang diagnostic ignored "-Wimplicit-void-ptr-cast" /* C++ warning, and we are in internal files */
 # pragma clang diagnostic ignored "-Wc++-keyword" /* C++ warning, and we are in internal files */
 #endif
+#if defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Winline"
+#endif
 
 
 #if defined(__GNUC__)
@@ -512,6 +515,16 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 		EXPECT(libtest_check_no_leaks());\
 	} while (0)
 
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+# include <stdatomic.h>
+# define MEMFENCE() atomic_thread_fence(memory_order_seq_cst)
+#elif defined(_MSC_VER)
+# include <intrin.h>
+# define MEMFENCE() _ReadWriteBarrier()
+#else
+# define MEMFENCE() __asm__ volatile("" ::: "memory")
+#endif
+
 # define EXPECT__(EXPR, HOW, RETEXTRACT, RETEXPECT)\
 	do {\
 		pid_t pid__;\
@@ -534,6 +547,7 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 
 # define EXPECT(EXPR)\
 	do {\
+		MEMFENCE();\
 		if (!(EXPR)) {\
 			int test_expect_saved_errno__ = errno;\
 			libtest_expect_zeroed_on_free(0);\
@@ -547,6 +561,7 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 
 # define assert(EXPR)\
 	do {\
+		MEMFENCE();\
 		if (!(EXPR)) {\
 			libtest_expect_zeroed_on_free(0);\
 			libtest_stop_tracking();\

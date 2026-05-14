@@ -50,7 +50,8 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
 			/* Copy text before next '*' */
 			for (i = 0u; settings[i] != '*'; i++);
 			min = MIN(i, size);
-			memcpy(out_buffer, settings, min);
+			if (min)
+				memcpy(out_buffer, settings, min);
 			out_buffer = &out_buffer[min];
 			size -= min;
 			settings = &settings[i];
@@ -136,7 +137,8 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
 			if (settings[i++] == LIBRECRYPT_ALGORITHM_LINK_DELIMITER)
 				break;
 		min = MIN(i, size);
-		memcpy(out_buffer, settings, min);
+		if (min)
+			memcpy(out_buffer, settings, min);
 		out_buffer = &out_buffer[min];
 		size -= min;
 		settings = &settings[i];
