@@ -140,6 +140,10 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 
 fail:
 	saved_errno = errno;
+	if (scratch) {
+		librecrypt_wipe(scratch, scratch_size);
+		free(scratch);
+	}
 	if (salt) {
 		librecrypt_wipe(salt, saltlen);
 		free(salt);
@@ -210,7 +214,8 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 	errno = 0;\
 	EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, (size_t)UINT32_MAX + 1u,\
 					S(ALGO"m=1024,t=10,p=1$ABCDabcdABCDabcd$"), NULL) == -1);\
-	EXPECT(errno == EINVAL)
+	EXPECT(errno == EINVAL);\
+	libtest_set_alloc_failure_in(0u)
 #else
 # define CHECK_MEGAPASSPHRASE(ALGO)\
 	((void)0)
