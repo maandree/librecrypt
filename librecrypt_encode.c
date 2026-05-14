@@ -39,7 +39,7 @@ librecrypt_encode(char *out_buffer, size_t size, const void *binary, size_t len,
 
 	/* NUL-terminate output */
 	size -= 1u;
-	out_buffer[n < size ? n : size] = '\0';
+	out_buffer[MIN(n, size)] = '\0';
 
 	/* Deal with situation where number of bytes is not divisible
 	 * byte there, and set excess bits to 0; padding characters are
@@ -168,8 +168,8 @@ check(const char *binary, size_t binary_len, const char *ascii, size_t ascii_len
 	for (i = 0u; i <= padded_ascii_len; i++) {
 		memset(buf, 99, sizeof(buf));
 		EXPECT(librecrypt_encode(buf, i + 1u, binary, binary_len, lut, '=') == padded_ascii_len);
-		j = i < ascii_len ? i : ascii_len;
-		n = i < padded_ascii_len ? i : padded_ascii_len;
+		j = MIN(i, ascii_len);
+		n = MIN(i, padded_ascii_len);
 		EXPECT(!memcmp(buf, ascii, j));
 		for (; j < n; j++)
 			EXPECT(buf[j] == '=');

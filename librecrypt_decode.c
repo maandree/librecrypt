@@ -186,21 +186,21 @@ check(const char *binary, size_t binary_len, const char *ascii, size_t unpadded_
 	for (i = 0u; i < sizeof(buf); i++) {
 		memset(buf, 99, sizeof(buf));
 		EXPECT(librecrypt_decode(buf, i, ascii, unpadded_len, lut, '\0', 0) == (ssize_t)binary_len);
-		j = i < binary_len ? i : binary_len;
+		j = MIN(i, binary_len);
 		EXPECT(!memcmp(buf, binary, j));
 		for (; j < sizeof(buf); j++)
 			EXPECT(buf[j] == 99);
 
 		memset(buf, 99, sizeof(buf));
 		EXPECT(librecrypt_decode(buf, i, ascii, unpadded_len, lut, '\0', 1) == (ssize_t)binary_len);
-		j = i < binary_len ? i : binary_len;
+		j = MIN(i, binary_len);
 		EXPECT(!memcmp(buf, binary, j));
 		for (; j < sizeof(buf); j++)
 			EXPECT(buf[j] == 99);
 
 		memset(buf, 99, sizeof(buf));
 		EXPECT(librecrypt_decode(buf, i, ascii, unpadded_len, lut, '=', 0) == (ssize_t)binary_len);
-		j = i < binary_len ? i : binary_len;
+		j = MIN(i, binary_len);
 		EXPECT(!memcmp(buf, binary, j));
 		for (; j < sizeof(buf); j++)
 			EXPECT(buf[j] == 99);
@@ -208,7 +208,7 @@ check(const char *binary, size_t binary_len, const char *ascii, size_t unpadded_
 		if (padded_len == unpadded_len) {
 			memset(buf, 99, sizeof(buf));
 			EXPECT(librecrypt_decode(buf, i, ascii, unpadded_len, lut, '=', 1) == (ssize_t)binary_len);
-			j = i < binary_len ? i : binary_len;
+			j = MIN(i, binary_len);
 			EXPECT(!memcmp(buf, binary, j));
 			for (; j < sizeof(buf); j++)
 				EXPECT(buf[j] == 99);
@@ -228,7 +228,7 @@ check(const char *binary, size_t binary_len, const char *ascii, size_t unpadded_
 
 		memset(buf, 99, sizeof(buf));
 		EXPECT(librecrypt_decode(buf, i, ascii, padded_len, lut, '=', 0) == (ssize_t)binary_len);
-		j = i < binary_len ? i : binary_len;
+		j = MIN(i, binary_len);
 		EXPECT(!memcmp(buf, binary, j));
 		for (; j < sizeof(buf); j++)
 			EXPECT(buf[j] == 99);
@@ -236,7 +236,7 @@ check(const char *binary, size_t binary_len, const char *ascii, size_t unpadded_
 		if (check_good_padding) {
 			memset(buf, 99, sizeof(buf));
 			EXPECT(librecrypt_decode(buf, i, ascii, padded_len, lut, '=', 1) == (ssize_t)binary_len);
-			j = i < binary_len ? i : binary_len;
+			j = MIN(i, binary_len);
 			EXPECT(!memcmp(buf, binary, j));
 			for (; j < sizeof(buf); j++)
 				EXPECT(buf[j] == 99);

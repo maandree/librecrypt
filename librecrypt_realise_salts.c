@@ -49,7 +49,7 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
 		while (nasterisks--) {
 			/* Copy text before next '*' */
 			for (i = 0u; settings[i] != '*'; i++);
-			min = i < size ? i : size;
+			min = MIN(i, size);
 			memcpy(out_buffer, settings, min);
 			out_buffer = &out_buffer[min];
 			size -= min;
@@ -124,7 +124,7 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
 			size -= left;
 
 			/* Write padding charaters */
-			right = right < size ? right : size;
+			right = MIN(right, size);
 			for (i = 0u; i < right; i++)
 				out_buffer[right] = pad; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
 			out_buffer = &out_buffer[right];
@@ -135,7 +135,7 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
 		for (i = 0u; settings[i];)
 			if (settings[i++] == LIBRECRYPT_ALGORITHM_LINK_DELIMITER)
 				break;
-		min = i < size ? i : size;
+		min = MIN(i, size);
 		memcpy(out_buffer, settings, min);
 		out_buffer = &out_buffer[min];
 		size -= min;

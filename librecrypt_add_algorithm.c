@@ -45,7 +45,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 		}
 		ret = prefix1 + 1u + prefix2;
 		if (size) {
-			min = prefix1 < size ? prefix1 : size;
+			min = MIN(prefix1, size);
 			if (out_buffer != augend)
 				memmove(out_buffer, augend, min);
 			out_buffer = &out_buffer[min];
@@ -54,7 +54,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 				*out_buffer++ = LIBRECRYPT_ALGORITHM_LINK_DELIMITER;
 				size -= 1u;
 			}
-			min = prefix2 < size ? prefix2 : size;
+			min = MIN(prefix2, size);
 			memcpy(out_buffer, augment, min);
 			out_buffer = &out_buffer[min];
 			size -= min;
@@ -125,7 +125,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 	}
 
 	/* Chain the hash algorithms: write `augent` */
-	min = prefix1 < size ? prefix1 : size;
+	min = MIN(prefix1, size);
 	if (out_buffer != augend)
 		memmove(out_buffer, augend, min);
 	out_buffer = &out_buffer[min];
@@ -133,7 +133,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 	if (hashsize1 && size) {
 		if (snprintf(out_buffer, size + 1u, "*%zu", hashsize1) != r_int)
 			abort(); /* $covered$ (impossible reliably) */
-		min = (size_t)r_int < size ? (size_t)r_int : size;
+		min = MIN((size_t)r_int, size);
 		out_buffer = &out_buffer[min];
 		size -= min;
 	}
@@ -196,7 +196,7 @@ main(void)
 			EXPECT(librecrypt_add_algorithm(buf, i, (AUGEND), (AUGMENT), NULL) == r);\
 			if (!i)\
 				break;\
-			min = i - 1u < (size_t)r ? i - 1u : (size_t)r;\
+			min = MIN(i - 1u, (size_t)r);\
 			EXPECT(!buf[min]);\
 			EXPECT(!memcmp(buf, (RESULT), min));\
 		}\
@@ -215,7 +215,7 @@ main(void)
 			EXPECT(librecrypt_add_algorithm(buf, i, buf, (AUGMENT), NULL) == r);\
 			if (!i)\
 				break;\
-			min = i - 1u < (size_t)r ? i - 1u : (size_t)r;\
+			min = MIN(i - 1u, (size_t)r);\
 			EXPECT(!buf[min]);\
 			EXPECT(!memcmp(buf, (RESULT), min));\
 		}\

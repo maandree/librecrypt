@@ -51,7 +51,7 @@ librecrypt_rng_(void *out, size_t n, void *user)
 
 	/* Use getentropy(3posix) */
 	for (;;) {
-		min = n < 256u ? n : 256u;
+		min = MIN(n, 256u);
 		if (getentropy(buf, min)) {
 			if (errno != EINTR)
 				break;
@@ -376,7 +376,7 @@ main(void)
 	do {\
 		n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);\
 		EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));\
-		EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));\
+		EXPECT(memcmp(buf1, buf2, (size_t)MIN(n1, n2)));\
 	} while (0)
 
 #define CHECK2()\
@@ -385,7 +385,7 @@ main(void)
 		n2 = librecrypt_rng_(buf2, sizeof(buf2), &user);\
 		EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));\
 		EXPECT(n2 >= 128 && (size_t)n2 <= sizeof(buf2));\
-		EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));\
+		EXPECT(memcmp(buf1, buf2, (size_t)MIN(n1, n2)));\
 	} while (0)
 
 	/* Test with output pattern (useful for other tests) */
@@ -504,7 +504,7 @@ main(void)
 	/* Check with getentropy(3) with small buffer */
 	n1 = librecrypt_rng_(buf1, 64u, NULL);
 	EXPECT(n1 == 64u);
-	EXPECT(memcmp(buf1, buf2, (size_t)(n1 < n2 ? n1 : n2)));
+	EXPECT(memcmp(buf1, buf2, (size_t)MIN(n1, n2)));
 
 	/* Don't use getentropy(3) for reminder of the test */
 	libtest_getentropy_error = ENOSYS;

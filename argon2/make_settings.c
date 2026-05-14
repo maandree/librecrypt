@@ -26,8 +26,8 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 		memcost >>= 10;
 		memcost += memcost_round_up;
 	}
-	memcost = memcost < LIBAR2_MIN_M_COST ? LIBAR2_MIN_M_COST : memcost;
-	memcost = memcost > LIBAR2_MAX_M_COST ? LIBAR2_MAX_M_COST : memcost;
+	memcost = MAX(memcost, LIBAR2_MIN_M_COST);
+	memcost = MIN(memcost, LIBAR2_MAX_M_COST);
 
 	/* Adjust `timecost` for algorithm */
 	if (!timecost) {
@@ -36,8 +36,8 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 		timecost = 40960u;
 	}
 	timecost /= memcost;
-	timecost = timecost < LIBAR2_MIN_T_COST ? LIBAR2_MIN_T_COST : timecost;
-	timecost = timecost > LIBAR2_MAX_T_COST ? LIBAR2_MAX_T_COST : timecost;
+	timecost = MAX(timecost, LIBAR2_MIN_T_COST);
+	timecost = MIN(timecost, LIBAR2_MAX_T_COST);
 
 	/* Get version */
 	p = algorithm;
@@ -57,13 +57,12 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 	}
 
 	/* Write algorithm and parameters */
-	r = snprintf(out_buffer, size, "%.*s$v=%s$m=%zu,t=%llu,p=1$",
-	             (int)algolen, algorithm, version,
-	             memcost, (unsigned long long int)timecost);
+	r = snprintf(out_buffer, size, "%.*s$v=%s$m=%zu,t=%ju,p=1$",
+	             (int)algolen, algorithm, version, memcost, timecost);
 	if (r < (int)sizeof("$argon2_$v=__$m=_,t=_,p=1$") - 1)
 		abort(); /* $covered$ (impossible) */
 	ret = (size_t)r;
-	min = size ? ret < size - 1u ? ret : size - 1u : 0u;
+	min = size ? MIN(ret, size - 1u) : 0u;
 	out_buffer = &out_buffer[min];
 	size -= min;
 
@@ -72,7 +71,7 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 		/* 16 bytes is 128 bits, and 128 = 21*6+2, so that is
 		 * 21 full base-64 characeters and 1 that only use 2 bits */
 		ret += len = 22u;
-		min = size ? len < size - 1u ? len : size - 1u : 0u;
+		min = size ? MIN(len, size - 1u) : 0u;
 		if (librecrypt_fill_with_random_(out_buffer, min, rng, user))
 			return -1;
 		if (min == len)
@@ -81,7 +80,7 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 			out_buffer[i] = librecrypt_common_rfc4848s4_encoding_lut_[((unsigned char *)out_buffer)[i]];
 	} else {
 		ret += len = sizeof("*16") - 1u;
-		min = size ? len < size - 1u ? len : size - 1u : 0u;
+		min = size ? MIN(len, size - 1u) : 0u;
 		memcpy(out_buffer, "*16", min);
 	}
 	out_buffer = &out_buffer[min];
@@ -89,7 +88,7 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 
 	/* Add tag size (size of hash result) */
 	ret += len = sizeof("$*32") - 1u;
-	min = size ? len < size - 1u ? len : size - 1u : 0u;
+	min = size ? MIN(len, size - 1u) : 0u;
 	memcpy(out_buffer, "$*32", min);
 	out_buffer = &out_buffer[min];
 	size -= min;

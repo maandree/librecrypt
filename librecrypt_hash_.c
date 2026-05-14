@@ -182,7 +182,7 @@ next:
 			/* Include hash length specification */
 			prefix = n;
 		}
-		min = size ? size - 1u < prefix ? size - 1u : prefix : 0u;
+		min = size ? MIN(size - 1u, prefix) : 0u;
 		size -= min;
 		memcpy(out_buffer, settings, min);
 		out_buffer = &out_buffer[min];
@@ -252,7 +252,7 @@ next:
 			                              size < hash_size ? phrase_scratches[phrase_scratch_i] : out_buffer,
 			                              hash_size, algo->encoding_lut, algo->strict_pad ? algo->pad : '\0');
 	include_ascii:
-			min = size ? size - 1u < ascii_len ? size - 1u : ascii_len : 0u;
+			min = size ? MIN(size - 1u, ascii_len) : 0u;
 			out_buffer = &out_buffer[min];
 			size -= min;
 			ret += ascii_len;
@@ -463,7 +463,7 @@ main(void)
 			memset(buf, 88, sizeof(buf));
 			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT) == r1);
 			if (i) {
-				n = i - 1u < (size_t)r1 ? i - 1u : (size_t)r1;
+				n = MIN(i - 1u, (size_t)r1);
 				EXPECT(!memcmp(buf, buf1, n));
 				EXPECT(buf[n] == '\0');
 			}
@@ -472,7 +472,7 @@ main(void)
 			memset(buf, 88, sizeof(buf));
 			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
 			if (i) {
-				n = i - 1u < (size_t)r2 ? i - 1u : (size_t)r2;
+				n = MIN(i - 1u, (size_t)r2);
 				EXPECT(!memcmp(buf, buf2, n));
 				EXPECT(buf[n] == '\0');
 			}
@@ -480,7 +480,7 @@ main(void)
 		if (i <= (size_t)r3 + 10u) {
 			memset(buf, 88, sizeof(buf));
 			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
-			EXPECT(!memcmp(buf, buf3, i < (size_t)r3 ? i : (size_t)r3));
+			EXPECT(!memcmp(buf, buf3, MIN(i, (size_t)r3)));
 		}
 	}
 

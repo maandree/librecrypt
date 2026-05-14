@@ -125,7 +125,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	if (libar2_hash(scratch ? scratch : out_buffer, REMOVE_CONST(phrase), len, &params, &ctx))
 		goto fail;
 	if (scratch && out_buffer)
-		memcpy(out_buffer, scratch, params.hashlen < size ? params.hashlen : size);
+		memcpy(out_buffer, scratch, MIN(params.hashlen, size));
 
 	/* same rationale as for `ctx.autoerase_salt = 1;` */
 	if (scratch) {
@@ -190,7 +190,7 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 	for (i = 1u; i <= hashlen * 2u; i++) {
 		memset(buf, 0, sizeof(buf));
 		EXPECT(librecrypt__argon2__hash(buf, i, phrase, len, settings, prefix, NULL) == 0);
-		EXPECT(!memcmp(expected, buf, i < hashlen ? i : hashlen));
+		EXPECT(!memcmp(expected, buf, MIN(i, hashlen)));
 	}
 
 }

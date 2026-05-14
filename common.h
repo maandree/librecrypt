@@ -63,6 +63,16 @@
  */
 #define ELEMSOF(ARRAY) (sizeof(ARRAY) / sizeof(*(ARRAY)))
 
+/**
+ * Select the minimum of two values
+ */
+#define MIN(A, B) ((A) < (B) ? (A) : (B))
+
+/**
+ * Select the maximum of two values
+ */
+#define MAX(A, B) ((A) > (B) ? (A) : (B))
+
 
 #include "algorithms.h"
 
