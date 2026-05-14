@@ -176,6 +176,7 @@ main(void)
 	size_t i, min, phraselen;
 	int strict_pad;
 	const void *lut;
+	size_t n;
 	ssize_t r;
 
 	SET_UP_ALARM();
@@ -283,10 +284,11 @@ main(void)
 	phraselen = (size_t)r;
 
 	stpcpy(expected, "$argon2d$m=8,t=1,p=1$"SALT1"$"ASTRA">$argon2i$m=8,t=4,p=1$"SALT2"$");
-	r = librecrypt_hash(&expected[strlen(expected)], sizeof(expected) - strlen(expected),
+	n = strlen(expected);
+	r = librecrypt_hash(&expected[n], sizeof(expected) - n,
 	                    phrase, phraselen, "$argon2i$m=8,t=4,p=1$"SALT2"$*32", NULL);
-	assert(r > 0 && (size_t)r < sizeof(expected) - strlen(expected));
-	assert(!expected[strlen(expected) + (size_t)r]);
+	assert(r > 0 && (size_t)r < sizeof(expected) - n);
+	assert(!expected[n + (size_t)r]);
 	CHECK("$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1, "$argon2i$m=8,t=4,p=1$"SALT2"$*32", expected);
 	CHECK("$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1,
 	      "$argon2i$m=8,t=4,p=1$"SALT2"$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", expected);
