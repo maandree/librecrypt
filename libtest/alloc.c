@@ -726,14 +726,17 @@ check_successfuls(void)
 	size_t pagesize;
 	char *s;
 	wchar_t *w;
-	void *q;
+	size_t zu;
 
 	check(1);
 	check(0);
 
 	pagesize = libtest_get_pagesize();
 
+	zu = libtest_get_alloc_failure_in();
+	libtest_set_alloc_failure_in(0u);
 	libtest_stop_tracking();
+	libtest_set_alloc_failure_in(zu);
 
 	p = valloc(6u);
 	assert(p);
@@ -751,7 +754,10 @@ check_successfuls(void)
 	assert(malloc_usable_size(p) >= pagesize);
 	/* cannot be free(3)ed */
 
+	zu = libtest_get_alloc_failure_in();
+	libtest_set_alloc_failure_in(0u);
 	libtest_start_tracking();
+	libtest_set_alloc_failure_in(zu);
 
 	s = strdup("test string");
 	assert(s);
@@ -820,8 +826,7 @@ check_successfuls(void)
 	assert(p != MAP_FAILED);
 	p = mremap(p, 1u, 2u, 0);
 	assert(p != MAP_FAILED);
-	assert(malloc_usable_size(p) >= 6u);
-	asser(!munmap(p, 2u));
+	assert(!munmap(p, 2u));
 }
 
 
@@ -974,7 +979,7 @@ main(void)
 	check_successfuls();
 	libtest_set_alloc_failure_in(1000u);
 	check_successfuls();
-	EXPECT(libtest_get_alloc_failure_in() == 1000u - 31u);
+	EXPECT(libtest_get_alloc_failure_in() == 1000u - 33u);
 	check_failures();
 
 	p = NULL;

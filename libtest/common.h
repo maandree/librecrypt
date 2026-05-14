@@ -9,6 +9,7 @@
 # include <sys/syscall.h>
 #endif
 #include <sys/mman.h>
+#include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -178,6 +179,14 @@ HIDDEN size_t libtest_get_pagesize(void);
 HIDDEN void *libtest_alloc(struct meminfo *);
 HIDDEN void libtest_free(void *, enum libtest_zero_check);
 HIDDEN int libtest_check_custom_mmap(void);
+
+
+/**
+ * action=1 mean start/resume tracking;
+ * action=0 mean suspend tracking;
+ * action=-1 mean stop tracking and report resource leaks
+ */
+HIDDEN int libtest_fd_tracking(int action);
 
 #ifdef WITH_BACKTRACE
 HIDDEN void libtest_print_backtrace(FILE *, const char *prefix, const char *indent,

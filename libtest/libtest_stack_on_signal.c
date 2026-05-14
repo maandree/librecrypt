@@ -62,6 +62,14 @@ libtest_stack_on_signal(int signo, struct sigaction *old_out)
 void
 libtest_stop_stack_on_signal(int signo, const struct sigaction *old)
 {
+	struct sigaction sa;
+
+	if (!old) {
+		memset(&sa, 0, sizeof(sa));
+		sa.sa_handler = SIG_DFL;
+		old = &sa;
+	}
+
 	assert(!sigaction(signo, old, NULL));
 	destroy_altstack();
 }

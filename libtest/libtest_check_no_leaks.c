@@ -46,8 +46,7 @@ out:
 int
 libtest_check_no_leaks(void)
 {
-	/* TODO check file descriptor leaks */
-	return check_no_memory_leaks();
+	return libtest_fd_tracking(-1) & check_no_memory_leaks();
 }
 
 

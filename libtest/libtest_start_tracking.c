@@ -7,6 +7,7 @@ void
 libtest_start_tracking(void)
 {
 	libtest_malloc_accept_leakage = 0;
+	libtest_fd_tracking(1);
 }
 
 
