@@ -77,9 +77,7 @@ libtest_alloc(struct meminfo *meminfo)
 
 	saved_errno = errno;
 	meminfo_fixup(meminfo);
-#ifdef WITH_BACKTRACE
 	meminfo->accept_leakage |= libtest_malloc_internal_usage > 0;
-#endif
 
 	/* Get backtrace (have to do it now to calculate `backtrace_n` for allocation) */
 #ifdef WITH_BACKTRACE
@@ -186,6 +184,7 @@ libtest_alloc(struct meminfo *meminfo)
 		libtest_allocs_tail.prev->next = meminfo;
 		meminfo->prev = libtest_allocs_tail.prev;
 		meminfo->next = &libtest_allocs_tail;
+		libtest_allocs_tail.prev = meminfo;
 		SPINUNLOCK(libtest_allocs_list_spinlock);
 		recursion_guard = 0;
 	}

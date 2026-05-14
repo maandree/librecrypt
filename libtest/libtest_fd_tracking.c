@@ -60,7 +60,6 @@ libtest_fd_tracking(int action)
 	DIR *dir;
 	struct dirent *f;
 	int ret = 1, dfd, name, digit;
-	int accept_memleak = libtest_malloc_accept_leakage;
 	size_t i, j;
 	char *path;
 	int old_tracking_state;
@@ -72,10 +71,7 @@ libtest_fd_tracking(int action)
 	if (old_tracking_state == action)
 		return 1;
 
-	/* so libtest doesn't complain about us not zeroing before freeing,
-	 * and so it will not report memory leaks in fprintf from our
-	 * resource leak report */
-	libtest_malloc_accept_leakage = 1;
+	libtest_malloc_internal_usage++;
 
 	dir = opendir("/dev/fd/");
 	assert(dir != NULL);
@@ -95,6 +91,7 @@ next:
 			continue;
 
 		new_opened = realloc(new_opened, (new_nopened + 1u) * sizeof(*new_opened));
+		assert(new_opened);
 		new_opened[new_nopened].name = name;
 		new_opened[new_nopened].leakable = action;
 		new_nopened += 1u;
@@ -146,7 +143,7 @@ next:
 		nopened = 0u;
 	}
 
-	libtest_malloc_accept_leakage = accept_memleak;
+	libtest_malloc_internal_usage--;
 	return ret;
 }
 
