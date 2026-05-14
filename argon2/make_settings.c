@@ -164,14 +164,17 @@ check(ssize_t (*gen)(char *, size_t, const char *, size_t, uintmax_t,
 	ssize_t r;
 
 	if (!algo_out) {
+		CANARY_FILL(buf);
 		errno = 0;
 		EXPECT((*gen)(buf, sizeof(buf), algo_in, 0u, 0u, 0, &saltgen, &saltbyte) == -1);
 		EXPECT(errno == ENOSYS);
+		CANARY_CHECK(buf, 0u);
 		return;
 	}
 
 	off = strlen(algo_out);
 
+	CANARY_FILL(buf);
 	r = (*gen)(buf, sizeof(buf), algo_in, 0u, 0u, 0, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
@@ -179,40 +182,53 @@ check(ssize_t (*gen)(char *, size_t, const char *, size_t, uintmax_t,
 	EXPECT(!strcmp(&buf[off], "m=4096,t=10,p=1$*16$*32"));
 	assert(LIBAR2_MIN_SALTLEN <= 16u && 16u <= LIBAR2_MAX_SALTLEN);
 	assert(LIBAR2_MIN_HASHLEN <= 32u && 32u <= LIBAR2_MAX_HASHLEN);
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
 	EXPECT((*gen)(NULL, 0u, algo_in, 0u, 0u, 0, &saltgen, &saltbyte) == r);
 	for (i = 1u; i <= (size_t)r; i++) {
+		CANARY_FILL(buf2);
 		EXPECT((*gen)(buf2, i, algo_in, 0u, 0u, 0, &saltgen, &saltbyte) == r);
 		EXPECT(!buf2[i - 1u]);
 		EXPECT(!memcmp(buf2, buf, i - 1u));
+		CANARY_CHECK(buf2, i);
 	}
 
+	CANARY_FILL(buf);
 	r = (*gen)(buf, sizeof(buf), algo_in, 8192u << 10, 0u, 0, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strncmp(buf, algo_out, off));
 	EXPECT(!strcmp(&buf[off], "m=8192,t=5,p=1$*16$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
+	CANARY_FILL(buf);
 	r = (*gen)(buf, sizeof(buf), algo_in, 8192u << 10, (uintmax_t)81920u, 0, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strncmp(buf, algo_out, off));
 	EXPECT(!strcmp(&buf[off], "m=8192,t=10,p=1$*16$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
+	CANARY_FILL(buf);
 	saltbyte = 0u;
 	r = (*gen)(buf, sizeof(buf), algo_in, 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strncmp(buf, algo_out, off));
 	EXPECT(!strcmp(&buf[off], "m=8192,t=10,p=1$AAAAAAAAAAAAAAAAAAAAAA$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
+	CANARY_FILL(buf);
 	EXPECT((*gen)(buf, sizeof(buf), algo_in, 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte) == r);
 	for (i = 1u; i <= (size_t)r; i++) {
+		CANARY_FILL(buf2);
 		EXPECT((*gen)(buf2, i, algo_in, 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte) == r);
 		EXPECT(!buf2[i - 1u]);
 		EXPECT(!memcmp(buf2, buf, i - 1u));
+		CANARY_CHECK(buf2, i);
 	}
 
+	CANARY_FILL(buf);
 	r = (*gen)(buf, sizeof(buf), algo_in, 8192u << 10, (uintmax_t)81920u, 1, NULL, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
@@ -221,51 +237,67 @@ check(ssize_t (*gen)(char *, size_t, const char *, size_t, uintmax_t,
 	memcpy(buf2, buf, (size_t)r);
 	memset(&buf[off + sizeof("m=8192,t=10,p=1$") - 1u], 'A', 22u);
 	EXPECT(!strcmp(&buf[off], "m=8192,t=10,p=1$AAAAAAAAAAAAAAAAAAAAAA$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
+	CANARY_FILL(buf);
 	EXPECT((*gen)(buf, sizeof(buf), algo_in, 8192u << 10, (uintmax_t)81920u, 1, NULL, &saltbyte) == r);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(memcmp(buf, buf2, (size_t)r));
 	memset(&buf[off + sizeof("m=8192,t=10,p=1$") - 1u], 'A', 22u);
 	EXPECT(!strcmp(&buf[off], "m=8192,t=10,p=1$AAAAAAAAAAAAAAAAAAAAAA$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
+	CANARY_FILL(buf);
 	saltbyte = 255u;
 	r = (*gen)(buf, sizeof(buf), algo_in, 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strncmp(buf, algo_out, off));
 	EXPECT(!strcmp(&buf[off], "m=8192,t=10,p=1$/////////////////////w$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
+	CANARY_FILL(buf);
 	r = (*gen)(buf, sizeof(buf), algo_in, 0u, (uintmax_t)81920u, 0, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strncmp(buf, algo_out, off));
 	EXPECT(!strcmp(&buf[off], "m=4096,t=20,p=1$*16$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
+	CANARY_FILL(buf);
 	r = (*gen)(buf, sizeof(buf), algo_in, 1u, 1u, 0, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strncmp(buf, algo_out, off));
 	EXPECT(!strcmp(&buf[off], "m=8,t=1,p=1$*16$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
+	CANARY_FILL(buf);
 	r = (*gen)(buf, sizeof(buf), algo_in, 1u, 1u, 0, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strncmp(buf, algo_out, off));
 	EXPECT(!strcmp(&buf[off], "m=8,t=1,p=1$*16$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
+	CANARY_FILL(buf);
 	r = (*gen)(buf, sizeof(buf), algo_in, (10u << 10) + 512u, 1u, 0, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strncmp(buf, algo_out, off));
 	EXPECT(!strcmp(&buf[off], "m=11,t=1,p=1$*16$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
+	CANARY_FILL(buf);
 	r = (*gen)(buf, sizeof(buf), algo_in, (10u << 10) + 511u, 1u, 0, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strncmp(buf, algo_out, off));
 	EXPECT(!strcmp(&buf[off], "m=10,t=1,p=1$*16$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
+	CANARY_FILL(buf);
 	r = (*gen)(buf, sizeof(buf), algo_in, SIZE_MAX, 1u, 0, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
@@ -280,7 +312,9 @@ check(ssize_t (*gen)(char *, size_t, const char *, size_t, uintmax_t,
 		v = v * 10u + d;
 	}
 	EXPECT(v <= (uintmax_t)LIBAR2_MAX_M_COST);
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
+	CANARY_FILL(buf);
 	r = (*gen)(buf, sizeof(buf), algo_in, 1u, UINTMAX_MAX, 0, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
@@ -295,6 +329,7 @@ check(ssize_t (*gen)(char *, size_t, const char *, size_t, uintmax_t,
 		v = v * 10u + d;
 	}
 	EXPECT(v <= (uintmax_t)LIBAR2_MAX_T_COST);
+	CANARY_CHECK(buf, (size_t)r + 1u);
 
 	errno = 0;
 	EXPECT((*gen)(buf, sizeof(buf), algo_in, 0u, 0u, 1, &saltfail, NULL) == -1);

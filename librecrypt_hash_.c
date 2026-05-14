@@ -368,19 +368,26 @@ main(void)
 # define ARGON2ID_PREFIX "$argon2id$v=19$m=8,t=1,p=1$"
 # define ARGON2ID_STR ARGON2ID_PREFIX SALT"$*32"
 
+	CANARY_FILL(buf);
 	errno = 0;
 	EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, "!"ARGON2ID_STR, NULL, ASCII_CRYPT) == -1);
 	EXPECT(errno == ENOSYS);
+	CANARY_CHECK(buf, 0u);
 
+	CANARY_FILL(buf);
 	errno = 0;
 	EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, ARGON2ID_PREFIX"*"LARGE"$", NULL, ASCII_CRYPT) == -1);
 	EXPECT(errno == ENOMEM);
+	CANARY_CHECK(buf, sizeof(ARGON2ID_PREFIX"*"));
 
 	r = librecrypt_hash_(NULL, 0u, "hello", 5u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT);
 	EXPECT(r > 0);
 	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT) == r);
-	for (i = 0u; i <= sizeof(sbuf); i++)
+	for (i = 0u; i <= sizeof(sbuf); i++) {
+		CANARY_FILL(sbuf);
 		EXPECT(librecrypt_hash_(sbuf, i, NULL, 0u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT) == r);
+		CANARY_X_CHECK(sbuf, (size_t)r, MIN(i, 32u));
+	}
 
 	if (libtest_have_custom_malloc()) {
 		/* target if-statement in zero_generator, using alloc failure as guarding;
@@ -434,6 +441,7 @@ main(void)
 
 	}
 
+	CANARY_FILL(buf1);
 	memset(buf1, 99, sizeof(buf1));
 	r1 = librecrypt_hash_(buf1, sizeof(buf1), NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT);
 	EXPECT(r1 > 0);
@@ -445,13 +453,13 @@ main(void)
 	EXPECT(r1c > 0);
 	EXPECT(r1c == r1 + 2 * (ssize_t)sizeof(ARGON2ID_STR));
 
-	memset(buf2, 99, sizeof(buf2));
+	CANARY_FILL(buf2);
 	EXPECT((r2 = librecrypt_hash_(buf2, sizeof(buf2), NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_HASH)) > 0);
 	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X3(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
-	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X4(ARGON2ID_STR), NULL, ASCII_HASH == r2));
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X4(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
 	EXPECT(r2 < r1);
 
-	memset(buf3, 99, sizeof(buf3));
+	CANARY_FILL(buf3);
 	EXPECT((r3 = librecrypt_hash_(buf3, sizeof(buf3), NULL, 0u, X2(ARGON2ID_STR), NULL, BINARY_HASH)) > 0);
 	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X3(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
 	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X4(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
@@ -460,29 +468,36 @@ main(void)
 	assert((size_t)r1 < sizeof(buf) - 11u);
 	for (i = (size_t)r1 + 11u; i < SIZE_MAX; i--) {
 		if (i <= (size_t)r1 + 10u) {
-			memset(buf, 88, sizeof(buf));
+			CANARY_C_FILL(88, buf);
 			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT) == r1);
 			if (i) {
 				n = MIN(i - 1u, (size_t)r1);
 				EXPECT(!memcmp(buf, buf1, n));
 				EXPECT(buf[n] == '\0');
 			}
+			CANARY_X_CHECK(buf, (size_t)r1, MIN(i, 32u));
 		}
 		if (i <= (size_t)r2 + 10u) {
-			memset(buf, 88, sizeof(buf));
+			CANARY_C_FILL(88, buf);
 			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
 			if (i) {
 				n = MIN(i - 1u, (size_t)r2);
 				EXPECT(!memcmp(buf, buf2, n));
 				EXPECT(buf[n] == '\0');
 			}
+			CANARY_X_CHECK(buf, (size_t)r2, MIN(i, 32u));
 		}
 		if (i <= (size_t)r3 + 10u) {
-			memset(buf, 88, sizeof(buf));
+			CANARY_C_FILL(88, buf);
 			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
 			EXPECT(!memcmp(buf, buf3, MIN(i, (size_t)r3)));
+			CANARY_X_CHECK(buf, MIN(i, (size_t)r3), MIN(i, 32u));
 		}
 	}
+
+	CANARY_X_CHECK(buf1, (size_t)r1, 32u);
+	CANARY_X_CHECK(buf2, (size_t)r2, 32u);
+	CANARY_X_CHECK(buf3, (size_t)r3, 32u);
 
 	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT) == r1);
 	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X3(ARGON2ID_STR), NULL, ASCII_CRYPT) == r1b);

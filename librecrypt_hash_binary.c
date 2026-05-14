@@ -14,7 +14,7 @@ librecrypt_hash_binary(char *restrict out_buffer, size_t size, const char *phras
 
 
 static void
-check(const char *phrase, const char *settings, const char *chain, const char *hash, size_t hashlen)
+check(const char *phrase, const char *settings, const char *chain, const char *hash, size_t hashlen, size_t scratchsize)
 {
 	size_t len = strlen(phrase);
 	char buf[1024], buf2[sizeof(buf)], expected[256], pad;
@@ -31,34 +31,44 @@ check(const char *phrase, const char *settings, const char *chain, const char *h
 	r = librecrypt_decode(expected, sizeof(expected), hash, strlen(hash), lut, pad, strict_pad);
 	assert(r > 0 && (size_t)r == hashlen);
 
-	memset(buf, 0, sizeof(buf));
+	CANARY_FILL(buf);
 	EXPECT(librecrypt_hash_binary(buf, sizeof(buf), phrase, len, settings, NULL) == (ssize_t)hashlen);
 	EXPECT(!memcmp(buf, expected, hashlen));
+	CANARY_X_CHECK(buf, hashlen, scratchsize);
 
-	memset(buf, 0, sizeof(buf));
+	CANARY_FILL(buf);
 	EXPECT(librecrypt_hash_binary(buf, hashlen, phrase, len, settings, NULL) == (ssize_t)hashlen);
 	EXPECT(!memcmp(buf, expected, hashlen));
+	CANARY_X_CHECK(buf, hashlen, scratchsize);
 
-	memset(buf, 0, sizeof(buf));
+	CANARY_FILL(buf);
 	EXPECT(librecrypt_hash_binary(buf, 1u, phrase, len, settings, NULL) == (ssize_t)hashlen);
 	EXPECT(!memcmp(buf, expected, 1u));
+	CANARY_X_CHECK(buf, 1u, 1u);
 
+	CANARY_FILL(buf);
 	EXPECT(librecrypt_hash_binary(buf, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
+	CANARY_X_CHECK(buf, 0u, 0u);
 	EXPECT(librecrypt_hash_binary(NULL, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
 
+	CANARY_FILL(buf);
+	CANARY_FILL(buf2);
 	EXPECT(librecrypt_hash_binary(buf, sizeof(buf), expected, hashlen, settings, NULL) == (ssize_t)hashlen);
 	errno = 0;
 	EXPECT(librecrypt_hash_binary(buf2, sizeof(buf2), phrase, len, chain, NULL) == (ssize_t)hashlen);
 	EXPECT(!memcmp(buf, buf2, hashlen));
+	CANARY_X_CHECK(buf, hashlen, scratchsize);
+	CANARY_X_CHECK(buf2, hashlen, scratchsize);
 }
 
 
 #define CHECK(PHRASE, CONF, HASHLEN, IS_DEFAULT_HASHLEN, HASH)\
 	do {\
-		check(PHRASE, CONF HASH, CONF "*" #HASHLEN ">" CONF HASH, HASH, (size_t)HASHLEN);\
-		check(PHRASE, CONF "*" #HASHLEN, CONF "*" #HASHLEN ">" CONF "*" #HASHLEN, HASH, (size_t)HASHLEN);\
+		size_t scratchsize = GET_SCRATCH_SIZE(HASHLEN);\
+		check(PHRASE, CONF HASH, CONF "*" #HASHLEN ">" CONF HASH, HASH, (size_t)HASHLEN, scratchsize);\
+		check(PHRASE, CONF "*" #HASHLEN, CONF "*" #HASHLEN ">" CONF "*" #HASHLEN, HASH, (size_t)HASHLEN, scratchsize);\
 		if (IS_DEFAULT_HASHLEN)\
-			check(PHRASE, CONF, CONF ">" CONF, HASH, (size_t)HASHLEN);\
+			check(PHRASE, CONF, CONF ">" CONF, HASH, (size_t)HASHLEN, scratchsize);\
 	} while (0)
 
 
@@ -79,6 +89,7 @@ main(void)
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
 
+#define GET_SCRATCH_SIZE(HASHLEN) ((HASHLEN) > 64u ? ((HASHLEN) + 63u) & ~31u : (HASHLEN))
 #if defined(SUPPORT_ARGON2I)
 	CHECK("password",  "$argon2i$"   "m=256,t=2,p=1$c29tZXNhbHQ$",  32, 1, "/U3YPXYsSb3q9XxHvc0MLxur+GP960kN9j7emXX8zwY");
 	CHECK("password",  "$argon2i$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, 1, "iekCn0Y3spW+sCcFanM2xBT63UP2sghkUoHLIUpWRS8");
@@ -98,6 +109,7 @@ main(void)
 	                                                                       "yLKZMg+DIOXVc9z1po9ZlZG8+Gp4g5brqfza3lvkR9vw");
 	CHECK_BAD("$argon2d$");
 #endif
+#undef GET_SCRATCH_SIZE
 
 	STOP_RESOURCE_TEST();
 	return 0;

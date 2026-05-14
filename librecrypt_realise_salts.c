@@ -270,7 +270,9 @@ main(void)
 	EXPECT(librecrypt_realise_salts(NULL, 0u, ALGO"*"LARGE"$", &saltgen, &saltbyte) == -1);
 	EXPECT(errno == ERANGE);
 
+	CANARY_FILL(buf);
 	EXPECT(librecrypt_realise_salts(buf, sizeof(ALGO) - 1u, ALGO"*3$", &saltfail, NULL) == (ssize_t)sizeof(ALGO"$") - 1 + 4);
+	CANARY_CHECK(buf, sizeof(ALGO) - 1u);
 	errno = 0;
 	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), ALGO"*3$", &saltfail, NULL) == -1);
 	EXPECT(errno == EDOM);
@@ -293,13 +295,15 @@ main(void)
 	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte) == -1);
 	EXPECT(errno == ERANGE);
 
-	memset(buf, 99, sizeof(buf));
-	memset(buf2, 99, sizeof(buf2));
+	CANARY_FILL(buf);
+	CANARY_FILL(buf2);
 	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), ALGO"*30$", NULL, NULL) == (ssize_t)sizeof(ALGO"$") - 1 + 40);
 	EXPECT(librecrypt_realise_salts(buf2, sizeof(buf2), ALGO"*30$", NULL, NULL) == (ssize_t)sizeof(ALGO"$") - 1 + 40);
 	EXPECT(!buf[sizeof(ALGO"$") - 1u + 40u]);
 	EXPECT(!buf2[sizeof(ALGO"$") - 1u + 40u]);
 	EXPECT(memcmp(buf, buf2, sizeof(ALGO"$") - 1u + 40u));
+	CANARY_CHECK(buf, sizeof(ALGO"$") + 40u);
+	CANARY_CHECK(buf2, sizeof(ALGO"$") + 40u);
 #endif
 
 	STOP_RESOURCE_TEST();

@@ -156,17 +156,16 @@ check(const char *binary, size_t binary_len, const char *ascii, size_t ascii_len
 
 	/* Check encoding requests, with and without truncation, without padding */
 	for (i = 0u; i <= ascii_len; i++) {
-		memset(buf, 99, sizeof(buf));
+		CANARY_FILL(buf);
 		EXPECT(librecrypt_encode(buf, i + 1u, binary, binary_len, lut, '\0') == ascii_len);
 		EXPECT(!memcmp(buf, ascii, i));
 		EXPECT(buf[i] == '\0');
-		for (j = i + 1u; j < sizeof(buf); j++)
-			EXPECT(buf[j] == 99);
+		CANARY_CHECK(buf, i + 1u);
 	}
 
 	/* Check encoding requests, with and without truncation, with padding */
 	for (i = 0u; i <= padded_ascii_len; i++) {
-		memset(buf, 99, sizeof(buf));
+		CANARY_FILL(buf);
 		EXPECT(librecrypt_encode(buf, i + 1u, binary, binary_len, lut, '=') == padded_ascii_len);
 		j = MIN(i, ascii_len);
 		n = MIN(i, padded_ascii_len);
@@ -174,8 +173,7 @@ check(const char *binary, size_t binary_len, const char *ascii, size_t ascii_len
 		for (; j < n; j++)
 			EXPECT(buf[j] == '=');
 		EXPECT(buf[j++] == '\0');
-		for (; j < sizeof(buf); j++)
-			EXPECT(buf[j] == 99);
+		CANARY_CHECK(buf, j);
 	}
 }
 

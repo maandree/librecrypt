@@ -160,7 +160,7 @@ static int discarded_int;
 
 
 static void
-check(const char *phrase, const char *settings, const char *hash, size_t hashlen)
+check(const char *phrase, const char *settings, const char *hash, size_t hashlen, size_t scratchsize)
 {
 	size_t i, len = strlen(phrase);
 	size_t prefix = strlen(settings);
@@ -176,21 +176,26 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 	                      argon2__PAD, argon2__STRICT_PAD);
 	assert(r > 0 && (size_t)r == hashlen);
 
-	memset(buf, 0, sizeof(buf));
+	CANARY_FILL(buf);
 	EXPECT(librecrypt__argon2__hash(buf, sizeof(buf), phrase, len, settings, prefix, NULL) == 0);
 	EXPECT(!memcmp(expected, buf, hashlen));
+	CANARY_X_CHECK(buf, hashlen, scratchsize);
 
-	memset(buf, 0, sizeof(buf));
+	CANARY_FILL(buf);
 	EXPECT(librecrypt__argon2__hash(buf, hashlen, phrase, len, settings, prefix, NULL) == 0);
 	EXPECT(!memcmp(expected, buf, hashlen));
+	CANARY_X_CHECK(buf, hashlen, scratchsize);
 
+	CANARY_FILL(buf);
 	EXPECT(librecrypt__argon2__hash(buf, 0u, phrase, len, settings, prefix, NULL) == 0);
+	CANARY_X_CHECK(buf, 0u, 0u);
 	EXPECT(librecrypt__argon2__hash(NULL, 0u, phrase, len, settings, prefix, NULL) == 0);
 
 	for (i = 1u; i <= hashlen * 2u; i++) {
-		memset(buf, 0, sizeof(buf));
+		CANARY_FILL(buf);
 		EXPECT(librecrypt__argon2__hash(buf, i, phrase, len, settings, prefix, NULL) == 0);
 		EXPECT(!memcmp(expected, buf, MIN(i, hashlen)));
+		CANARY_X_CHECK(buf, MIN(i, hashlen), scratchsize);
 	}
 
 }
@@ -201,10 +206,11 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 
 #define CHECK(PHRASE, CONF, HASHLEN, HASH)\
 	do {\
-		check(PHRASE, CONF HASH, HASH, (size_t)HASHLEN);\
+		size_t scratchsize = GET_SCRATCH_SIZE(HASHLEN);\
+		check(PHRASE, CONF HASH, HASH, (size_t)HASHLEN, scratchsize);\
 		if ((size_t)HASHLEN == argon2__HASH_SIZE)\
-			check(PHRASE, CONF, HASH, (size_t)HASHLEN);\
-		check(PHRASE, CONF "*" #HASHLEN, HASH, (size_t)HASHLEN);\
+			check(PHRASE, CONF, HASH, (size_t)HASHLEN, scratchsize);\
+		check(PHRASE, CONF "*" #HASHLEN, HASH, (size_t)HASHLEN, scratchsize);\
 	} while (0)
 
 
@@ -268,6 +274,7 @@ main(void)
 	INIT_TEST_ABORT();
 	INIT_RESOURCE_TEST();
 
+#define GET_SCRATCH_SIZE(HASHLEN) ((HASHLEN) > 64u ? ((HASHLEN) + 63u) & ~31u : (HASHLEN))
 #if defined(SUPPORT_ARGON2I)
 	CHECK("password",  "$argon2i$"   "m=256,t=2,p=1$c29tZXNhbHQ$",  32, "/U3YPXYsSb3q9XxHvc0MLxur+GP960kN9j7emXX8zwY");
 	CHECK("password",  "$argon2i$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, "iekCn0Y3spW+sCcFanM2xBT63UP2sghkUoHLIUpWRS8");
@@ -287,6 +294,7 @@ main(void)
 	                                                                    "yLKZMg+DIOXVc9z1po9ZlZG8+Gp4g5brqfza3lvkR9vw");
 	CHECK_BAD("$argon2d$");
 #endif
+#undef GET_SCRATCH_SIZE
 
 	STOP_RESOURCE_TEST();
 	return 0;

@@ -184,40 +184,55 @@ main(void)
 
 #define CHECK(AUGEND, AUGMENT, RESULT)\
 	do {\
+		CANARY_FILL(buf);\
 		r = librecrypt_add_algorithm(buf, sizeof(buf), (AUGEND), (AUGMENT), NULL);\
 		EXPECT(r > 0);\
 		EXPECT((size_t)r == strlen(RESULT));\
 		assert((size_t)r < sizeof(buf) + 1u);\
 		EXPECT(!buf[r]);\
 		EXPECT(!memcmp(buf, (RESULT), (size_t)r));\
+		CANARY_CHECK(buf, (size_t)r + 1u);\
 		\
 		for (i = (size_t)r + 2u;; i--) {\
-			memset(buf, 99, sizeof(buf));\
+			CANARY_FILL(buf);\
 			EXPECT(librecrypt_add_algorithm(buf, i, (AUGEND), (AUGMENT), NULL) == r);\
-			if (!i)\
+			if (!i) {\
+				CANARY_CHECK(buf, 0u);\
 				break;\
+			}\
 			min = MIN(i - 1u, (size_t)r);\
 			EXPECT(!buf[min]);\
 			EXPECT(!memcmp(buf, (RESULT), min));\
+			CANARY_CHECK(buf, min + 1u);\
 		}\
 		\
 		EXPECT(librecrypt_add_algorithm(NULL, 0u, (AUGEND), (AUGMENT), NULL) == r);\
 		\
 		assert(sizeof(buf) > strlen(AUGEND));\
-		stpcpy(buf, (AUGEND));\
 		\
+		CANARY_FILL(buf);\
+		stpcpy(buf, (AUGEND));\
 		EXPECT(librecrypt_add_algorithm(buf, sizeof(buf), buf, (AUGMENT), NULL) == r);\
 		EXPECT(!buf[r]);\
 		EXPECT(!memcmp(buf, (RESULT), (size_t)r));\
+		n = strlen(AUGEND) + 1u;\
+		n = MAX(n, (size_t)r + 1u);\
+		CANARY_CHECK(buf, n);\
 		\
 		for (i = (size_t)r + 2u;; i--) {\
+			CANARY_FILL(buf);\
 			stpcpy(buf, (AUGEND));\
+			n = strlen(AUGEND) + 1u;\
 			EXPECT(librecrypt_add_algorithm(buf, i, buf, (AUGMENT), NULL) == r);\
-			if (!i)\
+			if (!i) {\
+				CANARY_CHECK(buf, n);\
 				break;\
+			}\
 			min = MIN(i - 1u, (size_t)r);\
 			EXPECT(!buf[min]);\
 			EXPECT(!memcmp(buf, (RESULT), min));\
+			n = MAX(n, min + 1u);\
+			CANARY_CHECK(buf, n);\
 		}\
 	} while (0)
 
@@ -262,10 +277,12 @@ main(void)
 	CHECK("$argon2d$m=8,t=1,p=1$$", "$argon2i$m=8,t=4,p=2$$",
 	      "$argon2d$m=8,t=1,p=1$$>" "$argon2i$m=8,t=4,p=2$$");
 
+	CANARY_FILL(buf);
 	errno = 0;
 	EXPECT(librecrypt_add_algorithm(buf, sizeof(buf), "$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1,
 	                                "$argon2i$m=8,t=4,p=1$$", NULL) == -1);
 	EXPECT(errno == EINVAL);
+	CANARY_CHECK(buf, sizeof("$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1));
 
 	errno = 0;
 	EXPECT(librecrypt_add_algorithm(NULL, 0u, "$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1,
@@ -294,32 +311,40 @@ main(void)
 	      "$argon2i$m=8,t=4,p=1$"SALT2"$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", expected);
 
 	if (libtest_have_custom_malloc()) {
+		CANARY_FILL(buf);
 		libtest_set_alloc_failure_in(1u);
 		errno = 0;
 		EXPECT(librecrypt_add_algorithm(buf, sizeof(buf), "$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1,
 		                                "$argon2d$m=8,t=1,p=1$"SALT2"$", NULL) == -1);
 		EXPECT(errno == ENOMEM);
 		assert(libtest_get_alloc_failure_in() == 0u);
+		CANARY_CHECK(buf, 0u);
 	}
 
+	CANARY_FILL(buf);
 	errno = 0;
 	EXPECT(librecrypt_add_algorithm(buf, sizeof(buf),
 	                                "$argon2d$m=8,t=1,p=1$"SALT1"$"
 	                                "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
 	                                "$argon2d$m=8,t=1,p=1$"SALT2"$", NULL) == -1);
 	EXPECT(errno == EINVAL);
+	CANARY_CHECK(buf, 0u);
 
 #endif
 
+	CANARY_FILL(buf);
 	errno = 0;
 	EXPECT(librecrypt_add_algorithm(buf, sizeof(buf), "$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1,
 	                                "$~no~such~algorithm~$", NULL) == -1);
 	EXPECT(errno == ENOSYS);
+	CANARY_CHECK(buf, sizeof("$argon2d$m=8,t=1,p=1$"SALT1"$"HASH1));
 
+	CANARY_FILL(buf);
 	errno = 0;
 	EXPECT(librecrypt_add_algorithm(buf, sizeof(buf), "$~no~such~algorithm~$"HASH1,
 	                                "$argon2d$m=8,t=1,p=1$"SALT1"$", NULL) == -1);
 	EXPECT(errno == ENOSYS);
+	CANARY_CHECK(buf, 0u);
 
 	STOP_RESOURCE_TEST();
 	return 0;

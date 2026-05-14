@@ -106,8 +106,17 @@ main(void)
 	EXPECT(librecrypt_fill_with_random_(buf2, sizeof(buf1), NULL, NULL) == 0);
 	EXPECT(memcmp(buf1, buf2, sizeof(buf1)));
 
+	/* Check that it is not writing too much */
+	CANARY_FILL(buf1);
+	CANARY_FILL(buf2);
+	EXPECT(librecrypt_fill_with_random_(buf1, sizeof(buf1) / 2u, NULL, NULL) == 0);
+	EXPECT(librecrypt_fill_with_random_(buf2, sizeof(buf2) / 2u, NULL, NULL) == 0);
+	EXPECT(memcmp(buf1, buf2, sizeof(buf1) / 2u));
+	CANARY_CHECK(buf1, sizeof(buf1) / 2u);
+	CANARY_CHECK(buf2, sizeof(buf2) / 2u);
+
 	/* Check stateless all-at-once RNG */
-	memset(buf1, 99, sizeof(buf1));
+	CANARY_FILL(buf1);
 	errno = 0;
 	EXPECT(librecrypt_fill_with_random_(buf1, sizeof(buf1), &zero, NULL) == 0);
 	EXPECT(errno == 0);
@@ -115,7 +124,7 @@ main(void)
 		EXPECT(!buf1[i]);
 
 	/* Check stateful chunked RNG (importantly, chunks are smaller than pattern) */
-	memset(buf1, 99, sizeof(buf1));
+	CANARY_FILL(buf1);
 	s = 0u;
 	errno = 0;
 	EXPECT(librecrypt_fill_with_random_(buf1, sizeof(buf1), &seq, &s) == 0);
@@ -124,7 +133,7 @@ main(void)
 		EXPECT(buf1[i] == s);
 
 	/* Check stateful one-byte-per-call RNG */
-	memset(buf1, 99, sizeof(buf1));
+	CANARY_FILL(buf1);
 	s = 0u;
 	errno = 0;
 	EXPECT(librecrypt_fill_with_random_(buf1, sizeof(buf1), &next, &s) == 0);
@@ -133,13 +142,12 @@ main(void)
 		EXPECT(buf1[i] == s);
 
 	/* Check failure in RNG */
-	memset(buf1, 99, sizeof(buf1));
+	CANARY_FILL(buf1);
 	s = 0u;
 	errno = 0;
 	EXPECT(librecrypt_fill_with_random_(buf1, sizeof(buf1), &failer, NULL) == -1);
 	EXPECT(errno == EDOM);
-	for (s = 0u, i = 0u; i < sizeof(buf1); i++, s++)
-		EXPECT(buf1[i] == 99);
+	CANARY_CHECK(buf1, 0u);
 
 	/* Check function abort(3)s if RNG returns 0 */
 	EXPECT_ABORT(rv = librecrypt_fill_with_random_(buf1, sizeof(buf1), &zero_ret, NULL));

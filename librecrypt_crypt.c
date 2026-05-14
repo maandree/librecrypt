@@ -14,7 +14,8 @@ librecrypt_crypt(char *restrict out_buffer, size_t size, const char *phrase, siz
 
 
 static void
-check(const char *phrase, const char *settings, const char *chain, size_t chain_prefix, const char *hash, size_t hash_prefix)
+check(const char *phrase, const char *settings, const char *chain, size_t chain_prefix, const char *hash,
+      size_t hash_prefix, size_t scratchsize)
 {
 	size_t hashlen = strlen(hash);
 	size_t len = strlen(phrase);
@@ -25,27 +26,32 @@ check(const char *phrase, const char *settings, const char *chain, size_t chain_
 
 	assert(hashlen <= sizeof(buf));
 
-	memset(buf, 0, sizeof(buf));
+	CANARY_FILL(buf);
 	EXPECT(librecrypt_crypt(buf, sizeof(buf), phrase, len, settings, NULL) == (ssize_t)hashlen);
 	EXPECT(!memcmp(hash, buf, hashlen + 1u));
+	CANARY_X_CHECK(buf, hashlen + 1u, scratchsize);
 
-	memset(buf, 0, sizeof(buf));
+	CANARY_FILL(buf);
 	EXPECT(librecrypt_crypt(buf, hashlen + 1u, phrase, len, settings, NULL) == (ssize_t)hashlen);
 	EXPECT(!memcmp(hash, buf, hashlen + 1u));
+	CANARY_X_CHECK(buf, hashlen + 1u, scratchsize);
 
-	memset(buf, 0, sizeof(buf));
+	CANARY_FILL(buf);
 	EXPECT(librecrypt_crypt(buf, hashlen, phrase, len, settings, NULL) == (ssize_t)hashlen);
 	EXPECT(!memcmp(hash, buf, hashlen - 1u));
-	EXPECT(!buf[hashlen]);
+	EXPECT(!buf[hashlen - 1u]);
+	CANARY_X_CHECK(buf, hashlen, scratchsize);
 
-	memset(buf, 0, sizeof(buf));
+	CANARY_FILL(buf);
 	EXPECT(librecrypt_crypt(buf, 2u, phrase, len, settings, NULL) == (ssize_t)hashlen);
 	EXPECT(!memcmp(hash, buf, 1u));
 	EXPECT(!buf[1u]);
+	CANARY_X_CHECK(buf, 2u, 2u);
 
-	memset(buf, 0, sizeof(buf));
+	CANARY_FILL(buf);
 	EXPECT(librecrypt_crypt(buf, 1u, phrase, len, settings, NULL) == (ssize_t)hashlen);
 	EXPECT(!buf[0u]);
+	CANARY_X_CHECK(buf, 1u, 1u);
 
 	EXPECT(librecrypt_crypt(buf, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
 	EXPECT(librecrypt_crypt(NULL, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
@@ -55,22 +61,29 @@ check(const char *phrase, const char *settings, const char *chain, size_t chain_
 	r = librecrypt_decode(expected, sizeof(expected), &hash[hash_prefix], hashlen - hash_prefix, lut, pad, strict_pad);
 	assert(r > 0 && (size_t)r <= sizeof(expected));
 
+	CANARY_FILL(buf);
+	CANARY_FILL(buf2);
 	EXPECT(librecrypt_crypt(buf, sizeof(buf), expected, (size_t)r, settings, NULL) == (ssize_t)hashlen);
 	errno = 0;
 	EXPECT(librecrypt_crypt(buf2, sizeof(buf2), phrase, len, chain, NULL) == (ssize_t)(hashlen - hash_prefix + chain_prefix));
 	EXPECT(!memcmp(buf2, chain, chain_prefix));
 	EXPECT(!memcmp(&buf[hash_prefix], &buf2[chain_prefix], hashlen - hash_prefix + 1u));
+	CANARY_X_CHECK(buf, hashlen, scratchsize);
+	CANARY_X_CHECK(buf2, hashlen - hash_prefix + chain_prefix, scratchsize);
 }
 
 
 #define CHECK(PHRASE, CONF, HASHLEN, IS_DEFAULT_HASHLEN, HASH)\
 	do {\
+		size_t scratchsize = GET_SCRATCH_SIZE(HASHLEN);\
 		check(PHRASE, CONF HASH, CONF "*" #HASHLEN ">" CONF HASH,\
-		      sizeof(CONF "*" #HASHLEN ">" CONF) - 1u, CONF HASH, sizeof(CONF) - 1u);\
+		      sizeof(CONF "*" #HASHLEN ">" CONF) - 1u, CONF HASH, sizeof(CONF) - 1u, scratchsize);\
 		check(PHRASE, CONF "*" #HASHLEN, CONF "*" #HASHLEN ">" CONF "*" #HASHLEN,\
-		      sizeof(CONF "*" #HASHLEN ">" CONF) - 1u, CONF HASH, sizeof(CONF) - 1u);\
-		if (IS_DEFAULT_HASHLEN)\
-			check(PHRASE, CONF, CONF ">" CONF, sizeof(CONF ">" CONF) - 1u, CONF HASH, sizeof(CONF) - 1u);\
+		      sizeof(CONF "*" #HASHLEN ">" CONF) - 1u, CONF HASH, sizeof(CONF) - 1u, scratchsize);\
+		if (IS_DEFAULT_HASHLEN) {\
+			check(PHRASE, CONF, CONF ">" CONF, sizeof(CONF ">" CONF) - 1u,\
+			      CONF HASH, sizeof(CONF) - 1u, scratchsize);\
+		}\
 	} while (0)
 
 
@@ -96,6 +109,7 @@ main(void)
 	libtest_getrandom_error = ENOSYS;
 #endif
 
+#define GET_SCRATCH_SIZE(HASHLEN) ((HASHLEN) > 64u ? ((HASHLEN) + 63u) & ~31u : (HASHLEN))
 #if defined(SUPPORT_ARGON2I)
 	CHECK("password",  "$argon2i$"   "m=256,t=2,p=1$c29tZXNhbHQ$",  32, 1, "/U3YPXYsSb3q9XxHvc0MLxur+GP960kN9j7emXX8zwY");
 	CHECK("password",  "$argon2i$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, 1, "iekCn0Y3spW+sCcFanM2xBT63UP2sghkUoHLIUpWRS8");
@@ -115,7 +129,6 @@ main(void)
 	                                                                       "yLKZMg+DIOXVc9z1po9ZlZG8+Gp4g5brqfza3lvkR9vw");
 	CHECK_BAD("$argon2d$");
 #endif
-
 #if defined(SUPPORT_ARGON2ID)
 	assert(!libtest_getentropy_error);
 
@@ -127,6 +140,7 @@ main(void)
 	 * of "ABCD", rather the become "AAECAwABAgMAAQIDAAECAwAB" */
 	libtest_random_pattern_length = 4u;
 	libtest_random_pattern_offset = 0u;
+	CANARY_FILL(buf);
 	r = librecrypt_crypt(buf, sizeof(buf), "", 0u, "$argon2id$v=19$m=8,t=1,p=1$*18$*33", NULL);
 	libtest_random_pattern = NULL;
 	libtest_random_pattern_length = 0u;
@@ -136,15 +150,19 @@ main(void)
 	assert((size_t)r < sizeof(buf));
 	EXPECT((size_t)r == sizeof("$argon2id$v=19$m=8,t=1,p=1$$") - 1u + 24u + 44u);
 	EXPECT(!buf[r]);
+	CANARY_FILL(buf2);
 	EXPECT(librecrypt_crypt(buf2, sizeof(buf2), "", 0u, buf, NULL) == r);
 	EXPECT(!memcmp(buf, buf2, (size_t)r + 1u));
 	EXPECT(!memcmp(buf, "$argon2id$v=19$m=8,t=1,p=1$ABCDABCDABCDABCDABCDABCD$",
 	             sizeof("$argon2id$v=19$m=8,t=1,p=1$ABCDABCDABCDABCDABCDABCD$") - 1u));
+	CANARY_X_CHECK(buf, (size_t)r + 1u, 33u);
+	CANARY_X_CHECK(buf2, (size_t)r + 1u, 33u);
 
 	libtest_getentropy_real = 0;
 	libtest_random_pattern = (const unsigned char *)"\x00\x01\x02\03";
 	libtest_random_pattern_length = 4u;
 	libtest_random_pattern_offset = 0u;
+	CANARY_FILL(buf);
 	r = librecrypt_crypt(buf, sizeof(buf), "", 0u, "$argon2id$v=19$m=8,t=1,p=1$*18$*33>"
 	                                               "$argon2id$v=19$m=8,t=1,p=1$*18$*33", NULL);
 	libtest_random_pattern = NULL;
@@ -155,13 +173,17 @@ main(void)
 	assert((size_t)r < sizeof(buf));
 	EXPECT((size_t)r == sizeof("$argon2id$v=19$m=8,t=1,p=1$$*33>$argon2id$v=19$m=8,t=1,p=1$$") - 1u + 2u * 24u + 44u);
 	EXPECT(!buf[r]);
+	CANARY_FILL(buf2);
 	EXPECT(librecrypt_crypt(buf2, sizeof(buf2), "", 0u, buf, NULL) == r);
 	EXPECT(!memcmp(buf, buf2, (size_t)r + 1u));
 	EXPECT(!memcmp(buf, "$argon2id$v=19$m=8,t=1,p=1$ABCDABCDABCDABCDABCDABCD$*33>"
 	                    "$argon2id$v=19$m=8,t=1,p=1$ABCDABCDABCDABCDABCDABCD$",
 	             sizeof("$argon2id$v=19$m=8,t=1,p=1$ABCDABCDABCDABCDABCDABCD$*33>"
 	                    "$argon2id$v=19$m=8,t=1,p=1$ABCDABCDABCDABCDABCDABCD$") - 1u));
+	CANARY_X_CHECK(buf, (size_t)r + 1u, 33u);
+	CANARY_X_CHECK(buf2, (size_t)r + 1u, 33u);
 #endif
+#undef GET_SCRATCH_SIZE
 
 #if defined(__linux__)
 	libtest_getrandom_real = 1;

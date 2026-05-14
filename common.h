@@ -556,4 +556,30 @@ int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt
 			exit(2);\
 		}\
 	} while (0)
+
+# define CANARY_FILL(BUF) CANARY_C_FILL(99, BUF)
+# define CANARY_CHECK(BUF, OFF) CANARY_C_CHECK(99, BUF, OFF)
+# define CANARY_X_CHECK(BUF, OFF1, OFF2) CANARY_XC_CHECK(99, BUF, OFF1, OFF2)
+
+# define CANARY_C_FILL(C, BUF)\
+	memset((BUF), (C), sizeof(BUF))
+
+# define CANARY_C_CHECK(C, BUF, OFF)\
+	do {\
+		size_t canary_i__;\
+		for (canary_i__ = (OFF); canary_i__ < sizeof(BUF); canary_i__++)\
+			EXPECT(((unsigned char *)(BUF))[canary_i__] == (unsigned char)(C));\
+	} while (0)
+
+# define CANARY_XC_CHECK(C, BUF, OFF1, OFF2)\
+	CANARY_XCC_CHECK(0, C, BUF, OFF1, OFF2)
+
+# define CANARY_XCC_CHECK(C1, C2, BUF, OFF1, OFF2)\
+	do {\
+		if ((OFF2) > (OFF1))\
+			CANARY_C_CHECK((C2), (BUF), (OFF2));\
+		memset(&(BUF)[(OFF1)], (C1), sizeof(BUF) - (OFF1));\
+		CANARY_C_CHECK((C1), (BUF), (OFF1));\
+	} while (0)
+
 #endif

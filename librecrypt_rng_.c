@@ -374,18 +374,24 @@ main(void)
 
 #define CHECK1()\
 	do {\
+		CANARY_FILL(buf1);\
 		n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);\
 		EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));\
 		EXPECT(memcmp(buf1, buf2, (size_t)MIN(n1, n2)));\
+		CANARY_CHECK(buf1, (size_t)n1);\
 	} while (0)
 
 #define CHECK2()\
 	do {\
+		CANARY_FILL(buf1);\
+		CANARY_FILL(buf2);\
 		n1 = librecrypt_rng_(buf1, sizeof(buf1), NULL);\
 		n2 = librecrypt_rng_(buf2, sizeof(buf2), &user);\
 		EXPECT(n1 >= 128 && (size_t)n1 <= sizeof(buf1));\
 		EXPECT(n2 >= 128 && (size_t)n2 <= sizeof(buf2));\
 		EXPECT(memcmp(buf1, buf2, (size_t)MIN(n1, n2)));\
+		CANARY_CHECK(buf1, (size_t)n1);\
+		CANARY_CHECK(buf2, (size_t)n2);\
 	} while (0)
 
 	/* Test with output pattern (useful for other tests) */

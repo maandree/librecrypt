@@ -97,40 +97,48 @@ main(void)
 
 #if defined(SUPPORT_ARGON2I)
 	saltbyte = 0u;
+	CANARY_FILL(buf);
 	r = librecrypt_make_settings(buf, sizeof(buf), "$argon2i$", 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strcmp(buf, "$argon2i$v=19$m=8192,t=10,p=1$AAAAAAAAAAAAAAAAAAAAAA$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 	any_supported = 1;
 	any_salted = 1;
 #endif
 
 #if defined(SUPPORT_ARGON2D)
 	saltbyte = 0u;
+	CANARY_FILL(buf);
 	r = librecrypt_make_settings(buf, sizeof(buf), "$argon2d$", 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strcmp(buf, "$argon2d$v=19$m=8192,t=10,p=1$AAAAAAAAAAAAAAAAAAAAAA$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 	any_supported = 1;
 	any_salted = 1;
 #endif
 
 #if defined(SUPPORT_ARGON2ID)
 	saltbyte = 0u;
+	CANARY_FILL(buf);
 	r = librecrypt_make_settings(buf, sizeof(buf), "$argon2id$", 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strcmp(buf, "$argon2id$v=19$m=8192,t=10,p=1$AAAAAAAAAAAAAAAAAAAAAA$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 	any_supported = 1;
 	any_salted = 1;
 #endif
 
 #if defined(SUPPORT_ARGON2DS)
 	saltbyte = 0u;
+	CANARY_FILL(buf);
 	r = librecrypt_make_settings(buf, sizeof(buf), "$argon2ds$", 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte);
 	EXPECT(r > 0 && (size_t)r < sizeof(buf));
 	EXPECT(!buf[r] && (size_t)r == strlen(buf));
 	EXPECT(!strcmp(buf, "$argon2ds$v=19$m=8192,t=10,p=1$AAAAAAAAAAAAAAAAAAAAAA$*32"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
 	any_supported = 1;
 	any_salted = 1;
 #endif
@@ -147,26 +155,38 @@ main(void)
 			EXPECT(librecrypt_make_settings(buf, sizeof(buf), NULL, 0u, 0u, 1, &saltfail, NULL) > 0);
 		}
 
+		CANARY_FILL(buf);
+		CANARY_FILL(buf2);
 		r = librecrypt_make_settings(buf, sizeof(buf), NULL, 0u, 0u, 0, &saltfail, NULL);
 		EXPECT(r > 0 && (size_t)r < sizeof(buf));
 		EXPECT(!buf[r] && (size_t)r == strlen(buf));
 		EXPECT(librecrypt_make_settings(buf2, sizeof(buf2), NULL, 0u, 0u, 0, &saltfail, NULL) == r);
 		EXPECT(!buf2[r] && (size_t)r == strlen(buf2));
 		EXPECT(!strcmp(buf, buf2));
+		CANARY_CHECK(buf, (size_t)r + 1u);
+		CANARY_CHECK(buf2, (size_t)r + 1u);
 
+		CANARY_FILL(buf);
+		CANARY_FILL(buf2);
 		r = librecrypt_make_settings(buf, sizeof(buf), NULL, 0u, 0u, 0, NULL, NULL);
 		EXPECT(r > 0 && (size_t)r < sizeof(buf));
 		EXPECT(!buf[r] && (size_t)r == strlen(buf));
 		EXPECT(librecrypt_make_settings(buf2, sizeof(buf2), NULL, 0u, 0u, 0, NULL, NULL) == r);
 		EXPECT(!buf2[r] && (size_t)r == strlen(buf2));
 		EXPECT(!strcmp(buf, buf2));
+		CANARY_CHECK(buf, (size_t)r + 1u);
+		CANARY_CHECK(buf2, (size_t)r + 1u);
 
+		CANARY_FILL(buf);
+		CANARY_FILL(buf2);
 		r = librecrypt_make_settings(buf, sizeof(buf), NULL, 0u, 0u, 1, NULL, NULL);
 		EXPECT(r > 0 && (size_t)r < sizeof(buf));
 		EXPECT(!buf[r] && (size_t)r == strlen(buf));
 		EXPECT(librecrypt_make_settings(buf2, sizeof(buf2), NULL, 0u, 0u, 1, NULL, NULL) == r);
 		EXPECT(!buf2[r] && (size_t)r == strlen(buf2));
 		EXPECT(strcmp(buf, buf2));
+		CANARY_CHECK(buf, (size_t)r + 1u);
+		CANARY_CHECK(buf2, (size_t)r + 1u);
 	} else {
 		errno = 0;
 		EXPECT(librecrypt_make_settings(NULL, 0u, NULL, 0u, 0u, 0, NULL, NULL) == -1);

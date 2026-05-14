@@ -13,11 +13,13 @@ extern inline size_t librecrypt_decompose_chain1(char *hash);
 	do {\
 		assert(sizeof(IN) <= sizeof(buf));\
 		assert(sizeof(IN) == sizeof(OUT));\
+		CANARY_FILL(buf);\
 		stpcpy(buf, (IN));\
 		n = librecrypt_decompose_chain1(buf);\
 		EXPECT(n == (N));\
 		EXPECT(n == librecrypt_chain_length(IN));\
 		EXPECT(!memcmp(buf, (OUT), sizeof(IN)));\
+		CANARY_CHECK(buf, sizeof(IN));\
 	} while (0)
 
 

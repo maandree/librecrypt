@@ -184,34 +184,30 @@ check(const char *binary, size_t binary_len, const char *ascii, size_t unpadded_
 
 	/* Test output, with and without truncation */
 	for (i = 0u; i < sizeof(buf); i++) {
-		memset(buf, 99, sizeof(buf));
+		CANARY_FILL(buf);
 		EXPECT(librecrypt_decode(buf, i, ascii, unpadded_len, lut, '\0', 0) == (ssize_t)binary_len);
 		j = MIN(i, binary_len);
 		EXPECT(!memcmp(buf, binary, j));
-		for (; j < sizeof(buf); j++)
-			EXPECT(buf[j] == 99);
+		CANARY_CHECK(buf, j);
 
-		memset(buf, 99, sizeof(buf));
+		CANARY_FILL(buf);
 		EXPECT(librecrypt_decode(buf, i, ascii, unpadded_len, lut, '\0', 1) == (ssize_t)binary_len);
 		j = MIN(i, binary_len);
 		EXPECT(!memcmp(buf, binary, j));
-		for (; j < sizeof(buf); j++)
-			EXPECT(buf[j] == 99);
+		CANARY_CHECK(buf, j);
 
-		memset(buf, 99, sizeof(buf));
+		CANARY_FILL(buf);
 		EXPECT(librecrypt_decode(buf, i, ascii, unpadded_len, lut, '=', 0) == (ssize_t)binary_len);
 		j = MIN(i, binary_len);
 		EXPECT(!memcmp(buf, binary, j));
-		for (; j < sizeof(buf); j++)
-			EXPECT(buf[j] == 99);
+		CANARY_CHECK(buf, j);
 
 		if (padded_len == unpadded_len) {
-			memset(buf, 99, sizeof(buf));
+			CANARY_FILL(buf);
 			EXPECT(librecrypt_decode(buf, i, ascii, unpadded_len, lut, '=', 1) == (ssize_t)binary_len);
 			j = MIN(i, binary_len);
 			EXPECT(!memcmp(buf, binary, j));
-			for (; j < sizeof(buf); j++)
-				EXPECT(buf[j] == 99);
+			CANARY_CHECK(buf, j);
 		} else {
 			errno = 0;
 			EXPECT(librecrypt_decode(buf, i, ascii, unpadded_len, lut, '=', 1) == -1);
@@ -226,20 +222,18 @@ check(const char *binary, size_t binary_len, const char *ascii, size_t unpadded_
 			EXPECT(errno == EINVAL);
 		}
 
-		memset(buf, 99, sizeof(buf));
+		CANARY_FILL(buf);
 		EXPECT(librecrypt_decode(buf, i, ascii, padded_len, lut, '=', 0) == (ssize_t)binary_len);
 		j = MIN(i, binary_len);
 		EXPECT(!memcmp(buf, binary, j));
-		for (; j < sizeof(buf); j++)
-			EXPECT(buf[j] == 99);
+		CANARY_CHECK(buf, j);
 
 		if (check_good_padding) {
-			memset(buf, 99, sizeof(buf));
+			CANARY_FILL(buf);
 			EXPECT(librecrypt_decode(buf, i, ascii, padded_len, lut, '=', 1) == (ssize_t)binary_len);
 			j = MIN(i, binary_len);
 			EXPECT(!memcmp(buf, binary, j));
-			for (; j < sizeof(buf); j++)
-				EXPECT(buf[j] == 99);
+			CANARY_CHECK(buf, j);
 		}
 
 	}
