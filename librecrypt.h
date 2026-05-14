@@ -43,11 +43,15 @@
 
 /**
  * Symbol used as a general delimiter
+ * 
+ * @since  1.0
  */
 #define LIBRECRYPT_HASH_COMPOSITION_DELIMITER '$'
 
 /**
  * Symbol used to delimit algorithms in a chain
+ * 
+ * @since  1.0
  */
 #define LIBRECRYPT_ALGORITHM_LINK_DELIMITER '>'
 
@@ -84,6 +88,8 @@
  * hash result proper
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_READ_STR__(1) LIBRECRYPT_NONNULL_1__ LIBRECRYPT_WUR__ LIBRECRYPT_PURE__
 size_t librecrypt_settings_prefix(const char *hash, size_t *hashsize_out);
@@ -101,6 +107,8 @@ size_t librecrypt_settings_prefix(const char *hash, size_t *hashsize_out);
  * @seealso  librecrypt_next_algorithm
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_READ_STR__(1) LIBRECRYPT_NONNULL__ LIBRECRYPT_WUR__ LIBRECRYPT_PURE__
 inline size_t
@@ -145,6 +153,8 @@ librecrypt_chain_length(const char *hash)
  * @seealso  librecrypt_next_algorithm
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_READ_WRITE_STR__(1) LIBRECRYPT_NONNULL_1__ LIBRECRYPT_WUR__
 inline size_t
@@ -183,6 +193,8 @@ librecrypt_decompose_chain(char *hash, char **chain_out_array, size_t size)
  * @seealso  librecrypt_next_algorithm
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_READ_WRITE_STR__(1) LIBRECRYPT_NONNULL__ LIBRECRYPT_WUR__
 inline size_t
@@ -232,6 +244,8 @@ librecrypt_decompose_chain1(char *hash)
  * @seealso  librecrypt_decompose_chain1
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_NONNULL__ LIBRECRYPT_WUR__
 inline char *
@@ -277,6 +291,8 @@ librecrypt_next_algorithm(char **hash)
  * @seealso  librecrypt_get_encoding
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_MEM__(3, 4) LIBRECRYPT_NONNULL_I__(5) LIBRECRYPT_WUR__
 size_t librecrypt_encode(char *out_buffer, size_t size, const void *binary, size_t len,
@@ -310,6 +326,8 @@ size_t librecrypt_encode(char *out_buffer, size_t size, const void *binary, size
  * @seealso  librecrypt_get_encoding
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_MEM__(3, 4) LIBRECRYPT_NONNULL_I__(5) LIBRECRYPT_WUR__
 ssize_t librecrypt_decode(void *out_buffer, size_t size, const char *ascii, size_t len,
@@ -359,6 +377,8 @@ ssize_t librecrypt_decode(void *out_buffer, size_t size, const char *ascii, size
  * parameter of the `librecrypt_decode` function otherwise
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_READ_STR__(1) LIBRECRYPT_NONNULL__ LIBRECRYPT_WUR__
 const void *librecrypt_get_encoding(const char *settings, size_t len, char *pad_out,
@@ -374,6 +394,8 @@ const void *librecrypt_get_encoding(const char *settings, size_t len, char *pad_
  * @seealso  librecrypt_wipe_str
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_WRITE_MEM__(1, 2)
 void librecrypt_wipe(void *buffer, size_t size);
@@ -387,6 +409,8 @@ void librecrypt_wipe(void *buffer, size_t size);
  * @seealso  librecrypt_wipe
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_READ_WRITE_STR__(1)
 inline void
@@ -407,6 +431,8 @@ librecrypt_wipe_str(char *string)
  *               first `len` bytes, 0 otherwise
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_READ_MEM__(1, 3) LIBRECRYPT_READ_MEM__(2, 3) LIBRECRYPT_WUR__
 int librecrypt_equal_binary(const void *a, const void *b, size_t len);
@@ -427,6 +453,8 @@ int librecrypt_equal_binary(const void *a, const void *b, size_t len);
  * @return     1 if the `a` and `b` are equal, 0 otherwise
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_READ_STR__(1) LIBRECRYPT_READ_STR__(2) LIBRECRYPT_WUR__ LIBRECRYPT_NONNULL__
 inline int
@@ -488,6 +516,8 @@ librecrypt_equal(const char *a, const char *b)
  * MT-Unsafe and AS-Unsafe properties from `*rng`, being
  * is MT-Safe and AS-Safe as a baseline; however when
  * `rng` is `NULL`, this function is MT-Safe but AS-Unsafe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_STR__(3) LIBRECRYPT_WUR__
 ssize_t librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *settings,
@@ -553,6 +583,8 @@ ssize_t librecrypt_realise_salts(char *restrict out_buffer, size_t size, const c
  * On failure, `out_buffer` may be partially written
  * 
  * This function is MT-Safe but AS-Unsafe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_STR__(3) LIBRECRYPT_WUR__
 ssize_t librecrypt_make_settings(char *out_buffer, size_t size, const char *algorithm,
@@ -601,6 +633,8 @@ ssize_t librecrypt_make_settings(char *out_buffer, size_t size, const char *algo
  * @seealso  librecrypt_test_supported
  * 
  * This function is MT-Safe but AS-Unsafe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_MEM__(3, 4) LIBRECRYPT_READ_STR__(5)
 LIBRECRYPT_NONNULL_I__(5) LIBRECRYPT_WUR__
@@ -656,6 +690,8 @@ ssize_t librecrypt_hash_binary(char *restrict out_buffer, size_t size, const cha
  * @seealso  librecrypt_test_supported
  * 
  * This function is MT-Safe but AS-Unsafe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_MEM__(3, 4) LIBRECRYPT_READ_STR__(5)
 LIBRECRYPT_NONNULL_I__(5) LIBRECRYPT_WUR__
@@ -710,6 +746,8 @@ ssize_t librecrypt_hash(char *restrict out_buffer, size_t size, const char *phra
  * @seealso  librecrypt_test_supported
  * 
  * This function is MT-Safe but AS-Unsafe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_MEM__(3, 4) LIBRECRYPT_READ_STR__(5)
 LIBRECRYPT_NONNULL_I__(5) LIBRECRYPT_WUR__
@@ -799,6 +837,8 @@ int librecrypt_test_supported(const char *phrase, size_t len, int text, const ch
  * On failure, `out_buffer` will remain unmodified
  * 
  * This function is MT-Safe but AS-Unsafe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_STR__(3) LIBRECRYPT_READ_STR__(4)
 LIBRECRYPT_NONNULL_I__(3) LIBRECRYPT_NONNULL_I__(4) LIBRECRYPT_WUR__
