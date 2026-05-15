@@ -22,7 +22,7 @@ LIB_NAME = recrypt
 OBJ_PUBLIC_FUZZ =\
 	librecrypt_settings_prefix.o\
 
-OBJ_PUBLIC_NO_FUZZ =\
+OBJ_PUBLIC_DONT_FUZZ =\
 	librecrypt_chain_length.o\
 	librecrypt_decompose_chain.o\
 	librecrypt_decompose_chain1.o\
