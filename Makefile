@@ -20,7 +20,7 @@ LIB_NAME = recrypt
 
 
 OBJ_PUBLIC_FUZZ =\
-	librecrypt_settings_prefix.o\
+	librecrypt_settings_prefix.o
 
 OBJ_PUBLIC_DONT_FUZZ =\
 	librecrypt_chain_length.o\
@@ -47,7 +47,7 @@ OBJ_PUBLIC =\
 	librecrypt_hash.o\
 	librecrypt_crypt.o\
 	librecrypt_add_algorithm.o\
-	librecrypt_test_supported.o\
+	librecrypt_test_supported.o
 
 OBJ_PRIVATE =\
 	librecrypt_algorithms_.o\
