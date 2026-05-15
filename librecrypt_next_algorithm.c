@@ -7,6 +7,7 @@ extern inline char *librecrypt_next_algorithm(char **hash);
 
 
 #else
+# ifndef FUZZ
 
 
 static void
@@ -85,4 +86,28 @@ main(void)
 }
 
 
+# else
+
+
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+	char *hash, *r;
+	size_t sum = 0u;
+	hash = malloc(size + 1u);
+	assert(hash);
+	memcpy(hash, data, size);
+	hash[size] = '\0';
+	for (;;) {
+		r = librecrypt_next_algorithm(&hash);
+		if (!r)
+			break;
+		sum += strlen(r) + 1u;
+	}
+	EXPECT(sum == size + 1u);
+	return 0;
+}
+
+
+# endif
 #endif

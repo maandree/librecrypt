@@ -74,7 +74,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	/* Decode salt */
 	if (!salt_encoded) /* this would be if asterisk-notation is used, but it is not */
 		abort(); /* $covered$ */
-	r = librecrypt_decode(NULL, 0u, salt_encoded, saltlen, BASE64);
+	r = librecrypt_decode(NULL, 0u, salt_encoded, (size_t)saltlen, BASE64);
 	if (r < 0)
 		return -1; /* $covered$ (impossible) */
 	if (r > 0) {
@@ -90,7 +90,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 		salt = malloc((size_t)r);
 		if (!salt)
 			return -1;
-		if (librecrypt_decode(salt, (size_t)r, salt_encoded, saltlen, BASE64) != r)
+		if (librecrypt_decode(salt, (size_t)r, salt_encoded, (size_t)saltlen, BASE64) != r)
 			abort(); /* $covered$ (impossible) */
 		saltlen = (uintmax_t)r;
 	}
@@ -116,6 +116,19 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 
 	/* Argon2 may require a larger buffer to work with for the hash than it outputs */
 	scratch_size = libar2_hash_buf_size(&params);
+#if SIZE_MAX > UINT32_MAX
+	/* $covered{$ (impossible) */
+	if (!scratch_size) {
+		errno = ENOMEM;
+		goto fail;
+	}
+	/* $covered}$ */
+#else
+	if (!scratch_size) {
+		errno = ENOMEM;
+		goto fail;
+	}
+#endif
 	if (scratch_size > size) {
 		scratch = malloc(scratch_size);
 		if (!scratch)
@@ -123,8 +136,12 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	}
 
 	/* Calculate hash */
+#ifndef FUZZ
 	if (libar2_hash(scratch ? scratch : out_buffer, REMOVE_CONST(phrase), len, &params, &ctx))
 		goto fail;
+#else
+	memset(scratch ? scratch : out_buffer, '5', scratch_size);
+#endif
 	if (scratch && out_buffer)
 		memcpy(out_buffer, scratch, MIN(params.hashlen, size));
 
@@ -146,7 +163,7 @@ fail:
 		free(scratch);
 	}
 	if (salt) {
-		librecrypt_wipe(salt, saltlen);
+		librecrypt_wipe(salt, (size_t)saltlen);
 		free(salt);
 	}
 	errno = saved_errno;
@@ -198,7 +215,6 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 		EXPECT(!memcmp(expected, buf, MIN(i, hashlen)));
 		CANARY_X_CHECK(buf, MIN(i, hashlen), scratchsize);
 	}
-
 }
 
 
@@ -266,6 +282,11 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 	} while (0)
 
 
+#define phony librecrypt_test_phony__
+extern void *volatile librecrypt_test_phony__;
+void *volatile librecrypt_test_phony__ = (void *)(uintptr_t)4096u;
+
+
 int
 main(void)
 {
@@ -277,6 +298,38 @@ main(void)
 
 #define GET_SCRATCH_SIZE(HASHLEN) ((HASHLEN) > 64u ? ((HASHLEN) + 63u) & ~31u : (HASHLEN))
 #if defined(SUPPORT_ARGON2I)
+# if SIZE_MAX > UINT32_MAX
+	errno = 0;
+	EXPECT(librecrypt__argon2__hash(NULL, 0u, phony, (size_t)UINT32_MAX + 1u, "$argon2i$m=256,t=2,p=1$c29tZXNhbHQ$",
+	                                sizeof("$argon2i$m=256,t=2,p=1$c29tZXNhbHQ$"), NULL) == -1);
+	EXPECT(errno == EINVAL);
+#else
+	if (libtest_have_custom_malloc()) {
+		char conf[256];
+		int r;
+
+		r = snprintf(conf, sizeof(conf), "$argon2i$m=256,t=2,p=1$c29tZXNhbHQ$%*zu", (size_t)UINT32_MAX);
+		assert(r > 0);
+		assert(r < sizeof(conf));
+		libtest_set_alloc_failure_in(1u);
+		errno = 0;
+		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, conf, strlen(conf), NULL) == -1);
+		EXPECT(errno == ENOMEM);
+		EXPECT(libtest_get_alloc_failure_in() == 0u);
+		libtest_set_alloc_failure_in(0u);
+
+		r = snprintf(conf, sizeof(conf), "$argon2i$m=256,t=2,p=1$c29tZXNhbHQ$%*zu", (size_t)UINT32_MAX + 1u);
+		assert(r > 0);
+		assert(r < sizeof(conf));
+		libtest_set_alloc_failure_in(1u);
+		errno = 0;
+		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, conf, strlen(conf), NULL) == -1);
+		EXPECT(errno == ENOMEM);
+		EXPECT(libtest_get_alloc_failure_in() == 1u);
+		libtest_set_alloc_failure_in(0u);
+	}
+
+# endif
 	CHECK("password",  "$argon2i$"   "m=256,t=2,p=1$c29tZXNhbHQ$",  32, "/U3YPXYsSb3q9XxHvc0MLxur+GP960kN9j7emXX8zwY");
 	CHECK("password",  "$argon2i$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, "iekCn0Y3spW+sCcFanM2xBT63UP2sghkUoHLIUpWRS8");
 	CHECK_BAD("$argon2i$");

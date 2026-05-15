@@ -55,6 +55,7 @@ out:
 
 
 #else
+# ifndef FUZZ
 
 
 #define CHECK_NULL(PREFIX, SUFFIX)\
@@ -154,4 +155,24 @@ main(void)
 }
 
 
+# else
+
+
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+	char *hash;
+	size_t r;
+	hash = malloc(size + 1u);
+	assert(hash);
+	memcpy(hash, data, size);
+	hash[size] = '\0';
+	r = librecrypt_settings_prefix(hash, &(size_t){0u});
+	EXPECT(librecrypt_settings_prefix(hash, NULL) == r);
+	free(hash);
+	return 0;
+}
+
+
+# endif
 #endif

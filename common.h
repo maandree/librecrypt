@@ -1,4 +1,19 @@
 /* See LICENSE file for copyright and license details. */
+#if defined(__clang__)
+# pragma clang diagnostic ignored "-Wunsafe-buffer-usage" /* completely broken */
+# pragma clang diagnostic ignored "-Wpadded" /* don't care */
+# pragma clang diagnostic ignored "-Wdisabled-macro-expansion" /* glibc issue */
+# pragma clang diagnostic ignored "-Wc11-extensions" /* glibc issue */
+# pragma clang diagnostic ignored "-Wpre-c11-compat" /* glibc issue */
+# pragma clang diagnostic ignored "-Wunknown-warning-option" /* ignoring -Wsuggest-attribute=const|pure */
+# pragma clang diagnostic ignored "-Wimplicit-void-ptr-cast" /* C++ warning, and we are in internal files */
+# pragma clang diagnostic ignored "-Wc++-keyword" /* C++ warning, and we are in internal files */
+# pragma clang diagnostic ignored "-Wc++-unterminated-string-initialization" /* Stupid C++ warning, and we are in internal files */
+#endif
+#if defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Winline"
+#endif
+
 #include "librecrypt.h"
 #if defined(__linux__)
 # include <sys/auxv.h>
@@ -15,20 +30,6 @@
 #include <unistd.h>
 
 
-#if defined(__clang__)
-# pragma clang diagnostic ignored "-Wunsafe-buffer-usage" /* completely broken */
-# pragma clang diagnostic ignored "-Wpadded" /* don't care */
-# pragma clang diagnostic ignored "-Wdisabled-macro-expansion" /* glibc issue */
-# pragma clang diagnostic ignored "-Wc11-extensions" /* glibc issue */
-# pragma clang diagnostic ignored "-Wunknown-warning-option" /* ignoring -Wsuggest-attribute=const|pure */
-# pragma clang diagnostic ignored "-Wimplicit-void-ptr-cast" /* C++ warning, and we are in internal files */
-# pragma clang diagnostic ignored "-Wc++-keyword" /* C++ warning, and we are in internal files */
-#endif
-#if defined(__GNUC__)
-# pragma GCC diagnostic ignored "-Winline"
-#endif
-
-
 #if defined(__GNUC__)
 # define HIDDEN __attribute__((__visibility__("hidden")))
 # define CONST __attribute__((__const__))
@@ -40,8 +41,8 @@
 #endif
 
 #define NONSTRING
-#if defined(__GNUC__) && !defined(__clang__)
-# if __GNUC__ >= 8
+#if defined(__GNUC__)
+# if __GNUC__ >= 8 || defined(__clang__)
 #   undef NONSTRING
 #   define NONSTRING __attribute__((__nonstring__))
 # endif

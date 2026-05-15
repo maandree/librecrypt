@@ -62,6 +62,8 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 				r_int = snprintf(out_buffer, size + 1u, "*%zu", hashsize2);
 				if (r_int < 2)
 					abort(); /* $covered$ (impossible reliably) */
+				if (ret > SIZE_MAX - (size_t)r_int)
+					abort(); /* $covered$ (impossible) */
 				ret += (size_t)r_int;
 			} else {
 				out_buffer[0u] = '\0';
@@ -79,10 +81,18 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 			r_int = snprintf(NULL, 0u, "*%zu", hashsize2);
 			if (r_int < 2)
 				abort(); /* $covered$ (impossible reliably) */
+			if (ret > SIZE_MAX - (size_t)r_int)
+				abort(); /* $covered$ (impossible) */
 			ret += (size_t)r_int;
 		out:
 			if (nul_term)
 				out_buffer[0u] = '\0';
+		}
+		if (ret > (size_t)SSIZE_MAX) {
+			/* $covered{$ (manually) */
+			errno = EOVERFLOW;
+			return -1;
+			/* $covered}$ */
 		}
 		return (ssize_t)ret;
 	}
@@ -96,7 +106,9 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 		r_int = 0;
 	}
 
-	/* Measure `augent` and '>' in output */
+	/* Measure `augend` and '>' in output */
+	if (prefix1 > SIZE_MAX - 1u - (size_t)r_int)
+		abort(); /* $covered$ (impossible) */
 	ret = prefix1 + (size_t)r_int + 1u;
 
 	/* Decode the hash from base-64 to binary */
@@ -159,6 +171,14 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 		if (!r)
 			abort(); /* $covered$ (impossible) */
 		return -1;
+	}
+	if (ret > (size_t)(SSIZE_MAX - r)) {
+		/* $covered{$ (manually) */
+		librecrypt_wipe(phrase, phraselen);
+		free(phrase);
+		errno = EOVERFLOW;
+		return -1;
+		/* $covered}$ */
 	}
 	ret += (size_t)r;
 

@@ -8,7 +8,7 @@
 
 
 #ifdef SYS_mmap2
-# define IF_MMAP2(A) (A)
+# define IF_MMAP2(A) do { A; } while (0)
 #else
 # define IF_MMAP2(A) ((void)0)
 #endif

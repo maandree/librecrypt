@@ -53,8 +53,8 @@ mmap_anon(size_t size)
 }
 
 
-void *
-libtest_alloc(struct meminfo *meminfo)
+static void *
+try_alloc(struct meminfo *meminfo)
 {
 	static _Thread_local int recursion_guard = 0;
 	void *base_ptr, *ret_ptr;
@@ -204,6 +204,60 @@ libtest_alloc(struct meminfo *meminfo)
 	errno = saved_errno;
 	return ret_ptr;
 }
+
+
+void *
+libtest_alloc(struct meminfo *meminfo)
+{
+	void *ptr;
+	size_t reqsize;
+	ptr = try_alloc(meminfo);
+	if (!ptr && libtest_pretend_allocation_successful) {
+		reqsize = meminfo->requested_alloc_size;
+		meminfo->requested_alloc_size = 0u;
+		ptr = try_alloc(meminfo);
+		assert(ptr != NULL);
+		meminfo->requested_alloc_size = reqsize;
+		GET_MEMINFO(ptr)->requested_alloc_size = reqsize;
+		SPINLOCK(libtest_allocs_list_spinlock);
+		if (libtest_npretends >= ELEMSOF(libtest_pretend_list))
+			SPINUNLOCK(libtest_allocs_list_spinlock);
+		assert(libtest_npretends < ELEMSOF(libtest_pretend_list));
+		libtest_pretend_list[libtest_npretends++] = ptr;
+		SPINUNLOCK(libtest_allocs_list_spinlock);
+	}
+	return ptr;
+}
+
+
+void *
+(memset)(void *s, int c, size_t n)
+{
+	unsigned char *us = s, uc = (unsigned char)c;
+	size_t i;
+
+	SPINLOCK(libtest_allocs_list_spinlock);
+	for (i = 0u; i < libtest_npretends; i++) {
+		if (libtest_pretend_list[i] == s) {
+			/* We only do this for pointers in the pretend list
+			 * because we must know that it is actually a
+			 * pointer created with libtest_alloc, and not
+			 * mmap(2) or stack-allocated or statically
+			 * allocated buffer; and that's why libtest_pretend_list
+			 * exist instead of being inferred or a flag. */
+			if (n > GET_MEMINFO(s)->usable_alloc_size)
+				n = GET_MEMINFO(s)->usable_alloc_size;
+			break;
+		}
+	}
+	SPINUNLOCK(libtest_allocs_list_spinlock);
+
+	for (i = 0u; i < n; i++)
+		us[i] = uc;
+
+	return us;
+}
+
 
 
 #else

@@ -142,8 +142,7 @@ next:
 			digit = (size_t)(settings[i] - '0');
 			if (hash_size > (SIZE_MAX - digit) / 10u)
 				goto einval;
-			hash_size *= 10u;
-			hash_size += digit;
+			hash_size = hash_size * 10u + digit;
 		}
 		if (!hash_size)
 			goto einval;
@@ -173,7 +172,9 @@ next:
 		remainder = hash_size % 4u;
 		if (remainder == 1u)
 			goto einval;
-		hash_size = quotient * 3u + (remainder ? remainder - 1u : 0u);
+		hash_size = quotient * 3u;
+		if (remainder)
+			hash_size += remainder - 1u;
 	}
 
 	/* For `librecrypt_crypt`: copy hash configurations to output */
@@ -187,6 +188,8 @@ next:
 		if (min)
 			memcpy(out_buffer, settings, min);
 		out_buffer = &out_buffer[min];
+		if (ret > SIZE_MAX - prefix)
+			abort(); /* $covered$ (impossible) */
 		ret += prefix;
 	}
 
@@ -198,6 +201,7 @@ next:
 			free(phrase_scratches[phrase_scratch_i]);
 			phrase_scratches[phrase_scratch_i] = NULL;
 			phrase_scratch_sizes[phrase_scratch_i] = 0u;
+			errno = ENOMEM;
 			goto fail;
 		}
 		phrase_scratches[phrase_scratch_i] = new;
@@ -233,6 +237,8 @@ next:
 		if (action == BINARY_HASH) {
 			/* Binary output: we already have the has in binary,
 			 * so yes add the length to the return value */
+			if (ret != 0u)
+				abort(); /* $covered$ (impossible) */
 			ret += hash_size;
 		} else if (!size) {
 			/* ASCII hash but not output: just calculate the
@@ -244,6 +250,8 @@ next:
 				else
 					ascii_len += 1u; /* 3n+m bytes: 4n+m+1 chars, unless m=0 */
 			}
+			if (hash_size / 3u > (SIZE_MAX - ascii_len) / 4u)
+				goto eoverflow; /* $covered$ (on 32-bit, impossible on wider) */
 			ascii_len += hash_size / 3u * 4u;
 			goto include_ascii;
 		} else {
@@ -252,10 +260,18 @@ next:
 			ascii_len = librecrypt_encode(out_buffer, size,
 			                              size < hash_size ? phrase_scratches[phrase_scratch_i] : out_buffer,
 			                              hash_size, algo->encoding_lut, algo->strict_pad ? algo->pad : '\0');
+			/* SIZE_MAX could mean success, however we will
+			 * fail when convert `ret` from size_t to ssize_t,
+			 * so we can treat SIZE_MAX as failure even when
+			 * it's a success */
+			if (ascii_len == SIZE_MAX)
+				goto eoverflow; /* $covered$ (manually) */
 	include_ascii:
 			min = size ? MIN(size - 1u, ascii_len) : 0u;
 			out_buffer = &out_buffer[min];
 			size -= min;
+			if (ret > SIZE_MAX - ascii_len)
+				goto eoverflow; /* $covered$ (on 32-bit) */
 			ret += ascii_len;
 		}
 	} else {
@@ -275,6 +291,8 @@ next:
 
 		/* For `librecrypt_crypt`: add '>' to the password hash string */
 		if (action == ASCII_CRYPT) {
+			if (ret == SIZE_MAX)
+				abort(); /* $covered$ (impossible) */
 			ret += 1u;
 			if (size > 1u) {
 				*out_buffer++ = LIBRECRYPT_ALGORITHM_LINK_DELIMITER;
@@ -304,8 +322,19 @@ next:
 	if (size && action != BINARY_HASH)
 		out_buffer[0] = '\0';
 
+	if (ret > (size_t)SSIZE_MAX) {
+		/* $covered{$ (manually) */
+		errno = EOVERFLOW;
+		return -1;
+		/* $covered}$ */
+	}
 	return (ssize_t)ret;
 
+	/* $covered{$ (since we have covered gotos to this label) */
+eoverflow:
+	errno = EOVERFLOW;
+	goto fail;
+	/* $covered}$ */
 einval:
 	errno = EINVAL;
 fail:

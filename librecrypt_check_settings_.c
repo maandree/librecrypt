@@ -75,7 +75,7 @@ check_uint(const char *settings, size_t *off, size_t len, char min_first_digit,
  * @param   max              The most allowed number of bytes
  * @param   allow_empty      Whether the empty string is allowed
  *                           (no encoded bytes and no asterisk-notation)
- * @param   lut              Alphabet reverse lookup table, shall map any valid
+ * @param   dlut             Alphabet reverse lookup table, shall map any valid
  *                           character (except the padding character) to the value
  *                           of that character in the encoding alphabet, and map
  *                           any other character to the value `0xFF`

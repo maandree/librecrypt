@@ -57,8 +57,21 @@ function returns the number of bytes that
 would have been written to
 .IR out_buffer ,
 excluding the terminating null byte.
+On failure,
+.I SIZE_MAX
+is returned and
+.IR errno
+is set to describe the error.
 
 .SH ERRORS
+The
+.BR librecrypt_encode ()
+function will fail if:
+.TP
+.B EOVERFLOW
+.I ascii
+uses an invalid encoding.
+
 The
 .BR librecrypt_encode ()
 function cannot fail.
@@ -80,6 +93,18 @@ T{
 T}	Async-signal safety	AS-Safe
 .TE
 .sp
+
+.SH NOTES
+The value
+.I SIZE_MAX
+can be returned on both success and failure.
+.I errno
+is only modified on failure. For practical
+purposes, applications can treat
+.I SIZE_MAX
+as indicating an
+.I ENOMEM
+failure.
 
 .SH HISTORY
 The

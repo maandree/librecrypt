@@ -276,8 +276,18 @@ librecrypt_next_algorithm(char **hash)
  * @param   lut         The encoding alphabet, consisting of 64 characters,
  *                      repeated 4 times
  * @param   pad         The padding character to use at the end; the NUL byte if none
- * @return              The number of bytes that would have been written to `out_buffer`,
- *                      excluding the terminating NUL byte, if `size` was sufficiently large
+ * @return  len_out     The number of bytes that would have been written to `out_buffer`,
+ *                      excluding the terminating NUL byte, if `size` was sufficiently
+ *                      large; `SIZE_MAX` is returned on failure
+ * 
+ * @throws  EOVERFLOW  The for value `*len_out` cannot be represented
+ *                     because it is greater than `SIZE_MAX` (`len` is
+ *                     too great)
+ * 
+ * Despite being used as the failure indicator, `SIZE_MAX`
+ * is a legal return value on successful, is and returned
+ * (without modifying `errno`) when `pad` is the NUL byte
+ * and `len` is (`SIZE_MAX` - 3) / 4 * 3 + 2
  * 
  * On successful completion, the N bytes is written to
  * `out_buffer` where N is the lesser of `size` and 1 in
@@ -607,18 +617,19 @@ ssize_t librecrypt_make_settings(char *out_buffer, size_t size, const char *algo
  * @return              The number of bytes that would have been written to `out_buffer`
  *                      if `size` was sufficiently large; -1 on failure
  * 
- * @throws  EINVAL  `reserved` is non-`NULL` (this case will be removed
- *                  once `reserved` as being used by the library)
- * @throws  EINVAL  `settings` is invalid (invalid algorithm configuration,
- *                  invalid configuration syntax, or the output from one
- *                  chained hash algorithm cannot be input the next algorithm
- *                  in the chain (either because of format or length issues))
- * @throws  EINVAL  `settings` uses asterisk-encoding to specify random salts
- * @throws  ERANGE  `len` is too large or too small for the the selected
- *                  initial algorithm in the algorithm chain
- * @throws  ENOMEM  Failed to allocate internal scratch memory
- * @throws  ENOSYS  A selected hash algorithm is either not recognised
- *                  disabled at compile-time
+ * @throws  EINVAL     `reserved` is non-`NULL` (this case will be removed
+ *                     once `reserved` as being used by the library)
+ * @throws  EINVAL     `settings` is invalid (invalid algorithm configuration,
+ *                     invalid configuration syntax, or the output from one
+ *                     chained hash algorithm cannot be input the next algorithm
+ *                     in the chain (either because of format or length issues))
+ * @throws  EINVAL     `settings` uses asterisk-encoding to specify random salts
+ * @throws  ERANGE     `len` is too large or too small for the the selected
+ *                     initial algorithm in the algorithm chain
+ * @throws  EOVERFLOW  The expected return value is greater than {SSIZE_MAX}
+ * @throws  ENOMEM     Failed to allocate internal scratch memory
+ * @throws  ENOSYS     A selected hash algorithm is either not recognised
+ *                     disabled at compile-time
  * 
  * Any encountered `EINTR` is ignored
  * 
@@ -659,18 +670,19 @@ ssize_t librecrypt_hash_binary(char *restrict out_buffer, size_t size, const cha
  *                      if `size` was sufficiently large, excluding a terminating
  *                      NUL byte; -1 on failure
  * 
- * @throws  EINVAL  `reserved` is non-`NULL` (this case will be removed
- *                  once `reserved` as being used by the library)
- * @throws  EINVAL  `settings` is invalid (invalid algorithm configuration,
- *                  invalid configuration syntax, or the output from one
- *                  chained hash algorithm cannot be input the next algorithm
- *                  in the chain (either because of format or length issues))
- * @throws  EINVAL  `settings` uses asterisk-encoding to specify random salts
- * @throws  ERANGE  `len` is too large or too small for the the selected
- *                  initial algorithm in the algorithm chain
- * @throws  ENOMEM  Failed to allocate internal scratch memory
- * @throws  ENOSYS  A selected hash algorithm is either not recognised
- *                  disabled at compile-time
+ * @throws  EINVAL     `reserved` is non-`NULL` (this case will be removed
+ *                     once `reserved` as being used by the library)
+ * @throws  EINVAL     `settings` is invalid (invalid algorithm configuration,
+ *                     invalid configuration syntax, or the output from one
+ *                     chained hash algorithm cannot be input the next algorithm
+ *                     in the chain (either because of format or length issues))
+ * @throws  EINVAL     `settings` uses asterisk-encoding to specify random salts
+ * @throws  ERANGE     `len` is too large or too small for the the selected
+ *                     initial algorithm in the algorithm chain
+ * @throws  EOVERFLOW  The expected return value is greater than {SSIZE_MAX}
+ * @throws  ENOMEM     Failed to allocate internal scratch memory
+ * @throws  ENOSYS     A selected hash algorithm is either not recognised
+ *                     disabled at compile-time
  * 
  * Any encountered `EINTR` is ignored
  * 
@@ -716,17 +728,18 @@ ssize_t librecrypt_hash(char *restrict out_buffer, size_t size, const char *phra
  *                      if `size` was sufficiently large, excluding a terminating
  *                      NUL byte; -1 on failure
  * 
- * @throws  EINVAL  `reserved` is non-`NULL` (this case will be removed
- *                  once `reserved` as being used by the library)
- * @throws  EINVAL  `settings` is invalid (invalid algorithm configuration,
- *                  invalid configuration syntax, or the output from one
- *                  chained hash algorithm cannot be input the next algorithm
- *                  in the chain (either because of format or length issues))
- * @throws  ERANGE  `len` is too large or too small for the the selected
- *                  initial algorithm in the algorithm chain
- * @throws  ENOMEM  Failed to allocate internal scratch memory
- * @throws  ENOSYS  A selected hash algorithm is either not recognised
- *                  disabled at compile-time
+ * @throws  EINVAL     `reserved` is non-`NULL` (this case will be removed
+ *                     once `reserved` as being used by the library)
+ * @throws  EINVAL     `settings` is invalid (invalid algorithm configuration,
+ *                     invalid configuration syntax, or the output from one
+ *                     chained hash algorithm cannot be input the next algorithm
+ *                     in the chain (either because of format or length issues))
+ * @throws  ERANGE     `len` is too large or too small for the the selected
+ *                     initial algorithm in the algorithm chain
+ * @throws  EOVERFLOW  The expected return value is greater than {SSIZE_MAX}
+ * @throws  ENOMEM     Failed to allocate internal scratch memory
+ * @throws  ENOSYS     A selected hash algorithm is either not recognised
+ *                     disabled at compile-time
  * 
  * Any encountered `EINTR` is ignored
  * 
@@ -813,17 +826,18 @@ int librecrypt_test_supported(const char *phrase, size_t len, int text, const ch
  *                      if `size` was sufficiently large, excluding a terminating
  *                      NUL byte; -1 on failure
  * 
- * @throws  EINVAL  `reserved` is non-`NULL` (this case will be removed
- *                  once `reserved` as being used by the library)
- * @throws  EINVAL  `settings` is invalid (invalid algorithm configuration,
- *                  invalid configuration syntax, or the output from one
- *                  chained hash algorithm cannot be input the next algorithm
- *                  in the chain (either because of format or length issues))
- * @throws  ERANGE  `len` is too large or too small for the the selected
- *                  initial algorithm in the algorithm chain
- * @throws  ENOMEM  Failed to allocate internal scratch memory
- * @throws  ENOSYS  A selected hash algorithm is either not recognised
- *                  disabled at compile-time
+ * @throws  EINVAL     `reserved` is non-`NULL` (this case will be removed
+ *                     once `reserved` as being used by the library)
+ * @throws  EINVAL     `settings` is invalid (invalid algorithm configuration,
+ *                     invalid configuration syntax, or the output from one
+ *                     chained hash algorithm cannot be input the next algorithm
+ *                     in the chain (either because of format or length issues))
+ * @throws  ERANGE     `len` is too large or too small for the the selected
+ *                     initial algorithm in the algorithm chain
+ * @throws  EOVERFLOW  The expected return value is greater than {SSIZE_MAX}.
+ * @throws  ENOMEM     Failed to allocate internal scratch memory
+ * @throws  ENOSYS     A selected hash algorithm is either not recognised
+ *                     disabled at compile-time
  * 
  * On successful completion, the N bytes is written to
  * `out_buffer` where N is the lesser of `size` and 1 in

@@ -7,6 +7,7 @@ extern inline size_t librecrypt_chain_length(const char *hash);
 
 
 #else
+# ifndef FUZZ
 
 
 int
@@ -29,4 +30,20 @@ main(void)
 }
 
 
+# else
+
+
+extern volatile size_t discarded_return_value;
+volatile size_t discarded_return_value;
+
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+	(void) size;
+	discarded_return_value = librecrypt_chain_length((const void *)data);
+	return 0;
+}
+
+
+# endif
 #endif

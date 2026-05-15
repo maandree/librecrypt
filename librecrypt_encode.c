@@ -27,7 +27,12 @@ librecrypt_encode(char *out_buffer, size_t size, const void *binary, size_t len,
 	 * 3 bytes (24 bits) requires 4 base-64 characters (24 bits) exactly */
 	q = len / 3u;
 	r = len % 3u;
-	n = q * 4u + (!r ? 0u : pad ? 4u : r + 1u);
+	n = !r ? 0u : pad ? 4u : r + 1u;
+	if (q > (SIZE_MAX - n) / 4u) {
+		errno = EOVERFLOW;
+		return SIZE_MAX;
+	}
+	n += q * 4u;
 
 	/* Just return the encoding length if no output is requested */
 	if (!size)
@@ -126,6 +131,11 @@ librecrypt_encode(char *out_buffer, size_t size, const void *binary, size_t len,
 NONSTRING static const char lut[256u] = MAKE_ENCODING_LUT("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/");
 
 
+#define phony librecrypt_test_phony__
+extern void *volatile librecrypt_test_phony__;
+void *volatile librecrypt_test_phony__ = (void *)(uintptr_t)4096u;
+
+
 #define CHECK(BINARY, ASCII)\
 	check((BINARY), sizeof(BINARY) - 1u, (ASCII), sizeof(ASCII) - 1u)
 
@@ -192,6 +202,23 @@ main(void)
 	CHECK("testtest", "dGVzdHRlc3Q");
 	CHECK("zy[]y21 !", "enlbXXkyMSAh");
 	CHECK("{~|~}~~~\x7f\x7f", "e358fn1+fn5/fw");
+
+#if defined(__GNUC__)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wstringop-overflow="
+#endif
+
+	EXPECT(librecrypt_encode(NULL, 0u, phony, (SIZE_MAX - 3u) / 4u * 3u + 1u, lut, '\0') == SIZE_MAX - 1u);
+	errno = 0;
+	EXPECT(librecrypt_encode(NULL, 0u, phony, (SIZE_MAX - 3u) / 4u * 3u + 2u, lut, '\0') == SIZE_MAX);
+	EXPECT(errno == 0);
+	errno = 0;
+	EXPECT(librecrypt_encode(NULL, 0u, phony, (SIZE_MAX - 3u) / 4u * 3u + 3u, lut, '\0') == SIZE_MAX);
+	EXPECT(errno == EOVERFLOW);
+
+#if defined(__GNUC__)
+# pragma GCC diagnostic pop
+#endif
 
 	STOP_RESOURCE_TEST();
 	return 0;

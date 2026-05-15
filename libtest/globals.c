@@ -25,10 +25,14 @@ volatile int libtest_mmap_is_custom = -1;
 volatile int libtest_munmap_is_custom = -1;
 volatile int libtest_mremap_is_custom = -1;
 
+volatile int libtest_pretend_allocation_successful = 0;
+
 struct meminfo libtest_allocs_head;
 struct meminfo libtest_allocs_tail;
 int libtest_allocs_list_inited = 0;
 atomic_flag libtest_allocs_list_spinlock = ATOMIC_FLAG_INIT;
+void *libtest_pretend_list[128];
+size_t libtest_npretends = 0u;
 
 _Thread_local int libtest_zero_on_alloc = 0;
 _Thread_local int libtest_expect_zeroed = 0;

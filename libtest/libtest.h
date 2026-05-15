@@ -437,6 +437,8 @@ size_t libtest_get_alloc_failure_in(void);
 void libtest_set_alloc_failure_in(size_t n);
 
 
+extern volatile int libtest_pretend_allocation_successful;
+
 extern const unsigned char *volatile libtest_random_pattern;
 extern volatile size_t libtest_random_pattern_length;
 extern volatile size_t libtest_random_pattern_offset;

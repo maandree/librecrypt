@@ -39,12 +39,18 @@ libtest_free(void *ptr, enum libtest_zero_check zero_checking)
 	assert(mem->origin != FROM_MMAP_ANON);
 
 	/* Delist allocation */
+	SPINLOCK(libtest_allocs_list_spinlock);
 	if (!libtest_kill_malloc_tracking) {
-		SPINLOCK(libtest_allocs_list_spinlock);
 		mem->prev->next = mem->next;
 		mem->next->prev = mem->prev;
-		SPINUNLOCK(libtest_allocs_list_spinlock);
 	}
+	for (i = 0u; i < libtest_npretends; i++) {
+		if (libtest_pretend_list[i] == ptr) {
+			libtest_pretend_list[i] = libtest_pretend_list[--libtest_npretends];
+			break;
+		}
+	}
+	SPINUNLOCK(libtest_allocs_list_spinlock);
 
 	/* Check memory is zeroed */
 	if (zero_checking && libtest_expect_zeroed && !mem->accept_leakage) {

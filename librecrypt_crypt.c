@@ -98,7 +98,7 @@ check(const char *phrase, const char *settings, const char *chain, size_t chain_
 int
 main(void)
 {
-	char buf[1024], buf2[1024];
+	char buf[1024], buf2[1024], conf[256];
 	ssize_t r;
 
 	SET_UP_ALARM();
@@ -111,6 +111,39 @@ main(void)
 
 #define GET_SCRATCH_SIZE(HASHLEN) ((HASHLEN) > 64u ? ((HASHLEN) + 63u) & ~31u : (HASHLEN))
 #if defined(SUPPORT_ARGON2I)
+	r = snprintf(conf, sizeof(conf), "$argon2i$m=256,t=8,p=1$AAAABBBBCCCC$*%zu", SIZE_MAX / 4u * 3u + 3u);
+	assert(r > 0 && (size_t)r < sizeof(conf));
+	errno = 0;
+	EXPECT(librecrypt_crypt(NULL, 0u, NULL, 0u, conf, NULL) == -1);
+# if SIZE_MAX > UINT32_MAX
+	EXPECT(errno == EINVAL);
+# else
+	EXPECT(errno == EOVERFLOW);
+	if (libtest_have_custom_malloc()) {
+		libtest_pretend_allocation_successful = 1;
+		errno = 0;
+		EXPECT(librecrypt_crypt(buf, sizeof(buf), NULL, 0u, conf, NULL) == -1);
+		libtest_pretend_allocation_successful = 0;
+		EXPECT(errno == EOVERFLOW);
+	}
+# endif
+
+# if SIZE_MAX == UINT32_MAX
+	r = snprintf(conf, sizeof(conf), "$argon2i$m=256,t=8,p=1$AAAABBBBCCCC$*%zu", (SIZE_MAX / 4u * 3u) / 2u);
+	assert(r > 0 && (size_t)r < sizeof(conf));
+	errno = 0;
+	EXPECT(librecrypt_crypt(NULL, 0u, NULL, 0u, conf, NULL) == -1);
+	EXPECT(errno == EOVERFLOW);
+# endif
+
+# if SIZE_MAX == UINT32_MAX
+	r = snprintf(conf, sizeof(conf), "$argon2i$m=256,t=8,p=1$AAAABBBBCCCC$*%zu", SIZE_MAX / 4u * 3u);
+	assert(r > 0 && (size_t)r < sizeof(conf));
+	errno = 0;
+	EXPECT(librecrypt_crypt(NULL, 0u, NULL, 0u, conf, NULL) == -1);
+	EXPECT(errno == EOVERFLOW);
+# endif
+
 	CHECK("password",  "$argon2i$"   "m=256,t=2,p=1$c29tZXNhbHQ$",  32, 1, "/U3YPXYsSb3q9XxHvc0MLxur+GP960kN9j7emXX8zwY");
 	CHECK("password",  "$argon2i$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, 1, "iekCn0Y3spW+sCcFanM2xBT63UP2sghkUoHLIUpWRS8");
 	CHECK_BAD("$argon2i$");

@@ -19,19 +19,28 @@ LIB_VERSION = $(LIB_MAJOR).$(LIB_MINOR)
 LIB_NAME = recrypt
 
 
-OBJ_PUBLIC =\
+OBJ_PUBLIC_FUZZ =\
 	librecrypt_settings_prefix.o\
+
+OBJ_PUBLIC_NO_FUZZ =\
 	librecrypt_chain_length.o\
 	librecrypt_decompose_chain.o\
 	librecrypt_decompose_chain1.o\
-	librecrypt_next_algorithm.o\
-	librecrypt_encode.o\
-	librecrypt_decode.o\
-	librecrypt_get_encoding.o\
+	librecrypt_next_algorithm.o
+
+OBJ_PUBLIC_NO_FUZZ =\
 	librecrypt_wipe.o\
 	librecrypt_wipe_str.o\
 	librecrypt_equal_binary.o\
-	librecrypt_equal.o\
+	librecrypt_equal.o
+
+OBJ_PUBLIC =\
+	$(OBJ_PUBLIC_FUZZ)\
+	$(OBJ_PUBLIC_DONT_FUZZ)\
+	$(OBJ_PUBLIC_NO_FUZZ)\
+	librecrypt_encode.o\
+	librecrypt_decode.o\
+	librecrypt_get_encoding.o\
 	librecrypt_realise_salts.o\
 	librecrypt_make_settings.o\
 	librecrypt_hash_binary.o\
@@ -63,6 +72,8 @@ HDR =\
 LOBJ = $(OBJ:.o=.lo)
 TOBJ = $(OBJ:.o=.to)
 TEST = $(OBJ:.o=.t)
+FOBJ = $(OBJ_PUBLIC_FUZZ:.o=.fo)
+FUZZ = $(OBJ_PUBLIC_FUZZ:.o=.f)
 MAN3 = $(OBJ_PUBLIC:.o=.3)
 MAN7 = librecrypt.7
 
@@ -70,9 +81,9 @@ all:
 
 include argon2/suffix.mk
 
-ALL_CFLAGS   = $(CFLAGS)   $(CFLAGS_MODULES)
-ALL_CPPFLAGS = $(CPPFLAGS) $(CPPFLAGS_MODULES)
-ALL_LDFLAGS  = $(LDFLAGS)  $(LDFLAGS_MODULES)
+ALL_CPPFLAGS = $(CPPFLAGS) $(CPPFLAGS_MODULES) $(FUZZED_CPPFLAGS)
+ALL_CFLAGS   = $(CFLAGS)   $(CFLAGS_MODULES)   $(FUZZED_CFLAGS)
+ALL_LDFLAGS  = $(LDFLAGS)  $(LDFLAGS_MODULES)  $(FUZZED_LDFLAGS)
 
 TEST_INCLUDE_PREFIX = libtest/
 include libtest/config.mk
@@ -83,6 +94,7 @@ $(OBJ): $(HDR)
 $(LOBJ): $(HDR)
 $(TOBJ): $(HDR) libtest/libtest.h
 $(TEST): $(HDR) librecrypt.a libtest/libtest.a libtest/libtest.h
+$(FUZZ): $(HDR) librecrypt.a libtest/libtest.a libtest/libtest.h
 
 .c.o:
 	$(CC) -c -o $@ $< $(ALL_CFLAGS) $(COV_CFLAGS) $(ALL_CPPFLAGS) $(COV_CPPFLAGS)
@@ -95,6 +107,12 @@ $(TEST): $(HDR) librecrypt.a libtest/libtest.a libtest/libtest.h
 
 .to.t:
 	$(CC) -o $@ $< librecrypt.a libtest/libtest.a $(G) $(ALL_LDFLAGS) $(TEST_LDFLAGS) $(COV_LDFLAGS)
+
+.c.fo:
+	$(CC) -DTEST -DFUZZ -c -o $@ $< $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(FUZZ_CFLAGS) $(FUZZ_CPPFLAGS)
+
+.fo.f:
+	$(CC) -o $@ $< librecrypt.a libtest/libtest.a $(G) $(ALL_LDFLAGS) $(TEST_LDFLAGS) $(FUZZ_LDFLAGS)
 
 librecrypt.a: $(OBJ)
 	@rm -f -- $@
@@ -116,6 +134,12 @@ check: $(TEST)
 # Setting CHECK_PREFIX is intended for developers, setting it
 # (specially to use valgrind(1)) may limit what the test code
 # is able to test
+
+fuzz: $(FUZZ)
+	@set -ex;\
+	for f in $(FUZZ); do\
+		$(FUZZ_PREFIX) ./$$f $(FUZZ_SUFFIX);\
+	done
 
 install: librecrypt.a librecrypt.$(LIBEXT)
 	mkdir -p -- "$(DESTDIR)$(PREFIX)/lib"
@@ -144,10 +168,10 @@ clean:
 	+cd libtest && $(MAKE) clean
 	-rm -f -- *.o *.a *.lo *.su *.so *.so.* *.dll *.dylib
 	-rm -f -- *.gch *.gcov *.gcno *.gcda *.$(LIBEXT)
-	-rm -f -- *.to *.t
+	-rm -f -- *.to *.t *.fo *.f
 
 .SUFFIXES:
-.SUFFIXES: .lo .o .c .to .t
+.SUFFIXES: .lo .o .c .to .t .fo .f
 
-.PHONY: all check install uninstall clean
+.PHONY: all check fuzz install uninstall clean
 .PHONY: libtest/libtest.a

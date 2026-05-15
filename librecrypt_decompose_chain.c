@@ -7,6 +7,7 @@ extern inline size_t librecrypt_decompose_chain(char *hash, char **chain_out_arr
 
 
 #else
+# ifndef FUZZ
 
 
 #define HASH_1 "a$b"
@@ -182,4 +183,37 @@ main(void)
 }
 
 
+# else
+
+
+extern volatile size_t discarded_return_value;
+volatile size_t discarded_return_value;
+
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+	char **chain, *hash;
+	size_t chain_size;
+	if (!size)
+		return 0;
+	chain_size = (size_t)*data++;
+	size -= 1u;
+	if (chain_size) {
+		chain = malloc(chain_size * sizeof(*chain));
+		assert(chain);
+	} else {
+		chain = NULL;
+	}
+	hash = malloc(size + 1u);
+	assert(hash);
+	memcpy(hash, data, size);
+	hash[size] = '\0';
+	discarded_return_value = librecrypt_decompose_chain(hash, chain, chain_size);
+	free(hash);
+	free(chain);
+	return 0;
+}
+
+
+# endif
 #endif

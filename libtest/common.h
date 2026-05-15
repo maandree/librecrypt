@@ -160,6 +160,8 @@ extern struct meminfo libtest_allocs_head;
 extern struct meminfo libtest_allocs_tail;
 extern int libtest_allocs_list_inited;
 extern atomic_flag libtest_allocs_list_spinlock;
+extern void *libtest_pretend_list[128];
+extern size_t libtest_npretends;
 
 extern _Thread_local int libtest_zero_on_alloc;
 extern _Thread_local int libtest_expect_zeroed;
