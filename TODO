@@ -1,0 +1,20 @@
+Wrote fuzzing code for the files listed in OBJ_PUBLIC.
+Add corpuses for fuzzing.
+Add documentation similar to crypt(5).
+Add support for yescrypt.
+Add support for gost-yescrypt.
+Add support for sm3-yescrypt.
+Add support for scrypt.
+Add support for bcrypt.
+Add support for sha512crypt.
+Add support for sha256crypt.
+Add support for sm3crypt.
+Add support for sha1crypt.
+Add support for SunMD5.
+Add support for md5crypt.
+Add support for bsdicrypt.
+Add support for descrypt.
+Add support for bigcrypt.
+Add support for NT Hash.
+(Maybe) Add support for custom hash functions.
+Add support (via the "reserved" parametrer) for pepper.
