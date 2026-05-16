@@ -131,6 +131,9 @@ static const unsigned char lut[256u] = {
 };
 
 
+# ifndef FUZZ
+
+
 #define CHECK(BINARY, ASCII, PAD)\
 	check((BINARY), sizeof(BINARY) - 1u, (ASCII PAD), sizeof(ASCII) - 1u, sizeof(ASCII PAD) - 1u)
 
@@ -334,4 +337,43 @@ main(void)
 }
 
 
+# else
+
+
+extern volatile ssize_t discarded_return_value;
+volatile ssize_t discarded_return_value;
+
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+	char *out_buffer;
+	size_t out_size;
+	const char *ascii;
+	char pad;
+	int strict_pad;
+	size_t r;
+
+	if (size < 4u)
+		return 0;
+
+	out_size = ((size_t)data[0u] << 8) | (size_t)data[1u];
+	if (out_size) {
+		out_buffer = malloc(out_size);
+		assert(out_buffer != NULL);
+	} else {
+		out_buffer = NULL;
+	}
+	pad = data[2u];
+	strict_pad = (int)data[3u] & 1;
+	ascii = (const void *)&data[4u];
+	size -= 4u;
+
+	discarded_return_value = librecrypt_decode(out_buffer, out_size, ascii, size, lut, pad, strict_pad);
+
+	free(out_buffer);
+	return 0;
+}
+
+
+# endif
 #endif

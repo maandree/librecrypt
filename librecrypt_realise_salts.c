@@ -164,6 +164,7 @@ erange:
 
 
 #else
+# ifndef FUZZ
 
 
 # define LARGE "99999999999999999999999999999999999999999999999999999999999999"
@@ -313,4 +314,62 @@ main(void)
 }
 
 
+#else
+
+
+int
+LLVMFuzzerInitialize(int *argc, char ***argv)
+{
+	static unsigned char not_random = 5;
+
+#if defined(__linux__)
+	libtest_getrandom_real = 0;
+#endif
+	libtest_getentropy_real = 0;
+	libtest_random_pattern = &not_random;
+	libtest_random_pattern_length = 1u;
+	libtest_random_pattern_offset = 0u;
+
+	(void) argc;
+	(void) argv;
+	return 0;
+}
+
+
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+	char *out_buffer, *settings;
+	size_t out_size;
+	ssize_t r;
+
+	if (size < 2u)
+		return 0;
+
+	out_size = ((size_t)data[0u] << 8) | (size_t)data[1u];
+	if (out_size) {
+		out_buffer = malloc(out_size);
+		assert(out_buffer != NULL);
+	} else {
+		out_buffer = NULL;
+	}
+	data = &data[2u];
+	size -= 2u;
+	settings = malloc(size + 1u);
+	assert(settings != NULL);
+	memcpy(settings, data, size);
+	settings[size] = '\0';
+
+	r = librecrypt_realise_salts(out_buffer, out_size, settings, NULL, NULL);
+	if (out_size && r >= 0) {
+		assert(strlen(out_buffer) < out_size);
+		assert((size_t)r >= strlen(out_buffer));
+	}
+
+	free(out_buffer);
+	return 0;
+}
+
+
+# endif
 #endif

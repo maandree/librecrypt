@@ -34,6 +34,7 @@ librecrypt_get_encoding(const char *settings, size_t len, char *pad_out, int *st
 
 
 #else
+# ifndef FUZZ
 
 
 #define NSA "$~no~such~algorithm~$"
@@ -137,4 +138,27 @@ main(void)
 }
 
 
+
+# else
+
+
+extern const void *volatile discarded_return_value;
+const void *volatile discarded_return_value;
+
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+	const char *settings;
+	int decoding;
+	if (size < 1u)
+		return 0;
+	decoding = (int)data[0u] & 1;
+	settings = (const void *)&data[1u];
+	size -= 1u;
+	discarded_return_value = librecrypt_get_encoding(settings, size, &(char){0}, &(int){0}, decoding);
+	return 0;
+}
+
+
+# endif
 #endif

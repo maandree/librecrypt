@@ -3,12 +3,90 @@
 #ifndef TEST
 
 #include <libar2.h>
-#include <libar2simplified.h>
+#ifndef NO_LIBAR2SIMPLIFIED
+# include <libar2simplified.h>
+#else
+# define libar2simplified_init_context init_context
+#endif
 
 
 #define RANGE(MIN, MAX) (uintmax_t)(MIN), (uintmax_t)(MAX)
 #define BASE64 librecrypt_common_rfc4848s4_decoding_lut_, argon2__PAD, argon2__STRICT_PAD
 #define REMOVE_CONST(X) (*(void **)(void *)&(X))
+
+
+#ifdef NO_LIBAR2SIMPLIFIED
+
+static void *
+allocate(size_t num, size_t size, size_t alignment, struct libar2_context *ctx)
+{
+	size_t extra, pad;
+	void *ptr;
+	unsigned char *p;
+	int err;
+
+	(void) ctx;
+
+	alignment = MAX(alignment, sizeof(void *));
+	extra = 2u * sizeof(size_t);
+	pad = -extra & (alignment - 1u);
+
+	err = ENOMEM;
+	if (num > (SIZE_MAX - extra - pad) / size ||
+	    (err = posix_memalign(&ptr, alignment, pad + extra + (size *= num)))) {
+		errno = err;
+		return NULL;
+	}
+
+	p = ptr;
+	p += pad;
+	memcpy(p, &pad, sizeof(size_t));
+	p += sizeof(size_t);
+	memcpy(p, &size, sizeof(size_t));
+	p += sizeof(size_t);
+	return p;
+}
+
+
+static void
+deallocate(void *ptr, struct libar2_context *ctx)
+{
+	size_t size, pad;
+	char *p = ptr;
+
+	(void) ctx;
+
+	p -= sizeof(size_t);
+	memcpy(&size, p, sizeof(size_t));
+	p -= sizeof(size_t);
+	memcpy(&pad, p, sizeof(size_t));
+	p -= pad;
+
+	librecrypt_wipe(p, size + pad + 2u * sizeof(size_t));
+	free(p);
+}
+
+
+static int
+init_thread_pool(size_t desired, size_t *createdp, struct libar2_context *ctx)
+{
+	(void) desired;
+	(void) ctx;
+	*createdp = 0u;
+	return 0;
+}
+
+
+static void
+init_context(struct libar2_context *ctxp)
+{
+	memset(ctxp, 0, sizeof(*ctxp));
+	ctxp->allocate = &allocate;
+	ctxp->deallocate = &deallocate;
+	ctxp->init_thread_pool = &init_thread_pool;
+}
+
+#endif
 
 
 int

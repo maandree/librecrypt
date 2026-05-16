@@ -41,6 +41,7 @@ librecrypt_test_supported(const char *phrase, size_t len, int text, const char *
 
 
 #else
+# ifndef FUZZ
 
 
 #define NSA "$~no~such~algorithm~$"
@@ -77,4 +78,41 @@ main(void)
 }
 
 
+# else
+
+
+extern volatile int discarded_return_value;
+volatile int discarded_return_value;
+
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+	const void *phrase;
+	size_t len;
+	int text;
+	char *settings;
+
+	if (size < 4u)
+		return 0;
+
+	text = (int)data[0u] & 1;
+	len = (size_t)data[1u];
+	if (len > size - 2u)
+		return 0;
+	phrase = &data[2u];
+	data = &data[2u + len];
+	size -= 2u + len;
+	settings = malloc(size + 1u);
+	assert(settings);
+	memcpy(settings, data, size);
+	settings[size] = '\0';
+
+	discarded_return_value = librecrypt_test_supported(phrase, len, text, settings);
+
+	free(settings);
+	return 0;
+}
+
+
+# endif
 #endif

@@ -20,13 +20,18 @@ LIB_NAME = recrypt
 
 
 OBJ_PUBLIC_FUZZ =\
-	librecrypt_settings_prefix.o
+	librecrypt_settings_prefix.o\
+	librecrypt_test_supported.o\
+	librecrypt_realise_salts.o
 
 OBJ_PUBLIC_DONT_FUZZ =\
 	librecrypt_chain_length.o\
 	librecrypt_decompose_chain.o\
 	librecrypt_decompose_chain1.o\
-	librecrypt_next_algorithm.o
+	librecrypt_next_algorithm.o\
+	librecrypt_encode.o\
+	librecrypt_decode.o\
+	librecrypt_get_encoding.o
 
 OBJ_PUBLIC_NO_FUZZ =\
 	librecrypt_wipe.o\
@@ -38,16 +43,11 @@ OBJ_PUBLIC =\
 	$(OBJ_PUBLIC_FUZZ)\
 	$(OBJ_PUBLIC_DONT_FUZZ)\
 	$(OBJ_PUBLIC_NO_FUZZ)\
-	librecrypt_encode.o\
-	librecrypt_decode.o\
-	librecrypt_get_encoding.o\
-	librecrypt_realise_salts.o\
 	librecrypt_make_settings.o\
 	librecrypt_hash_binary.o\
 	librecrypt_hash.o\
 	librecrypt_crypt.o\
-	librecrypt_add_algorithm.o\
-	librecrypt_test_supported.o
+	librecrypt_add_algorithm.o
 
 OBJ_PRIVATE =\
 	librecrypt_algorithms_.o\

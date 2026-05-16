@@ -1,5 +1,7 @@
 SUPPORT_ANY_ARGON2 = ($(SUPPORT_ARGON2I) || $(SUPPORT_ARGON2D) || $(SUPPORT_ARGON2ID) || $(SUPPORT_ARGON2DS))
 
+WITH_LIBAR2SIMPLIFIED = true
+
 HDR += argon2/argon2.h
 
 OBJ_ARGON2 !=\
@@ -29,19 +31,27 @@ CPPFLAGS_ARGON2 !=\
 	;fi;\
 	if $(SUPPORT_ARGON2DS); then echo\
 		-DSUPPORT_ARGON2DS\
+	;fi;\
+	if ! $(WITH_LIBAR2SIMPLIFIED); then echo\
+		-DNO_LIBAR2SIMPLIFIED\
 	;fi
 
 CFLAGS_ARGON2 !=\
-	if $(SUPPORT_ANY_ARGON2); then echo\
+	if $(SUPPORT_ANY_ARGON2) && $(WITH_LIBAR2SIMPLIFIED); then echo\
 		-pthread\
 	;fi
 
 LDFLAGS_ARGON2 !=\
-	if $(SUPPORT_ANY_ARGON2); then echo\
-		-lar2simplified\
-		-lar2\
-		-lblake\
-		-pthread\
+	if $(SUPPORT_ANY_ARGON2); then\
+		if $(WITH_LIBAR2SIMPLIFIED); then echo\
+			-lar2simplified\
+			-lar2\
+			-lblake\
+			-pthread\
+		;else echo\
+			-lar2\
+			-lblake\
+		;fi\
 	;fi
 
 CPPFLAGS_MODULES += $(CPPFLAGS_ARGON2)

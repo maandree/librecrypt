@@ -8,6 +8,12 @@ For Argon2 support (runtime, build, and check dependencies):
 	libblake (indirect)
 	pthread (indirect)
 
+	Running make(1) with WITH_LIBAR2SIMPLIFIED=false removes
+	dependency on libar2simplified and pthread (for Argon2),
+	however, it also disables multithreading for Argon2. It
+	is advisable to use WITH_LIBAR2SIMPLIFIED=false if you
+	are only going to use p=1 in the Argon2 parameters.
+
 Build dependencies:
 	libc
 	make

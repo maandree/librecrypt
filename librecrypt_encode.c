@@ -126,6 +126,7 @@ librecrypt_encode(char *out_buffer, size_t size, const void *binary, size_t len,
 
 
 #else
+# ifndef FUZZ
 
 
 NONSTRING static const char lut[256u] = MAKE_ENCODING_LUT("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/");
@@ -225,4 +226,39 @@ main(void)
 }
 
 
+# else
+
+
+extern volatile size_t discarded_return_value;
+volatile size_t discarded_return_value;
+
+int
+LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+	const static char lut[256];
+	char *out_buffer;
+	size_t out_size;
+	char pad;
+	size_t r;
+
+	if (size < 3u)
+		return 0;
+
+	out_size = ((size_t)data[0u] << 8) | (size_t)data[1u];
+	if (out_size) {
+		out_buffer = malloc(out_size);
+		assert(out_buffer != NULL);
+	} else {
+		out_buffer = NULL;
+	}
+	pad = data[2u];
+
+	discarded_return_value = librecrypt_encode(out_buffer, out_size, &data[3u], size - 3u, lut, pad);
+
+	free(out_buffer);
+	return 0;
+}
+
+
+# endif
 #endif
