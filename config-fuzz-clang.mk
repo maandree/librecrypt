@@ -8,7 +8,7 @@ FUZZ_CFLAGS     = -fsanitize=fuzzer
 FUZZ_LDFLAGS    = -fsanitize=fuzzer
 FUZZED_CPPFLAGS = -DFUZZ
 
-all: fuzz
+fuzz:
 
 # These configurations will modify the library code
 # so that it doesn't perform password hashing !!!!!
