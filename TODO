@@ -1,4 +1,4 @@
-Wrote fuzzing code for the files listed in OBJ_PUBLIC.
+Write fuzzing code for the files listed in OBJ_PUBLIC.
 Add corpuses for fuzzing.
 Add documentation similar to crypt(5).
 Add support for yescrypt.
