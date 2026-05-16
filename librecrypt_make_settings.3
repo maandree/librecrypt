@@ -8,7 +8,8 @@ librecrypt_make_settings - Generate a password hash settings string
 
 ssize_t \fBlibrecrypt_make_settings\fP(char *\fIout_buffer\fP, size_t \fIsize\fP, const char *\fIalgorithm\fP,
                                 size_t \fImemcost\fP, uintmax_t \fItimecost\fP, int \fIgensalt\fP,
-                                ssize_t (*\fIrng\fP)(void *\fIout\fP, size_t \fIn\fP, void *\fIuser\fP), void *\fIuser\fP);
+                                ssize_t (*\fIrng\fP)(void *\fIout\fP, size_t \fIn\fP, void *\fIuser\fP),
+                                void *\fIuser\fP, void *\fIreserved\fP);
 .fi
 .PP
 Link with
@@ -76,6 +77,11 @@ with the same name, as is and may be used by
 .IR *rng
 for user-defined purposes.
 .PP
+The
+.I reserved
+parameter is reserved for future use and should be
+.IR NULL .
+.PP
 On successful completion, if
 .I size
 is positive, the output is null byte terminated
@@ -112,6 +118,11 @@ is set to describe the error.
 The
 .BR librecrypt_make_settings ()
 function will fail if:
+.TP
+.B EINVAL
+.I reserved
+is not
+.IR NULL .
 .TP
 .B EINVAL
 .I algorithm

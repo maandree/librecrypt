@@ -4,10 +4,16 @@
 
 
 const void *
-librecrypt_get_encoding(const char *settings, size_t len, char *pad_out, int *strict_pad_out, int decoding)
+librecrypt_get_encoding(const char *settings, size_t len, char *pad_out, int *strict_pad_out, int decoding, void *reserved)
 {
 	size_t i, start = 0u;
 	const struct algorithm *algo;
+
+	/* Ensure the reserved parameter is NULL */
+	if (reserved != NULL) {
+		errno = EINVAL;
+		return NULL;
+	}
 
 	/* Find last algorithm in the chain */
 	for (i = 0u; i < len; i++)
@@ -72,7 +78,7 @@ check_decoding_lut(const unsigned char *lut, const char *alpha)
 	do {\
 		pad = (char)~(PAD);\
 		strict_pad = -1;\
-		elut = librecrypt_get_encoding(PREFIX, sizeof(PREFIX) - 1u, &pad, &strict_pad, 0);\
+		elut = librecrypt_get_encoding(PREFIX, sizeof(PREFIX) - 1u, &pad, &strict_pad, 0, NULL);\
 		EXPECT(elut != NULL);\
 		EXPECT(pad == (PAD));\
 		EXPECT(strict_pad == (STRICT_PAD));\
@@ -80,7 +86,7 @@ check_decoding_lut(const unsigned char *lut, const char *alpha)
 		\
 		pad = (char)~(PAD);\
 		strict_pad = -1;\
-		dlut = librecrypt_get_encoding(PREFIX, sizeof(PREFIX) - 1u, &pad, &strict_pad, 1);\
+		dlut = librecrypt_get_encoding(PREFIX, sizeof(PREFIX) - 1u, &pad, &strict_pad, 1, NULL);\
 		EXPECT(dlut != NULL);\
 		EXPECT(pad == (PAD));\
 		EXPECT(strict_pad == (STRICT_PAD));\
@@ -88,7 +94,7 @@ check_decoding_lut(const unsigned char *lut, const char *alpha)
 		\
 		pad = (char)~(PAD);\
 		strict_pad = -1;\
-		elut = librecrypt_get_encoding(NSA">"PREFIX, sizeof(NSA">"PREFIX) - 1u, &pad, &strict_pad, 0);\
+		elut = librecrypt_get_encoding(NSA">"PREFIX, sizeof(NSA">"PREFIX) - 1u, &pad, &strict_pad, 0, NULL);\
 		EXPECT(elut != NULL);\
 		EXPECT(pad == (PAD));\
 		EXPECT(strict_pad == (STRICT_PAD));\
@@ -104,6 +110,7 @@ check_decoding_lut(const unsigned char *lut, const char *alpha)
 int
 main(void)
 {
+	char reserved[1] = {0};
 	const char *elut;
 	const unsigned char *dlut;
 	char pad;
@@ -113,19 +120,23 @@ main(void)
 	INIT_RESOURCE_TEST();
 
 	errno = 0;
-	EXPECT(librecrypt_get_encoding(NSA, 1u, &pad, &strict_pad, 0) == NULL);
+	EXPECT(librecrypt_get_encoding("$argon2i$", sizeof("$argon2i$") - 1u, &pad, &strict_pad, 0, reserved) == NULL);
+	EXPECT(errno == EINVAL);
+
+	errno = 0;
+	EXPECT(librecrypt_get_encoding(NSA, sizeof(NSA) - 1u, &pad, &strict_pad, 0, NULL) == NULL);
 	EXPECT(errno == ENOSYS);
 
 	errno = 0;
-	EXPECT(librecrypt_get_encoding(NSA, 1u, &pad, &strict_pad, 1) == NULL);
+	EXPECT(librecrypt_get_encoding(NSA, sizeof(NSA) - 1u, &pad, &strict_pad, 1, NULL) == NULL);
 	EXPECT(errno == ENOSYS);
 
 	errno = 0;
-	EXPECT(librecrypt_get_encoding(">"NSA, 1u, &pad, &strict_pad, 0) == NULL);
+	EXPECT(librecrypt_get_encoding(">"NSA, sizeof(">"NSA) - 1u, &pad, &strict_pad, 0, NULL) == NULL);
 	EXPECT(errno == ENOSYS);
 
 	errno = 0;
-	EXPECT(librecrypt_get_encoding(">"NSA, 1u, &pad, &strict_pad, 1) == NULL);
+	EXPECT(librecrypt_get_encoding(">"NSA, sizeof(">"NSA) - 1u, &pad, &strict_pad, 1, NULL) == NULL);
 	EXPECT(errno == ENOSYS);
 
 	IF__argon2i__SUPPORTED(CHECK("$argon2i$", UPPER LOWER DIGIT "+/", '=', 0);)
@@ -155,7 +166,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	decoding = (int)data[0u] & 1;
 	settings = (const void *)&data[1u];
 	size -= 1u;
-	discarded_return_value = librecrypt_get_encoding(settings, size, &(char){0}, &(int){0}, decoding);
+	discarded_return_value = librecrypt_get_encoding(settings, size, &(char){0}, &(int){0}, decoding, NULL);
 	return 0;
 }
 

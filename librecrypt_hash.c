@@ -58,7 +58,7 @@ check(const char *phrase, const char *settings, const char *chain, const char *h
 	CANARY_X_CHECK(buf, 0u, 0u);
 	EXPECT(librecrypt_hash(NULL, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
 
-	lut = librecrypt_get_encoding(settings, strlen(settings), &pad, &strict_pad, 1);
+	lut = librecrypt_get_encoding(settings, strlen(settings), &pad, &strict_pad, 1, NULL);
 	assert(lut);
 	r = librecrypt_decode(expected, sizeof(expected), hash, strlen(hash), lut, pad, strict_pad);
 	assert(r > 0 && (size_t)r <= sizeof(expected));

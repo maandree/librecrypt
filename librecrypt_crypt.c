@@ -56,7 +56,7 @@ check(const char *phrase, const char *settings, const char *chain, size_t chain_
 	EXPECT(librecrypt_crypt(buf, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
 	EXPECT(librecrypt_crypt(NULL, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
 
-	lut = librecrypt_get_encoding(settings, strlen(settings), &pad, &strict_pad, 1);
+	lut = librecrypt_get_encoding(settings, strlen(settings), &pad, &strict_pad, 1, NULL);
 	assert(lut);
 	r = librecrypt_decode(expected, sizeof(expected), &hash[hash_prefix], hashlen - hash_prefix, lut, pad, strict_pad);
 	assert(r > 0 && (size_t)r <= sizeof(expected));

@@ -6,7 +6,8 @@ librecrypt_test_supported - Check whether an algorithm chain is supported
 .nf
 #include <librecrypt.h>
 
-int \fBlibrecrypt_test_supported\fP(const char *\fIphrase\fP, size_t \fIlen\fP, int \fItext\fP, const char *\fIsettings\fP);
+int \fBlibrecrypt_test_supported\fP(const char *\fIphrase\fP, size_t \fIlen\fP, int \fItext\fP,
+                              const char *\fIsettings\fP, void *\fIreserved\fP);
 .fi
 .PP
 Link with
@@ -44,6 +45,11 @@ sequence if
 is zero. If
 .I text
 is non-zero, UTF-8 without null bytes is assumed.
+.PP
+The
+.I reserved
+parameter is reserved for future use and should be
+.IR NULL .
 .PP
 If
 .I phrase

@@ -4,12 +4,14 @@
 
 
 size_t
-librecrypt_settings_prefix(const char *hash, size_t *hashsize_out)
+librecrypt_settings_prefix(const char *hash, size_t *hashsize_out, void *reserved)
 {
 	size_t i, len, ret = 0u;
 	size_t last_offset = 0u;
 	const struct algorithm *algo;
 	uintmax_t hashsize;
+
+	(void) reserved;
 
 	/* Find last algorithm, and beginning of result */
 	for (i = 0u; hash[i]; i++) {
@@ -60,21 +62,21 @@ out:
 
 #define CHECK_NULL(PREFIX, SUFFIX)\
 	do {\
-		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, NULL) == sizeof(PREFIX) - 1u);\
-		EXPECT(librecrypt_settings_prefix(PREFIX, NULL) == sizeof(PREFIX) - 1u); \
+		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, NULL, NULL) == sizeof(PREFIX) - 1u);\
+		EXPECT(librecrypt_settings_prefix(PREFIX, NULL, NULL) == sizeof(PREFIX) - 1u); \
 	} while (0)
 
 #define CHECK_ZERO(PREFIX, SUFFIX)\
 	do {\
 		size_t hashsize = 99999u;\
-		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, &hashsize) == sizeof(PREFIX) - 1u);\
+		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, &hashsize, NULL) == sizeof(PREFIX) - 1u);\
 		EXPECT(hashsize == 0u);\
 	} while (0)
 
 #define CHECK_HASH(PREFIX, SUFFIX, HASH)\
 	do {\
 		size_t hashsize = 99999u;\
-		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, &hashsize) == sizeof(PREFIX) - 1u);\
+		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, &hashsize, NULL) == sizeof(PREFIX) - 1u);\
 		EXPECT(hashsize == HASH##u);\
 	} while (0)
 
@@ -167,8 +169,8 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	assert(hash);
 	memcpy(hash, data, size);
 	hash[size] = '\0';
-	r = librecrypt_settings_prefix(hash, &(size_t){0u});
-	EXPECT(librecrypt_settings_prefix(hash, NULL) == r);
+	r = librecrypt_settings_prefix(hash, &(size_t){0u}, NULL);
+	EXPECT(librecrypt_settings_prefix(hash, NULL, NULL) == r);
 	free(hash);
 	return 0;
 }

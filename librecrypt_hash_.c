@@ -80,7 +80,7 @@ librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, siz
 			rng = &zero_generator;
 
 		/* Generate the salts */
-		r_len = librecrypt_realise_salts(out_buffer, size, settings, rng, NULL);
+		r_len = librecrypt_realise_salts(out_buffer, size, settings, rng, NULL, reserved);
 		if (r_len < 0) {
 			if (errno == ERANGE) {
 				errno = ENOMEM;
@@ -91,7 +91,7 @@ librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, siz
 		settings_scratch = malloc((size_t)r_len + 1u);
 		if (!settings_scratch)
 			return -1;
-		if (librecrypt_realise_salts(settings_scratch, (size_t)r_len + 1u, settings, rng, NULL) != r_len)
+		if (librecrypt_realise_salts(settings_scratch, (size_t)r_len + 1u, settings, rng, NULL, reserved) != r_len)
 			abort(); /* $covered$ (impossible) */
 		settings = settings_scratch;
 	}
@@ -378,12 +378,13 @@ main(void)
 	char sbuf[160];
 	size_t i, n;
 	ssize_t r, r1, r1b, r1c, r2, r3;
+	char reserved[1] = {0};
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
 
 	errno = 0;
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$", &(char){0}, ASCII_CRYPT) == -1);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$", reserved, ASCII_CRYPT) == -1);
 	EXPECT(errno == EINVAL);
 
 	errno = 0;

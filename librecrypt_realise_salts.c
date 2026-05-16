@@ -5,13 +5,19 @@
 
 ssize_t
 librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *settings,
-                         ssize_t (*rng)(void *out, size_t n, void *user), void *user)
+                         ssize_t (*rng)(void *out, size_t n, void *user), void *user, void *reserved)
 {
 	const char *lut;
 	char pad;
 	int strict_pad, nul_term = 0;
 	size_t i, min, nasterisks, prefix, ret = 0u;
 	size_t count, digit, q, r, left, mid, right;
+
+	/* Ensure the reserved parameter is NULL */
+	if (reserved != NULL) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	/* If we are doing output, it should be NUL-terminated */
 	if (size) {
@@ -40,7 +46,7 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
 		}
 
 		/* Get binary data encoding format */
-		lut = librecrypt_get_encoding(settings, prefix, &pad, &strict_pad, 0);
+		lut = librecrypt_get_encoding(settings, prefix, &pad, &strict_pad, 0, reserved);
 		if (!lut)
 			return -1;
 		pad = strict_pad ? pad : '\0';
@@ -203,15 +209,16 @@ main(void)
 	char buf[1024], buf2[1024], conf[128];
 	size_t i;
 	int r;
+	char reserved[1] = {0};
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
 
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, "$~no~such~algorithm~$", NULL, NULL) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, "$~no~such~algorithm~$", NULL, NULL, NULL) == -1);
 	EXPECT(errno == ENOSYS);
 
-	EXPECT(librecrypt_realise_salts(NULL, 0u, "", NULL, NULL) == 0);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, "", NULL, NULL, NULL) == 0);
 
 #if defined(SUPPORT_ARGON2ID)
 # define ALGO "$argon2id$"
@@ -224,16 +231,21 @@ main(void)
 #endif
 
 #if defined(ALGO)
+
+	errno = 0;
+	EXPECT(librecrypt_realise_salts(NULL, 0u, ALGO, NULL, NULL, reserved) == -1);
+	EXPECT(errno == EINVAL);
+
 # define CHECK(IN, OUT)\
 	do {\
-		EXPECT(librecrypt_realise_salts(NULL, 0u, (IN), NULL, NULL) == (ssize_t)sizeof(OUT) - 1);\
-		EXPECT(librecrypt_realise_salts(buf, 0u, (IN), NULL, NULL) == (ssize_t)sizeof(OUT) - 1);\
+		EXPECT(librecrypt_realise_salts(NULL, 0u, (IN), NULL, NULL, NULL) == (ssize_t)sizeof(OUT) - 1);\
+		EXPECT(librecrypt_realise_salts(buf, 0u, (IN), NULL, NULL, NULL) == (ssize_t)sizeof(OUT) - 1);\
 		memset(buf, 99, sizeof(buf));\
-		EXPECT(librecrypt_realise_salts(buf, sizeof(buf), (IN), &saltgen, &saltbyte) == (ssize_t)sizeof(OUT) - 1);\
+		EXPECT(librecrypt_realise_salts(buf, sizeof(buf), (IN), &saltgen, &saltbyte, NULL) == (ssize_t)sizeof(OUT) - 1);\
 		EXPECT(!strcmp(buf, (OUT)));\
 		for (i = 0u; i < sizeof(OUT); i++) {\
 			memset(buf, 99, sizeof(buf));\
-			EXPECT(librecrypt_realise_salts(buf, i + 1u, (IN), &saltgen, &saltbyte) == (ssize_t)sizeof(OUT) - 1);\
+			EXPECT(librecrypt_realise_salts(buf, i + 1u, (IN), &saltgen, &saltbyte, NULL) == (ssize_t)sizeof(OUT) - 1);\
 			EXPECT(!memcmp(buf, (OUT), i));\
 			EXPECT(!buf[i]);\
 		}\
@@ -264,44 +276,44 @@ main(void)
 # undef CHECK
 
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, ALGO">$~no~such~algorithm~$", &saltgen, &saltbyte) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, ALGO">$~no~such~algorithm~$", &saltgen, &saltbyte, NULL) == -1);
 	EXPECT(errno == ENOSYS);
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, "$~no~such~algorithm~$>"ALGO, &saltgen, &saltbyte) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, "$~no~such~algorithm~$>"ALGO, &saltgen, &saltbyte, NULL) == -1);
 	EXPECT(errno == ENOSYS);
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, ALGO"*"LARGE"$", &saltgen, &saltbyte) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, ALGO"*"LARGE"$", &saltgen, &saltbyte, NULL) == -1);
 	EXPECT(errno == ERANGE);
 
 	CANARY_FILL(buf);
-	EXPECT(librecrypt_realise_salts(buf, sizeof(ALGO) - 1u, ALGO"*3$", &saltfail, NULL) == (ssize_t)sizeof(ALGO"$") - 1 + 4);
+	EXPECT(librecrypt_realise_salts(buf, sizeof(ALGO) - 1u, ALGO"*3$", &saltfail, NULL, NULL) == (ssize_t)sizeof(ALGO"$") - 1 + 4);
 	CANARY_CHECK(buf, sizeof(ALGO) - 1u);
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), ALGO"*3$", &saltfail, NULL) == -1);
+	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), ALGO"*3$", &saltfail, NULL, NULL) == -1);
 	EXPECT(errno == EDOM);
 
 	r = snprintf(conf, sizeof(conf), "%s*%zu$", ALGO, (size_t)SSIZE_MAX / 4u * 3u + 3u);
 	assert(r > 0 && (size_t)r < sizeof(conf));
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte, NULL) == -1);
 	EXPECT(errno == ERANGE);
 
 	r = snprintf(conf, sizeof(conf), "%s*%zu$", ALGO, (size_t)SSIZE_MAX / 4u * 3u);
 	assert(r > 0 && (size_t)r < sizeof(conf));
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte, NULL) == -1);
 	EXPECT(errno == ERANGE);
 
 	r = snprintf(conf, sizeof(conf), "%s*%zu$abcdef", ALGO, ((size_t)SSIZE_MAX - (sizeof(ALGO) - 1u)) / 4u * 3u);
 	assert(r > 0 && (size_t)r < sizeof(conf));
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte, NULL) == -1);
 	EXPECT(errno == ERANGE);
 
 	CANARY_FILL(buf);
 	CANARY_FILL(buf2);
-	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), ALGO"*30$", NULL, NULL) == (ssize_t)sizeof(ALGO"$") - 1 + 40);
-	EXPECT(librecrypt_realise_salts(buf2, sizeof(buf2), ALGO"*30$", NULL, NULL) == (ssize_t)sizeof(ALGO"$") - 1 + 40);
+	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), ALGO"*30$", NULL, NULL, NULL) == (ssize_t)sizeof(ALGO"$") - 1 + 40);
+	EXPECT(librecrypt_realise_salts(buf2, sizeof(buf2), ALGO"*30$", NULL, NULL, NULL) == (ssize_t)sizeof(ALGO"$") - 1 + 40);
 	EXPECT(!buf[sizeof(ALGO"$") - 1u + 40u]);
 	EXPECT(!buf2[sizeof(ALGO"$") - 1u + 40u]);
 	EXPECT(memcmp(buf, buf2, sizeof(ALGO"$") - 1u + 40u));
@@ -360,7 +372,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	memcpy(settings, data, size);
 	settings[size] = '\0';
 
-	r = librecrypt_realise_salts(out_buffer, out_size, settings, NULL, NULL);
+	r = librecrypt_realise_salts(out_buffer, out_size, settings, NULL, NULL, NULL);
 	if (out_size && r >= 0) {
 		assert(strlen(out_buffer) < out_size);
 		assert((size_t)r >= strlen(out_buffer));

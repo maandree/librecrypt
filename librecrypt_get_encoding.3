@@ -6,8 +6,8 @@ librecrypt_get_encoding - Get encoding alphabet for the last algorithm in a chai
 .nf
 #include <librecrypt.h>
 
-const void *\fBlibrecrypt_get_encoding\fP(const char *\fIsettings\fP, size_t \fIlen\fP,
-                                    char *\fIpad_out\fP, int *\fIstrict_pad_out\fP, int \fIdecoding\fP);
+const void *\fBlibrecrypt_get_encoding\fP(const char *\fIsettings\fP, size_t \fIlen\fP, char *\fIpad_out\fP,
+                                    int *\fIstrict_pad_out\fP, int \fIdecoding\fP, void *\fIreserved\fP);
 .fi
 .PP
 Link with
@@ -44,6 +44,11 @@ character) to its value in the encoding
 alphabet and any other character to
 .BR 0xFFu .
 .PP
+The
+.I reserved
+parameter is reserved for future use and should be
+.IR NULL .
+.PP
 On success,
 .IR *pad_out
 is set to the padding character, or to the
@@ -76,6 +81,11 @@ is set to describe the error.
 The
 .BR librecrypt_get_encoding ()
 function will fail if:
+.TP
+.B EINVAL
+.I reserved
+is not
+.IR NULL .
 .TP
 .B ENOSYS
 The last algorithm in

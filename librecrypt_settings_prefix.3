@@ -6,7 +6,7 @@ librecrypt_settings_prefix - Get length of settings prefix in a password hash st
 .nf
 #include <librecrypt.h>
 
-size_t \fBlibrecrypt_settings_prefix\fP(const char *\fIhash\fP, size_t *\fIhashsize_out\fP);
+size_t \fBlibrecrypt_settings_prefix\fP(const char *\fIhash\fP, size_t *\fIhashsize_out\fP, void *\fIreserved\fP);
 .fi
 .PP
 Link with
@@ -43,6 +43,11 @@ beyond the settings prefix.
 See the
 .B EXTENDED DESCRIPTION
 section for more information.
+.PP
+The
+.I reserved
+parameter is reserved for future use and should be
+.IR NULL .
 .PP
 .I hash
 must not be
