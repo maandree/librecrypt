@@ -93,6 +93,7 @@ all: librecrypt.a librecrypt.$(LIBEXT) $(TEST)
 $(OBJ): $(HDR)
 $(LOBJ): $(HDR)
 $(TOBJ): $(HDR) libtest/libtest.h
+$(FOBJ): $(HDR) libtest/libtest.h
 $(TEST): $(HDR) librecrypt.a libtest/libtest.a libtest/libtest.h
 $(FUZZ): $(HDR) librecrypt.a libtest/libtest.a libtest/libtest.h
 

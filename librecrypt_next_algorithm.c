@@ -92,19 +92,22 @@ main(void)
 int
 LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
-	char *hash, *r;
-	size_t sum = 0u;
+	char *hash, *orig, *r;
+	size_t sum = 0u, len;
 	hash = malloc(size + 1u);
 	assert(hash);
+	orig = hash;
 	memcpy(hash, data, size);
 	hash[size] = '\0';
+	len = strlen(hash);
 	for (;;) {
 		r = librecrypt_next_algorithm(&hash);
 		if (!r)
 			break;
 		sum += strlen(r) + 1u;
 	}
-	EXPECT(sum == size + 1u);
+	EXPECT(sum == len + 1u);
+	free(orig);
 	return 0;
 }
 

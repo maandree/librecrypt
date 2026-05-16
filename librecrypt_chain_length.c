@@ -39,8 +39,13 @@ volatile size_t discarded_return_value;
 int
 LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
-	(void) size;
-	discarded_return_value = librecrypt_chain_length((const void *)data);
+	char *hash;
+	hash = malloc(size + 1u);
+	assert(hash);
+	memcpy(hash, data, size);
+	hash[size] = '\0';
+	discarded_return_value = librecrypt_chain_length(hash);
+	free(hash);
 	return 0;
 }
 
