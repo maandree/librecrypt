@@ -1,4 +1,4 @@
-WITH_BACKTRACE = true
+WITH_BACKTRACE = false
 IMPLEMENT_MMAP = true
 
 TEST_CONFIGFILE = config_backtraces=$(WITH_BACKTRACE).mk

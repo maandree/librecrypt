@@ -200,12 +200,13 @@ HIDDEN void libtest_print_backtrace(FILE *, const char *prefix, const char *inde
 #else
 # define libtest_print_backtrace(FP, PREFIX, INDENT, FIRST, BACKTRACE, CONTEXT)\
 	do {\
-		(void) (FP);\
 		(void) (PREFIX);\
 		(void) (INDENT);\
 		(void) (FIRST);\
 		(void) (BACKTRACE);\
 		(void) (CONTEXT);\
+		fprintf((FP), "\tBacktrace support is disabled, build libtest "\
+		              "with WITH_BACKTRACE=true to enable\n");\
 	} while (0)
 #endif
 
