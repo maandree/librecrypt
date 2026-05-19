@@ -5,7 +5,7 @@ For Argon2 support (runtime, build, and check dependencies):
 	libar2simplified>=1.1
 	libar2simplified>=1.1.4 (check only)
 	libar2>=1.1
-	libblake (indirect)
+	libblake [compiled with BLAKE2b support] (indirect)
 	pthread (indirect)
 
 	Running make(1) with WITH_LIBAR2SIMPLIFIED=false removes
