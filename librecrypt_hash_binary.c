@@ -4,7 +4,7 @@
 
 
 ssize_t
-librecrypt_hash_binary(char *restrict out_buffer, size_t size, const char *phrase, size_t len, const char *settings, void *reserved)
+librecrypt_hash_binary(void *restrict out_buffer, size_t size, const char *phrase, size_t len, const char *settings, void *reserved)
 {
 	return librecrypt_hash_(out_buffer, size, phrase, len, settings, reserved, BINARY_HASH);
 }

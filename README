@@ -41,6 +41,9 @@ DESCRIPTION
 	librecrypt_hash_binary(3)
 		Compute password hash in raw binary form.
 
+	librecrypt_verify(3)
+		Validate password against known password hash.
+
 	librecrypt_add_algorithm(3)
 		Append an algorithm chain to a password hash string.
 

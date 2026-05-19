@@ -14,7 +14,7 @@ include mk/$(OS).mk
 
 
 LIB_MAJOR = 1
-LIB_MINOR = 0
+LIB_MINOR = 1
 LIB_VERSION = $(LIB_MAJOR).$(LIB_MINOR)
 LIB_NAME = recrypt
 
@@ -47,7 +47,8 @@ OBJ_PUBLIC =\
 	librecrypt_hash_binary.o\
 	librecrypt_hash.o\
 	librecrypt_crypt.o\
-	librecrypt_add_algorithm.o
+	librecrypt_add_algorithm.o\
+	librecrypt_verify.o
 
 OBJ_PRIVATE =\
 	librecrypt_algorithms_.o\

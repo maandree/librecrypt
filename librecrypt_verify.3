@@ -1,14 +1,13 @@
-.TH LIBRECRYPT_HASH_BINARY 3 LIBRECRYPT
+.TH LIBRECRYPT_VERIFY 3 LIBRECRYPT
 .SH NAME
-librecrypt_hash_binary - Compute password hash in raw binary form
+librecrypt_verify - Verify password against known password hash
 
 .SH SYNOPSIS
 .nf
 #include <librecrypt.h>
 
-ssize_t \fBlibrecrypt_hash_binary\fP(void *restrict \fIout_buffer\fP, size_t \fIsize\fP,
-                              const char *\fIphrase\fP, size_t \fIlen\fP,
-                              const char *\fIsettings\fP, void *\fIreserved\fP);
+int \fBlibrecrypt_verify\fP(const char *\fIphrase\fP, size_t \fIlen\fP,
+                      const char *\fIsettings\fP, void *\fIreserved\fP);
 .fi
 .PP
 Link with
@@ -18,10 +17,9 @@ depending on enabled hash algorithms.
 
 .SH DESCRIPTION
 The
-.BR librecrypt_hash_binary ()
-function computes the hash of a password.
-The hash is stored in raw binary format without any
-settings prefix.
+.BR librecrypt_verify ()
+function computes the hash of a password and compares
+it against a provided hash.
 .PP
 The password is provided in
 .IR phrase
@@ -29,8 +27,11 @@ and can contain null bytes; its length is specified by
 .IR len .
 .PP
 The password hash configuration string is provided in
-.IR settings .
-If
+.IR settings ,
+and shall include the hash result, that is, it shall
+conform to the output of the
+.BR librecrypt_crypt (3)
+function. If
 .I settings
 contains a resulting hash, it is ignored.
 If
@@ -43,22 +44,9 @@ The
 parameter is reserved for future use and should be
 .IR NULL .
 .PP
-On successful completion, up to
-.I size
-bytes are written to
-.IR out_buffer ;
-the return value describes how many bytes would have
-been written if
-.I size
-was sufficiently large.
-.PP
 Any encountered
 .BR EINTR
 is ignored.
-.PP
-On failure,
-.I out_buffer
-remains unmodified.
 .PP
 .I settings
 must not be
@@ -66,20 +54,16 @@ must not be
 
 .SH RETURN VALUES
 The
-.BR librecrypt_hash_binary ()
-function returns the number of bytes that would
-have been written to
-.IR out_buffer
-if
-.I size
-was sufficiently large.
+.BR librecrypt_hash ()
+function returns 1 if the hash of the input
+password matches the provided hash, 0 otherwise.
 On failure, -1 is returned and
 .I errno
 is set to describe the error.
 
 .SH ERRORS
 The
-.BR librecrypt_hash_binary ()
+.BR librecrypt_verify ()
 function will fail if:
 .TP
 .B EINVAL
@@ -95,13 +79,14 @@ is invalid.
 .I settings
 uses asterisk-encoding to specify random salts.
 .TP
+.B EINVAL
+.I settings
+uses asterisk-encoding in place of a hash result.
+.TP
 .B ERANGE
 .I len
 is too large or too small for the selected
 initial algorithm.
-.TP
-.B EOVERFLOW
-The expected return value is greater than {SSIZE_MAX}.
 .TP
 .B ENOMEM
 Failed to allocate internal scratch memory.
@@ -120,32 +105,24 @@ lb lb lb
 l l l.
 Interface	Attribute	Value
 T{
-.BR librecrypt_hash_binary ()
+.BR librecrypt_verify ()
 T}	Thread safety	MT-Safe
 T{
-.BR librecrypt_hash_binary ()
+.BR librecrypt_verify ()
 T}	Async-signal safety	AS-Unsafe
 .TE
 .sp
 
 .SH HISTORY
 The
-.BR librecrypt_hash_binary ()
-function was introduced in version 1.0 of
-.BR librecrypt .
-
-The type of the
-.I out_buffer
-parameter changed from
-.I char *
-to
-.I void *
-in version 1.1 of
+.BR librecrypt_verify ()
+function was introduced in version 1.1 of
 .BR librecrypt .
 
 .SH SEE ALSO
 .BR librecrypt (7),
+.BR librecrypt_hash_binary (3),
 .BR librecrypt_hash (3),
 .BR librecrypt_crypt (3),
-.BR librecrypt_verify (3),
-.BR librecrypt_test_supported (3)
+.BR librecrypt_equal (3),
+.BR librecrypt_equal_binary (3)

@@ -445,6 +445,9 @@ librecrypt_wipe_str(char *string)
  * @return       1 if the `a` and `b` are equal in their
  *               first `len` bytes, 0 otherwise
  * 
+ * @seealso  librecrypt_equal
+ * @seealso  librecrypt_verify
+ * 
  * This function is MT-Safe and AS-Safe
  * 
  * @since  1.0
@@ -466,6 +469,9 @@ int librecrypt_equal_binary(const void *a, const void *b, size_t len);
  * @param   a  One of the strings to compare
  * @param   b  The other string to compare
  * @return     1 if the `a` and `b` are equal, 0 otherwise
+ * 
+ * @seealso  librecrypt_equal_binary
+ * @seealso  librecrypt_verify
  * 
  * This function is MT-Safe and AS-Safe
  * 
@@ -654,16 +660,18 @@ ssize_t librecrypt_make_settings(char *out_buffer, size_t size, const char *algo
  * 
  * @seealso  librecrypt_hash
  * @seealso  librecrypt_crypt
+ * @seealso  librecrypt_verify
  * @seealso  librecrypt_test_supported
  * 
  * This function is MT-Safe but AS-Unsafe
  * 
- * @since  1.0
+ * @since  1.0  Initial version
+ * @since  1.1  First parameter is `void *` rather than `char *`
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_MEM__(3, 4) LIBRECRYPT_READ_STR__(5)
 LIBRECRYPT_NONNULL_I__(5) LIBRECRYPT_WUR__
-ssize_t librecrypt_hash_binary(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
-                               const char *settings, void *reserved);
+ssize_t librecrypt_hash_binary(void *restrict out_buffer, size_t size, const char *phrase,
+                               size_t len, const char *settings, void *reserved);
 
 
 /**
@@ -712,6 +720,7 @@ ssize_t librecrypt_hash_binary(char *restrict out_buffer, size_t size, const cha
  * 
  * @seealso  librecrypt_hash_binary
  * @seealso  librecrypt_crypt
+ * @seealso  librecrypt_verify
  * @seealso  librecrypt_test_supported
  * 
  * This function is MT-Safe but AS-Unsafe
@@ -769,6 +778,7 @@ ssize_t librecrypt_hash(char *restrict out_buffer, size_t size, const char *phra
  * 
  * @seealso  librecrypt_hash_binary
  * @seealso  librecrypt_hash
+ * @seealso  librecrypt_verify
  * @seealso  librecrypt_test_supported
  * 
  * This function is MT-Safe but AS-Unsafe
@@ -779,6 +789,47 @@ LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_MEM__(3, 4) LIBRECRYPT_READ_STR__(5
 LIBRECRYPT_NONNULL_I__(5) LIBRECRYPT_WUR__
 ssize_t librecrypt_crypt(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
                          const char *settings, void *reserved);
+
+
+/**
+ * Compare a password against a hash
+ * 
+ * @param   phrase      The password to hash, may contain NUL bytes
+ * @param   len         The number of bytes in `phrase`
+ * @param   settings    The password hash configuration string,
+ *                      may contain resulting hash, which will be ignored
+ * @param   reserved    Reserved for future use, should be `NULL`
+ * @return              1 if the password is correct and 0 if the password
+ *                      is incorrect; -1 on failure
+ * 
+ * @throws  EINVAL     `reserved` is non-`NULL` (this case will be removed
+ *                     once `reserved` as being used by the library)
+ * @throws  EINVAL     `settings` is invalid (invalid algorithm configuration,
+ *                     invalid configuration syntax, or the output from one
+ *                     chained hash algorithm cannot be input the next algorithm
+ *                     in the chain (either because of format or length issues))
+ * @throws  EINVAL     `settings` uses asterisk-encoding to specify random salts
+ * @thorws  EINVAL     `settings` uses asterisk-encoding in place of a hash result
+ * @throws  ERANGE     `len` is too large or too small for the the selected
+ *                     initial algorithm in the algorithm chain
+ * @throws  ENOMEM     Failed to allocate internal scratch memory
+ * @throws  ENOSYS     A selected hash algorithm is either not recognised
+ *                     disabled at compile-time
+ * 
+ * Any encountered `EINTR` is ignored
+ * 
+ * @seealso  librecrypt_hash_binary
+ * @seealso  librecrypt_hash
+ * @seealso  librecrypt_crypt
+ * @seealso  librecrypt_equal
+ * @seealso  librecrypt_equal_binary
+ * 
+ * This function is MT-Safe but AS-Unsafe
+ * 
+ * @since  1.1
+ */
+LIBRECRYPT_READ_MEM__(1, 2) LIBRECRYPT_READ_STR__(3) LIBRECRYPT_NONNULL_I__(3) LIBRECRYPT_WUR__
+int librecrypt_verify(const char *phrase, size_t len, const char *settings, void *reserved);
 
 
 /**
@@ -808,6 +859,8 @@ ssize_t librecrypt_crypt(char *restrict out_buffer, size_t size, const char *phr
  *                     for the first algorithm in the chain, 0 is returned
  * 
  * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.0
  */
 LIBRECRYPT_READ_STR__(4) LIBRECRYPT_NONNULL_I__(4) LIBRECRYPT_WUR__
 int librecrypt_test_supported(const char *phrase, size_t len, int text, const char *settings, void *reserved);
