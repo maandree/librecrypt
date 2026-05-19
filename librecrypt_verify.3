@@ -83,6 +83,10 @@ uses asterisk-encoding to specify random salts.
 .I settings
 uses asterisk-encoding in place of a hash result.
 .TP
+.B EINVAL
+.I settings
+contains no hash result.
+.TP
 .B ERANGE
 .I len
 is too large or too small for the selected

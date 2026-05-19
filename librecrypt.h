@@ -809,7 +809,8 @@ ssize_t librecrypt_crypt(char *restrict out_buffer, size_t size, const char *phr
  *                     chained hash algorithm cannot be input the next algorithm
  *                     in the chain (either because of format or length issues))
  * @throws  EINVAL     `settings` uses asterisk-encoding to specify random salts
- * @thorws  EINVAL     `settings` uses asterisk-encoding in place of a hash result
+ * @throws  EINVAL     `settings` uses asterisk-encoding in place of a hash result
+ * @throws  EINVAL     `settings` contains no hash result
  * @throws  ERANGE     `len` is too large or too small for the the selected
  *                     initial algorithm in the algorithm chain
  * @throws  ENOMEM     Failed to allocate internal scratch memory
