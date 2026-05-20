@@ -4,9 +4,10 @@
 
 
 ssize_t
-librecrypt_crypt(char *restrict out_buffer, size_t size, const char *phrase, size_t len, const char *settings, void *reserved)
+librecrypt_crypt(char *restrict out_buffer, size_t size, const char *phrase,
+                 size_t len, const char *settings, LIBRECRYPT_CONTEXT *ctx)
 {
-	return librecrypt_hash_(out_buffer, size, phrase, len, settings, reserved, ASCII_CRYPT);
+	return librecrypt_hash_(out_buffer, size, phrase, len, settings, ctx, ASCII_CRYPT);
 }
 
 

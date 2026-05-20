@@ -8,7 +8,7 @@ librecrypt_add_algorithm - Append an algorithm chain to a password hash string
 
 ssize_t \fBlibrecrypt_add_algorithm\fP(char *\fIout_buffer\fP, size_t \fIsize\fP,
                                  const char *\fIaugend\fP, const char *restrict \fIaugment\fP,
-                                 void *\fIreserved\fP);
+                                 LIBRECRYPT_CONTEXT *\fIctx\fP);
 .fi
 .PP
 Link with
@@ -37,9 +37,13 @@ the additional hashing to perform.
 If it contains a hash result, that part is ignored.
 .PP
 The
-.I reserved
-parameter is reserved for future use and should be
-.IR NULL .
+.I ctx
+parameter is used for providing library
+configurations, see
+.BR librecrypt_create_context (3)
+for more information; used
+.I NULL
+for default configurations.
 .PP
 On successful completion, if
 .I size
@@ -82,11 +86,6 @@ is set to describe the error.
 The
 .BR librecrypt_add_algorithm ()
 function will fail if:
-.TP
-.B EINVAL
-.I reserved
-is not
-.IR NULL .
 .TP
 .B EINVAL
 .I augend
@@ -152,6 +151,23 @@ The
 .BR librecrypt_add_algorithm ()
 function was introduced in version 1.0 of
 .BR librecrypt .
+
+Since version 1.1 of the
+.BR librecrypt_add_algorithm ()
+function, the
+.I ctx
+parameter (previously called
+.IR reserved )
+has the type
+.B LIBRECRYPT_CONTEXT *
+(previously
+.BR "void *" ),
+and setting it to
+.RI non- NULL
+no longer causes failure with
+.I errno
+set to
+.IR EINVAL .
 
 .SH SEE ALSO
 .BR librecrypt (7),

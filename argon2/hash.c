@@ -91,19 +91,21 @@ init_context(struct libar2_context *ctxp)
 
 int
 librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
-                         const char *settings, size_t prefix, void *reserved)
+                         const char *settings, size_t prefix, LIBRECRYPT_CONTEXT *ctx)
 {
+	enum librecrypt_hash_algorithm algo_v10, algo_v13, algo;
 	struct libar2_argon2_parameters params;
-	struct libar2_context ctx;
+	struct libar2_context ar2ctx;
 	const char *type, *version, *salt_encoded;
 	uintmax_t mcost, tcost, lanes, saltlen, hashlen;
 	void *salt = NULL, *scratch = NULL;
 	size_t scratch_size;
+	struct pepper *pepper = NULL;
 	ssize_t r;
 	int saved_errno;
 
 	/* Not yet used */
-	(void) reserved;
+	(void) ctx;
 
 	/* Parse `settings` */
 	r = librecrypt_scan_settings_(settings, prefix,
@@ -140,14 +142,14 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 
 	/* Gives us memory allocation and threading support;
 	 * so we don't have to implement any of that ourselves */
-	libar2simplified_init_context(&ctx);
+	libar2simplified_init_context(&ar2ctx);
 	/* Configure automatic erasure of input memory */
-	ctx.autoerase_message = 0; /* allows `phrase` to be read-only */
-	ctx.autoerase_secret = 0; /* alloes to params.key, which we are not using, but maybe in the future */
-	ctx.autoerase_associated_data = 0; /* alloes to params.ad, which we are not using, but maybe in the future */
-	ctx.autoerase_salt = 1; /* since we are decoding the salt, we do a memory allocation,
-	                         * and our testing always checks that allocated memory is earse;
-	                         * it doesn't really matter, but it's paranoid, and that's good */
+	ar2ctx.autoerase_message = 0; /* allows `phrase` to be read-only */
+	ar2ctx.autoerase_secret = 0; /* allows params.key to be read-only */
+	ar2ctx.autoerase_associated_data = 0; /* allows params.ad to be read-only, which we are not using, but maybe in the future */
+	ar2ctx.autoerase_salt = 1; /* since we are decoding the salt, we do a memory allocation,
+	                            * and our testing always checks that allocated memory is earse;
+	                            * it doesn't really matter, but it's paranoid, and that's good */
 
 	/* Decode salt */
 	if (!salt_encoded) /* this would be if asterisk-notation is used, but it is not */
@@ -181,13 +183,47 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	params.version = !*version            ? LIBAR2_ARGON2_VERSION_10 :
 	                   version[3u] == '9' ? LIBAR2_ARGON2_VERSION_13 : /* 19 = 0x13 = 1.3 */
 	                                        LIBAR2_ARGON2_VERSION_10;  /* 16 = 0x10 = 1.0 */
+	if (!ctx)
+		goto no_pepper;
+	switch (params.type) {
+	case LIBAR2_ARGON2I:
+		algo_v10 = LIBRECRYPT_ARGON2I_V1_0;
+		algo_v13 = LIBRECRYPT_ARGON2I_V1_3;
+		break;
+	case LIBAR2_ARGON2D:
+		algo_v10 = LIBRECRYPT_ARGON2D_V1_0;
+		algo_v13 = LIBRECRYPT_ARGON2D_V1_3;
+		break;
+	case LIBAR2_ARGON2ID:
+		algo_v10 = LIBRECRYPT_ARGON2ID_V1_0;
+		algo_v13 = LIBRECRYPT_ARGON2ID_V1_3;
+		break;
+	case LIBAR2_ARGON2DS:
+		algo_v10 = LIBRECRYPT_ARGON2DS_V1_0;
+		algo_v13 = LIBRECRYPT_ARGON2DS_V1_3;
+		break;
+	default:
+		abort(); /* $covered$ (impossible) */
+	}
+	switch (params.version) {
+	case LIBAR2_ARGON2_VERSION_10:
+		algo = algo_v10;
+		break;
+	case LIBAR2_ARGON2_VERSION_13:
+		algo = algo_v13;
+		break;
+	default:
+		abort(); /* $covered$ (impossible) */
+	}
+	pepper = librecrypt_context_get_pepper_(ctx, algo, 0u);
+no_pepper:
 	params.t_cost = (uint_least32_t)tcost;
 	params.m_cost = (uint_least32_t)mcost;
 	params.lanes = (uint_least32_t)lanes;
 	params.salt = salt;
 	params.saltlen = (size_t)saltlen;
-	params.key = NULL;
-	params.keylen = 0u;
+	params.key = pepper ? REMOVE_CONST(pepper->data) : NULL;
+	params.keylen = pepper ? pepper->len : 0u;
 	params.ad = NULL;
 	params.adlen = 0u;
 	params.hashlen = hashlen ? (size_t)hashlen : argon2__HASH_SIZE;
@@ -215,7 +251,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 
 	/* Calculate hash */
 #ifndef FUZZ
-	if (libar2_hash(scratch ? scratch : out_buffer, REMOVE_CONST(phrase), len, &params, &ctx))
+	if (libar2_hash(scratch ? scratch : out_buffer, REMOVE_CONST(phrase), len, &params, &ar2ctx))
 		goto fail;
 #else
 	memset(scratch ? scratch : out_buffer, '5', scratch_size);
@@ -223,7 +259,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	if (scratch && out_buffer)
 		memcpy(out_buffer, scratch, MIN(params.hashlen, size));
 
-	/* same rationale as for `ctx.autoerase_salt = 1;` */
+	/* same rationale as for `ar2ctx.autoerase_salt = 1;` */
 	if (scratch) {
 		librecrypt_wipe(scratch, scratch_size);
 		free(scratch);
@@ -431,6 +467,8 @@ main(void)
 	STOP_RESOURCE_TEST();
 	return 0;
 }
+/* TODO check with pepper */
+/* TODO check with context but no pepper */
 
 
 #endif

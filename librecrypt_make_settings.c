@@ -4,16 +4,12 @@
 
 
 ssize_t
-librecrypt_make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memcost, uintmax_t timecost,
-                         int gensalt, ssize_t (*rng)(void *out, size_t n, void *user), void *user, void *reserved)
+librecrypt_make_settings(char *out_buffer, size_t size, const char *algorithm,
+                         size_t memcost, uintmax_t timecost, int gensalt,
+                         ssize_t (*rng)(void *out, size_t n, void *user), void *user,
+                         LIBRECRYPT_CONTEXT *ctx)
 {
 	const struct librecrypt_algorithm *algo;
-
-	/* Ensure the reserved parameter is NULL */
-	if (reserved != NULL) {
-		errno = EINVAL;
-		return -1;
-	}
 
 	/* Get algorithm */
 	if (!algorithm) {
@@ -28,7 +24,7 @@ librecrypt_make_settings(char *out_buffer, size_t size, const char *algorithm, s
 			return -1;
 		}
 		/* Identify the algorithm */
-		algo = librecrypt_find_first_algorithm_(algorithm, strlen(algorithm));
+		algo = librecrypt_find_first_algorithm_(algorithm, strlen(algorithm), ctx);
 		if (!algo)
 			goto enosys;
 	}
@@ -81,7 +77,6 @@ main(void)
 	int any_supported = 0;
 	int any_salted = 0;
 	ssize_t r;
-	char reserved[1] = {0};
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
@@ -103,10 +98,6 @@ main(void)
 	EXPECT(errno == ENOSYS);
 
 #if defined(SUPPORT_ARGON2I)
-	errno = 0;
-	EXPECT(librecrypt_make_settings(NULL, 0u, "$argon2id$", 0u, 0u, 0, NULL, NULL, reserved) == -1);
-	EXPECT(errno == EINVAL);
-
 	saltbyte = 0u;
 	CANARY_FILL(buf);
 	r = librecrypt_make_settings(buf, sizeof(buf), "$argon2i$", 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte, NULL);

@@ -4,16 +4,11 @@
 
 
 const void *
-librecrypt_get_encoding(const char *settings, size_t len, char *pad_out, int *strict_pad_out, int decoding, void *reserved)
+librecrypt_get_encoding(const char *settings, size_t len, char *pad_out, int *strict_pad_out,
+                        int decoding, LIBRECRYPT_CONTEXT *ctx)
 {
 	size_t i, start = 0u;
 	const struct librecrypt_algorithm *algo;
-
-	/* Ensure the reserved parameter is NULL */
-	if (reserved != NULL) {
-		errno = EINVAL;
-		return NULL;
-	}
 
 	/* Find last algorithm in the chain */
 	for (i = 0u; i < len; i++)
@@ -23,7 +18,7 @@ librecrypt_get_encoding(const char *settings, size_t len, char *pad_out, int *st
 	len -= start;
 
 	/* Identify the algorithm */
-	algo = librecrypt_find_first_algorithm_(settings, len);
+	algo = librecrypt_find_first_algorithm_(settings, len, ctx);
 	if (!algo) {
 		errno = ENOSYS;
 		return NULL;
@@ -110,7 +105,6 @@ check_decoding_lut(const unsigned char *lut, const char *alpha)
 int
 main(void)
 {
-	char reserved[1] = {0};
 	const char *elut;
 	const unsigned char *dlut;
 	char pad;
@@ -118,10 +112,6 @@ main(void)
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
-
-	errno = 0;
-	EXPECT(librecrypt_get_encoding("$argon2i$", sizeof("$argon2i$") - 1u, &pad, &strict_pad, 0, reserved) == NULL);
-	EXPECT(errno == EINVAL);
 
 	errno = 0;
 	EXPECT(librecrypt_get_encoding(NSA, sizeof(NSA) - 1u, &pad, &strict_pad, 0, NULL) == NULL);

@@ -4,14 +4,12 @@
 
 
 size_t
-librecrypt_settings_prefix(const char *hash, size_t *hashsize_out, void *reserved)
+librecrypt_settings_prefix(const char *hash, size_t *hashsize_out, LIBRECRYPT_CONTEXT *ctx)
 {
 	size_t i, len, ret = 0u;
 	size_t last_offset = 0u;
 	const struct librecrypt_algorithm *algo;
 	uintmax_t hashsize;
-
-	(void) reserved;
 
 	/* Find last algorithm, and beginning of result */
 	for (i = 0u; hash[i]; i++) {
@@ -34,7 +32,7 @@ librecrypt_settings_prefix(const char *hash, size_t *hashsize_out, void *reserve
 	if (ret == i)
 		goto zero;
 	/* Return 0 as hash size if algorithm cannot be identified or has fixed hash size */
-	algo = librecrypt_find_first_algorithm_(&hash[last_offset], len - last_offset);
+	algo = librecrypt_find_first_algorithm_(&hash[last_offset], len - last_offset, ctx);
 	if (!algo)
 		goto zero;
 	if (!algo->flexible_hash_size)

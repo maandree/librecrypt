@@ -4,11 +4,13 @@
 
 
 const struct librecrypt_algorithm *
-librecrypt_find_first_algorithm_(const char *settings, size_t len)
+librecrypt_find_first_algorithm_(const char *settings, size_t len, LIBRECRYPT_CONTEXT *ctx)
 {
 	unsigned r, priority = 0;
 	const struct librecrypt_algorithm *algo, *found = NULL;
 	size_t i;
+
+	(void) ctx; /* TODO */
 
 	for (i = 0u;; i++) {
 		/* Get next algorithm in the list */
@@ -45,10 +47,10 @@ librecrypt_find_first_algorithm_(const char *settings, size_t len)
 
 #define CHECK(ALGO)\
 	do {\
-		algo = librecrypt_find_first_algorithm_(ALGO, sizeof(ALGO) - 1u);\
+		algo = librecrypt_find_first_algorithm_(ALGO, sizeof(ALGO) - 1u, NULL);\
 		EXPECT(algo != NULL);\
 		EXPECT((*algo->is_algorithm)(ALGO, sizeof(ALGO) - 1u) > 0u);\
-		EXPECT(librecrypt_find_first_algorithm_(ALGO">"NSA, sizeof(ALGO">"NSA) - 1u) == algo);\
+		EXPECT(librecrypt_find_first_algorithm_(ALGO">"NSA, sizeof(ALGO">"NSA) - 1u, NULL) == algo);\
 	} while (0)
 
 
@@ -60,8 +62,8 @@ main(void)
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
 
-	EXPECT(librecrypt_find_first_algorithm_(NSA, sizeof(NSA) - 1u) == NULL);
-	EXPECT(librecrypt_find_first_algorithm_(NSA">", sizeof(NSA">") - 1u) == NULL);
+	EXPECT(librecrypt_find_first_algorithm_(NSA, sizeof(NSA) - 1u, NULL) == NULL);
+	EXPECT(librecrypt_find_first_algorithm_(NSA">", sizeof(NSA">") - 1u, NULL) == NULL);
 
 	IF__argon2i__SUPPORTED(CHECK("$argon2i$"));
 	IF__argon2d__SUPPORTED(CHECK("$argon2d$"));

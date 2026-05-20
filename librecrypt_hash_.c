@@ -44,7 +44,7 @@ has_asterisk_encoded_salt(const char *settings)
 
 ssize_t
 librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
-                 const char *settings, void *reserved, enum action action)
+                 const char *settings, LIBRECRYPT_CONTEXT *ctx, enum action action)
 {
 	const struct librecrypt_algorithm *algo;
 	ssize_t (*rng)(void *out, size_t n, void *user) = NULL;
@@ -57,10 +57,6 @@ librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, siz
 	ssize_t r_len;
 	int r, saved_errno;
 	void *new;
-
-	/* Ensure the reserved parameter is NULL */
-	if (reserved != NULL)
-		goto einval;
 
 	/* Realise asterisk-encoded salts */
 	if (has_asterisk_encoded_salt(settings)) {
@@ -80,7 +76,7 @@ librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, siz
 			rng = &zero_generator;
 
 		/* Generate the salts */
-		r_len = librecrypt_realise_salts(out_buffer, size, settings, rng, NULL, reserved);
+		r_len = librecrypt_realise_salts(out_buffer, size, settings, rng, NULL, ctx);
 		if (r_len < 0) {
 			if (errno == ERANGE) {
 				errno = ENOMEM;
@@ -91,7 +87,7 @@ librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, siz
 		settings_scratch = malloc((size_t)r_len + 1u);
 		if (!settings_scratch)
 			return -1;
-		if (librecrypt_realise_salts(settings_scratch, (size_t)r_len + 1u, settings, rng, NULL, reserved) != r_len)
+		if (librecrypt_realise_salts(settings_scratch, (size_t)r_len + 1u, settings, rng, NULL, ctx) != r_len)
 			abort(); /* $covered$ (impossible) */
 		settings = settings_scratch;
 	}
@@ -107,7 +103,7 @@ next:
 	}
 
 	/* Identify the algorithm */
-	algo = librecrypt_find_first_algorithm_(settings, n);
+	algo = librecrypt_find_first_algorithm_(settings, n, ctx);
 	if (!algo) {
 		errno = ENOSYS;
 		goto fail;
@@ -214,11 +210,11 @@ next:
 	hash_to_scratch:
 		r = (*algo->hash)(size ? phrase_scratches[phrase_scratch_i] : NULL,
 		                  size ? phrase_scratch_sizes[phrase_scratch_i] : 0u,
-		                  phrase, len, settings, n, reserved);
+		                  phrase, len, settings, n, ctx);
 	} else if (action == BINARY_HASH) {
 		/* Final hash in binary: write immediate to output */
 	hash_to_output:
-		r = (*algo->hash)(out_buffer, size, phrase, len, settings, n, reserved);
+		r = (*algo->hash)(out_buffer, size, phrase, len, settings, n, ctx);
 	} else if (size < hash_size) {
 		/* Final hash in ASCII: write to scratch if output is truncated,
 		 * because it will be converted to ASCII later */
@@ -378,14 +374,9 @@ main(void)
 	char sbuf[160];
 	size_t i, n;
 	ssize_t r, r1, r1b, r1c, r2, r3;
-	char reserved[1] = {0};
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
-
-	errno = 0;
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$", reserved, ASCII_CRYPT) == -1);
-	EXPECT(errno == EINVAL);
 
 	errno = 0;
 	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$", NULL, ASCII_CRYPT) == -1);

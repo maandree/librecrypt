@@ -7,7 +7,7 @@ librecrypt_verify - Verify password against known password hash
 #include <librecrypt.h>
 
 int \fBlibrecrypt_verify\fP(const char *\fIphrase\fP, size_t \fIlen\fP,
-                      const char *\fIsettings\fP, void *\fIreserved\fP);
+                      const char *\fIsettings\fP, LIBRECRYPT_CONTEXT *\fIctx\fP);
 .fi
 .PP
 Link with
@@ -40,9 +40,13 @@ uses asterisk-encoding to specify random salts,
 the function fails.
 .PP
 The
-.I reserved
-parameter is reserved for future use and should be
-.IR NULL .
+.I ctx
+parameter is used for providing library
+configurations, see
+.BR librecrypt_create_context (3)
+for more information; used
+.I NULL
+for default configurations.
 .PP
 Any encountered
 .BR EINTR
@@ -65,11 +69,6 @@ is set to describe the error.
 The
 .BR librecrypt_verify ()
 function will fail if:
-.TP
-.B EINVAL
-.I reserved
-is not
-.IR NULL .
 .TP
 .B EINVAL
 .I settings

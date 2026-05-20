@@ -14,12 +14,14 @@
 # define LIBRECRYPT_NONNULL__ __attribute__((__nonnull__))
 # define LIBRECRYPT_NONNULL_I__(I) __attribute__((__nonnull__(I)))
 # define LIBRECRYPT_WUR__ __attribute__((__warn_unused_result__))
+# define LIBRECRYPT_MALLOC__(D, D_ARG) __attribute__((__malloc__(D, D_ARG)))
 #else
 # define LIBRECRYPT_PURE__
 # define LIBRECRYPT_CONST__
 # define LIBRECRYPT_NONNULL__
 # define LIBRECRYPT_NONNULL_I__(I)
 # define LIBRECRYPT_WUR__
+# define LIBRECRYPT_MALLOC__(D, D_ARG)
 #endif
 #if defined(__GNUC__) && !defined(__clang__)
 # define LIBRECRYPT_READ_STR__(S) __attribute__((__access__(read_only, S)))
@@ -60,49 +62,99 @@
 
 
 /**
+ * Opaque structure for library tweaking
+ *
+ * @seealso  librecrypt_create_context
+ * 
+ * @since  1.1
+ */
+typedef struct librecrypt_context LIBRECRYPT_CONTEXT;
+
+
+/**
  * Hash algorithms that the library might support
+ * 
+ * @seealso  librecrypt_hash_algorithm_end
+ * 
+ * @since  1.1
  */
 enum librecrypt_hash_algorithm {
 	/**
 	 * Argon2i, version 1.0 ("$argon2i$v=13$", optionally without "$v=13")
+	 * 
+	 * @since  1.1
 	 */
 	LIBRECRYPT_ARGON2I_V1_0,
 
 	/**
 	 * Argon2i, version 1.3 ("$argon2i$v=19$")
+	 * 
+	 * @since  1.1
 	 */
 	LIBRECRYPT_ARGON2I_V1_3,
 
 	/**
 	 * Argon2d, version 1.0 ("$argon2d$v=13$", optionally without "$v=13")
+	 * 
+	 * @since  1.1
 	 */
 	LIBRECRYPT_ARGON2D_V1_0,
 
 	/**
 	 * Argon2d, version 1.3 ("$argon2d$v=19$")
+	 * 
+	 * @since  1.1
 	 */
 	LIBRECRYPT_ARGON2D_V1_3,
 
 	/**
 	 * Argon2id, version 1.0 ("$argon2id$v=13$", optionally without "$v=13")
+	 * 
+	 * @since  1.1
 	 */
 	LIBRECRYPT_ARGON2ID_V1_0,
 
 	/**
 	 * Argon2id, version 1.3 ("$argon2id$v=19$")
+	 * 
+	 * @since  1.1
 	 */
 	LIBRECRYPT_ARGON2ID_V1_3,
 
 	/**
 	 * Argon2ds, version 1.0 ("$argon2ds$v=13$", optionally without "$v=13")
+	 * 
+	 * @since  1.1
 	 */
 	LIBRECRYPT_ARGON2DS_V1_0,
 
 	/**
 	 * Argon2ds, version 1.3 ("$argon2ds$v=19$")
+	 * 
+	 * @since  1.1
 	 */
-	LIBRECRYPT_ARGON2DS_V1_3
+	LIBRECRYPT_ARGON2DS_V1_3,
+
+	/** - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - **/
+
+	/**
+	 * Marks the end of this enum, so you can iterate over it
+	 * 
+	 * @since  1.1
+	 */
+	LIBRECRYPT_HASH_ALGORITHM_END
 };
+
+
+
+/**
+ * The value `LIBRECRYPT_HASH_ALGORITHM_END` as in the
+ * version of the library the application is linked against
+ * (rather than compiled against)
+ * 
+ * @since  1.1
+ */
+extern enum librecrypt_hash_algorithm librecrypt_hash_algorithm_end; /* TODO man */
 
 
 
@@ -130,7 +182,7 @@ enum librecrypt_hash_algorithm {
  *                        return `strlen(hash)` if `hash` is properly
  *                        formatted) the value 0 is stored, indicating
  *                        that a default hash size shall be used
- * @param   reserved      Reserved for future use, should be `NULL`
+ * @param   ctx           Library configuration
  * @return                The number of bytes, from the front of `hash`,
  *                        that make up the algorithm configuration; may be 0
  * 
@@ -140,9 +192,10 @@ enum librecrypt_hash_algorithm {
  * This function is MT-Safe and AS-Safe
  * 
  * @since  1.0
+ * @since  1.1  `void *reserved` was replaced with `LIBRECRYPT_CONTEXT *ctx`
  */
 LIBRECRYPT_READ_STR__(1) LIBRECRYPT_NONNULL_1__ LIBRECRYPT_WUR__ LIBRECRYPT_PURE__
-size_t librecrypt_settings_prefix(const char *hash, size_t *hashsize_out, void *reserved);
+size_t librecrypt_settings_prefix(const char *hash, size_t *hashsize_out, LIBRECRYPT_CONTEXT *ctx);
 
 
 /**
@@ -409,7 +462,7 @@ ssize_t librecrypt_decode(void *out_buffer, size_t size, const char *ascii, size
  * @param   decoding        0 if the returned pointer should be useful for,
  *                          `librecrypt_encode`, otherwise it will be useful
  *                          for `librecrypt_decode`
- * @param   reserved        Reserved for future use, should be `NULL`
+ * @param   ctx             Library configuration
  * @return                  If `decoding` is 0:
  *                             the encoding alphabet, consisting of 64 characters,
  *                             repeated 4 times;
@@ -420,8 +473,6 @@ ssize_t librecrypt_decode(void *out_buffer, size_t size, const char *ascii, size
  *                             and any other character to the value `0xFF`;
  *                          but `NULL` on failure
  * 
- * @throws  EINVAL  `reserved` is non-`NULL` (this case will be removed
- *                  once `reserved` as being used by the library)
  * @throws  ENOSYS  The last algorithm in `settings` is not recognised
  *                  or was disabled at compile-time
  * 
@@ -442,11 +493,13 @@ ssize_t librecrypt_decode(void *out_buffer, size_t size, const char *ascii, size
  * This function is MT-Safe and AS-Safe
  * 
  * @since  1.0
+ * @since  1.1  `void *reserved` was replaced with `LIBRECRYPT_CONTEXT *ctx`;
+ *              provided `NULL` to this parameter no longer causes `EINVAL`-failure
  */
 LIBRECRYPT_READ_STR__(1) LIBRECRYPT_NONNULL_I__(1) LIBRECRYPT_NONNULL_I__(3)
 LIBRECRYPT_NONNULL_I__(4) LIBRECRYPT_WUR__
 const void *librecrypt_get_encoding(const char *settings, size_t len, char *pad_out,
-                                    int *strict_pad_out, int decoding, void *reserved);
+                                    int *strict_pad_out, int decoding, LIBRECRYPT_CONTEXT *ctx);
 
 
 /**
@@ -553,11 +606,9 @@ librecrypt_equal(const char *a, const char *b)
  *                      the number of generated bytes, or -1 on failure
  * @param   user        Passed as the third argument to `*rng` for user-defined
  *                      purposes, ignored if `rng` is `NULL`
- * @param   reserved    Reserved for future use, should be `NULL`
+ * @param   ctx         Library configuration
  * @return              The number of bytes that would have been written to `out_buffer`,
  *                      if `size` was sufficiently large, -1 on failure
- * @throws  EINVAL      `reserved` is non-`NULL` (this case will be removed
- *                      once `reserved` as being used by the library)
  * @throws  ERANGE      The expected return value is greater than {SSIZE_MAX}
  * @throws  ENOSYS      `settings` contain an algorithm that is not recognised
  *                      or was disabled at compile-time
@@ -591,11 +642,13 @@ librecrypt_equal(const char *a, const char *b)
  * `rng` is `NULL`, this function is MT-Safe but AS-Unsafe
  * 
  * @since  1.0
+ * @since  1.1  `void *reserved` was replaced with `LIBRECRYPT_CONTEXT *ctx`;
+ *              provided `NULL` to this parameter no longer causes `EINVAL`-failure
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_STR__(3) LIBRECRYPT_WUR__
 ssize_t librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *settings,
                                  ssize_t (*rng)(void *out, size_t n, void *user), void *user,
-                                 void *reserved);
+                                 LIBRECRYPT_CONTEXT *ctx);
 
 
 /**
@@ -627,12 +680,10 @@ ssize_t librecrypt_realise_salts(char *restrict out_buffer, size_t size, const c
  *                      ignored if `gensalt` is zero
  * @param   user        Passed as the third argument to `*rng` for user-defined
  *                      purposes, ignored if `rng` is `NULL` or if `gensalt` is zero
- * @param   reserved    Reserved for future use, should be `NULL`
+ * @param   ctx         Library configuration
  * @return              The number of bytes that would have been written to
  *                      `out_buffer`, if `size` was sufficiently large, -1 on failure
  * 
- * @throws  EINVAL  `reserved` is non-`NULL` (this case will be removed
- *                  once `reserved` as being used by the library)
  * @throws  EINVAL  `algorithm` represents a chain of algorithms
  * @throws  ENOSYS  `algorithm` represents an algorithm that is not
  *                  recognised or was disabled at compile-time
@@ -662,12 +713,14 @@ ssize_t librecrypt_realise_salts(char *restrict out_buffer, size_t size, const c
  * This function is MT-Safe but AS-Unsafe
  * 
  * @since  1.0
+ * @since  1.1  `void *reserved` was replaced with `LIBRECRYPT_CONTEXT *ctx`;
+ *              provided `NULL` to this parameter no longer causes `EINVAL`-failure
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_STR__(3) LIBRECRYPT_WUR__
 ssize_t librecrypt_make_settings(char *out_buffer, size_t size, const char *algorithm,
                                  size_t memcost, uintmax_t timecost, int gensalt,
                                  ssize_t (*rng)(void *out, size_t n, void *user), void *user,
-                                 void *reserved);
+                                 LIBRECRYPT_CONTEXT *ctx);
 
 
 /**
@@ -681,12 +734,10 @@ ssize_t librecrypt_make_settings(char *out_buffer, size_t size, const char *algo
  * @param   len         The number of bytes in `phrase`
  * @param   settings    The password hash configuration string,
  *                      may contain resulting hash, which will be ignored
- * @param   reserved    Reserved for future use, should be `NULL`
+ * @param   ctx         Library configuration
  * @return              The number of bytes that would have been written to `out_buffer`
  *                      if `size` was sufficiently large; -1 on failure
  * 
- * @throws  EINVAL     `reserved` is non-`NULL` (this case will be removed
- *                     once `reserved` as being used by the library)
  * @throws  EINVAL     `settings` is invalid (invalid algorithm configuration,
  *                     invalid configuration syntax, or the output from one
  *                     chained hash algorithm cannot be input the next algorithm
@@ -716,11 +767,13 @@ ssize_t librecrypt_make_settings(char *out_buffer, size_t size, const char *algo
  * 
  * @since  1.0  Initial version
  * @since  1.1  First parameter is `void *` rather than `char *`
+ * @since  1.1  `void *reserved` was replaced with `LIBRECRYPT_CONTEXT *ctx`;
+ *              provided `NULL` to this parameter no longer causes `EINVAL`-failure
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_MEM__(3, 4) LIBRECRYPT_READ_STR__(5)
 LIBRECRYPT_NONNULL_I__(5) LIBRECRYPT_WUR__
 ssize_t librecrypt_hash_binary(void *restrict out_buffer, size_t size, const char *phrase,
-                               size_t len, const char *settings, void *reserved);
+                               size_t len, const char *settings, LIBRECRYPT_CONTEXT *ctx);
 
 
 /**
@@ -735,13 +788,11 @@ ssize_t librecrypt_hash_binary(void *restrict out_buffer, size_t size, const cha
  * @param   len         The number of bytes in `phrase`
  * @param   settings    The password hash configuration string,
  *                      may contain resulting hash, which will be ignored
- * @param   reserved    Reserved for future use, should be `NULL`
+ * @param   ctx         Library configuration
  * @return              The number of bytes that would have been written to `out_buffer`
  *                      if `size` was sufficiently large, excluding a terminating
  *                      NUL byte; -1 on failure
  * 
- * @throws  EINVAL     `reserved` is non-`NULL` (this case will be removed
- *                     once `reserved` as being used by the library)
  * @throws  EINVAL     `settings` is invalid (invalid algorithm configuration,
  *                     invalid configuration syntax, or the output from one
  *                     chained hash algorithm cannot be input the next algorithm
@@ -775,11 +826,13 @@ ssize_t librecrypt_hash_binary(void *restrict out_buffer, size_t size, const cha
  * This function is MT-Safe but AS-Unsafe
  * 
  * @since  1.0
+ * @since  1.1  `void *reserved` was replaced with `LIBRECRYPT_CONTEXT *ctx`;
+ *              provided `NULL` to this parameter no longer causes `EINVAL`-failure
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_MEM__(3, 4) LIBRECRYPT_READ_STR__(5)
 LIBRECRYPT_NONNULL_I__(5) LIBRECRYPT_WUR__
 ssize_t librecrypt_hash(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
-                        const char *settings, void *reserved);
+                        const char *settings, LIBRECRYPT_CONTEXT *ctx);
 
 
 /**
@@ -794,13 +847,11 @@ ssize_t librecrypt_hash(char *restrict out_buffer, size_t size, const char *phra
  * @param   len         The number of bytes in `phrase`
  * @param   settings    The password hash configuration string,
  *                      may contain resulting hash, which will be ignored
- * @param   reserved    Reserved for future use, should be `NULL`
+ * @param   ctx         Library configuration
  * @return              The number of bytes that would have been written to `out_buffer`
  *                      if `size` was sufficiently large, excluding a terminating
  *                      NUL byte; -1 on failure
  * 
- * @throws  EINVAL     `reserved` is non-`NULL` (this case will be removed
- *                     once `reserved` as being used by the library)
  * @throws  EINVAL     `settings` is invalid (invalid algorithm configuration,
  *                     invalid configuration syntax, or the output from one
  *                     chained hash algorithm cannot be input the next algorithm
@@ -837,7 +888,7 @@ ssize_t librecrypt_hash(char *restrict out_buffer, size_t size, const char *phra
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_MEM__(3, 4) LIBRECRYPT_READ_STR__(5)
 LIBRECRYPT_NONNULL_I__(5) LIBRECRYPT_WUR__
 ssize_t librecrypt_crypt(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
-                         const char *settings, void *reserved);
+                         const char *settings, LIBRECRYPT_CONTEXT *ctx);
 
 
 /**
@@ -847,12 +898,10 @@ ssize_t librecrypt_crypt(char *restrict out_buffer, size_t size, const char *phr
  * @param   len         The number of bytes in `phrase`
  * @param   settings    The password hash configuration string,
  *                      may contain resulting hash, which will be ignored
- * @param   reserved    Reserved for future use, should be `NULL`
+ * @param   ctx         Library configuration
  * @return              1 if the password is correct and 0 if the password
  *                      is incorrect; -1 on failure
  * 
- * @throws  EINVAL     `reserved` is non-`NULL` (this case will be removed
- *                     once `reserved` as being used by the library)
  * @throws  EINVAL     `settings` is invalid (invalid algorithm configuration,
  *                     invalid configuration syntax, or the output from one
  *                     chained hash algorithm cannot be input the next algorithm
@@ -879,7 +928,7 @@ ssize_t librecrypt_crypt(char *restrict out_buffer, size_t size, const char *phr
  * @since  1.1
  */
 LIBRECRYPT_READ_MEM__(1, 2) LIBRECRYPT_READ_STR__(3) LIBRECRYPT_NONNULL_I__(3) LIBRECRYPT_WUR__
-int librecrypt_verify(const char *phrase, size_t len, const char *settings, void *reserved);
+int librecrypt_verify(const char *phrase, size_t len, const char *settings, LIBRECRYPT_CONTEXT *ctx);
 
 
 /**
@@ -897,7 +946,7 @@ int librecrypt_verify(const char *phrase, size_t len, const char *settings, void
  *                     iff non-zero; ignored if `phrase` is non-`NULL`
  * @param   settings   The password hash string; it is allowed for algorithm
  *                     tuning parameters, and the hash result, to be omitted
- * @param   reserved   Reserved for future use, should be `NULL`
+ * @param   ctx        Library configuration
  * @return             1 if the configuration is supported, 0 otherwise, which
  *                     means part of the string is invalid: the algorithm does
  *                     not exist, supported was disabled at compile-time, or an
@@ -913,9 +962,11 @@ int librecrypt_verify(const char *phrase, size_t len, const char *settings, void
  * This function is MT-Safe and AS-Safe
  * 
  * @since  1.0
+ * @since  1.1  `void *reserved` was replaced with `LIBRECRYPT_CONTEXT *ctx`;
+ *              provided `NULL` to this parameter no longer causes `EINVAL`-failure
  */
 LIBRECRYPT_READ_STR__(4) LIBRECRYPT_NONNULL_I__(4) LIBRECRYPT_WUR__
-int librecrypt_test_supported(const char *phrase, size_t len, int text, const char *settings, void *reserved);
+int librecrypt_test_supported(const char *phrase, size_t len, int text, const char *settings, LIBRECRYPT_CONTEXT *ctx);
 
 
 /**
@@ -957,13 +1008,11 @@ int librecrypt_is_enabled(enum librecrypt_hash_algorithm algo);
  * @param   augment     Password hash setting string describing the additional
  *                      hashing to perform; if it contains a hash result, that
  *                      part will be ignored
- * @param   reserved    Reserved for future use, should be `NULL`
+ * @param   ctx         Library configuration
  * @return              The number of bytes that would have been written to `out_buffer`
  *                      if `size` was sufficiently large, excluding a terminating
  *                      NUL byte; -1 on failure
  * 
- * @throws  EINVAL     `reserved` is non-`NULL` (this case will be removed
- *                     once `reserved` as being used by the library)
  * @throws  EINVAL     `settings` is invalid (invalid algorithm configuration,
  *                     invalid configuration syntax, or the output from one
  *                     chained hash algorithm cannot be input the next algorithm
@@ -989,11 +1038,110 @@ int librecrypt_is_enabled(enum librecrypt_hash_algorithm algo);
  * This function is MT-Safe but AS-Unsafe
  * 
  * @since  1.0
+ * @since  1.1  `void *reserved` was replaced with `LIBRECRYPT_CONTEXT *ctx`;
+ *              provided `NULL` to this parameter no longer causes `EINVAL`-failure
  */
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_STR__(3) LIBRECRYPT_READ_STR__(4)
 LIBRECRYPT_NONNULL_I__(3) LIBRECRYPT_NONNULL_I__(4) LIBRECRYPT_WUR__
 ssize_t librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
-                                 const char *restrict augment, void *reserved);
+                                 const char *restrict augment, LIBRECRYPT_CONTEXT *ctx);
+
+
+/**
+ * Deallocate object created with `librecrypt_create_context`
+ *
+ * @param  ctx  The object to deallocate
+ * 
+ * @since  1.1
+ */
+void librecrypt_free_context(LIBRECRYPT_CONTEXT *ctx); /* TODO man */
+
+
+/**
+ * Create a new library configuration object
+ * 
+ * @return  The configuration object, shall be deallocated
+ *          using `librecrypt_free_context` when no longer
+ *          needed; `NULL` on failuare
+ * 
+ * @throws  ENOMEM  Failed to allocate enough memory
+ * 
+ * @seealso  librecrypt_context_set_user_data
+ * @seealso  librecrypt_context_set_pepper
+ * 
+ * @since  1.1
+ */
+LIBRECRYPT_MALLOC__(librecrypt_free_context, 1) LIBRECRYPT_WUR__
+LIBRECRYPT_CONTEXT *librecrypt_create_context(void); /* TODO man */
+
+
+/**
+ * Set application-defined data in a library configuration object
+ * 
+ * The data can be used by application-defined hash functions
+ * 
+ * @param  ctx   The library configuration object
+ * @param  user  The application-defined data
+ * 
+ * The caller is responsible for the lifetime of `user`:
+ * deallocating it will deallocate it for `ctx` as it
+ * only holds a reference to `user`, not a copy of it
+ * 
+ * @seealso  librecrypt_create_context
+ * @seealso  librecrypt_context_get_user_data
+ * 
+ * @since  1.1
+ */
+LIBRECRYPT_NONNULL_1__
+void librecrypt_context_set_user_data(LIBRECRYPT_CONTEXT *ctx, void *user); /* TODO man */
+
+
+/**
+ * Get application-defined data, in a library configuration object,
+ * which was set using the `librecrypt_context_set_user_data` function
+ * 
+ * @param   ctx   The library configuration object
+ * @return  user  The application-defined data, `NULL` if
+ *                it hasn't been set (or if it was set to `NULL`)
+ * 
+ * @seealso  librecrypt_create_context
+ * @seealso  librecrypt_context_set_user_data
+ * 
+ * @since  1.1
+ */
+LIBRECRYPT_NONNULL_1__ LIBRECRYPT_PURE__
+void *librecrypt_context_get_user_data(LIBRECRYPT_CONTEXT *ctx); /* TODO man */
+
+
+/**
+ * Sets the pepper for a hash algorithm
+ * 
+ * @param   ctx   The library configuration object
+ * @param   algo  The hash algorithm to apply the pepper to
+ * @param   data  The pepper
+ * @param   len   The number of bytes in `data`
+ * @return        0 on success, -1 on failure
+ * 
+ * @throws  ENOSYS  The hash algorithm `algo` is either not
+ *                  recognised or was disabled at compile-time
+ * @throws  ENOSUP  The hash algorithm `algo` does not support
+ *                  peppers; the application is instead adviced
+ *                  to, itself, append or prepend the pepper
+ *                  to the password
+ * @throws  EINVAL  The size of the pepper is unsupported
+ *                  for the hash algorithm `algo`
+ * 
+ * The caller is responsible for the lifetime of `data`:
+ * deallocating it will deallocate it for `ctx` as it
+ * only holds a reference to `data`, not a copy of it
+ * 
+ * @seealso  librecrypt_create_context
+ * @seealso  librecrypt_hash_algorithm_end
+ * 
+ * @since  1.1
+ */
+LIBRECRYPT_NONNULL_1__
+int librecrypt_context_set_pepper(LIBRECRYPT_CONTEXT *ctx, enum librecrypt_hash_algorithm algo, const void *data, size_t len); /* TODO man */
 
 
 #if defined(__clang__)

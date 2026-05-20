@@ -7,7 +7,7 @@ librecrypt_get_encoding - Get encoding alphabet for the last algorithm in a chai
 #include <librecrypt.h>
 
 const void *\fBlibrecrypt_get_encoding\fP(const char *\fIsettings\fP, size_t \fIlen\fP, char *\fIpad_out\fP,
-                                    int *\fIstrict_pad_out\fP, int \fIdecoding\fP, void *\fIreserved\fP);
+                                    int *\fIstrict_pad_out\fP, int \fIdecoding\fP, LIBRECRYPT_CONTEXT *\fIctx\fP);
 .fi
 .PP
 Link with
@@ -45,9 +45,13 @@ alphabet and any other character to
 .BR 0xFFu .
 .PP
 The
-.I reserved
-parameter is reserved for future use and should be
-.IR NULL .
+.I ctx
+parameter is used for providing library
+configurations, see
+.BR librecrypt_create_context (3)
+for more information; used
+.I NULL
+for default configurations.
 .PP
 On successful completion,
 .IR *pad_out
@@ -82,11 +86,6 @@ The
 .BR librecrypt_get_encoding ()
 function will fail if:
 .TP
-.B EINVAL
-.I reserved
-is not
-.IR NULL .
-.TP
 .B ENOSYS
 The last algorithm in
 .I settings
@@ -115,6 +114,23 @@ The
 .BR librecrypt_get_encoding ()
 function was introduced in version 1.0 of
 .BR librecrypt .
+
+Since version 1.1 of the
+.BR librecrypt_get_encoding ()
+function, the
+.I ctx
+parameter (previously called
+.IR reserved )
+has the type
+.B LIBRECRYPT_CONTEXT *
+(previously
+.BR "void *" ),
+and setting it to
+.RI non- NULL
+no longer causes failure with
+.I errno
+set to
+.IR EINVAL .
 
 .SH SEE ALSO
 .BR librecrypt (7),

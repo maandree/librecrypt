@@ -74,6 +74,7 @@ main(void)
 	CHECK(LIBRECRYPT_ARGON2ID_V1_3, IF__argon2i__SUPPORTED(1 + ) 0);
 	CHECK(LIBRECRYPT_ARGON2DS_V1_0, IF__argon2i__SUPPORTED(1 + ) 0);
 	CHECK(LIBRECRYPT_ARGON2DS_V1_3, IF__argon2i__SUPPORTED(1 + ) 0);
+	assert((enum librecrypt_hash_algorithm)(highest + 1) == LIBRECRYPT_HASH_ALGORITHM_END);
 
 	for (i = 0; i < 1024 && highest != INT_MAX; i++)
 		CHECK((enum librecrypt_hash_algorithm)(highest + 1), 0);

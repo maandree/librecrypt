@@ -9,7 +9,7 @@ librecrypt_make_settings - Generate a password hash settings string
 ssize_t \fBlibrecrypt_make_settings\fP(char *\fIout_buffer\fP, size_t \fIsize\fP, const char *\fIalgorithm\fP,
                                 size_t \fImemcost\fP, uintmax_t \fItimecost\fP, int \fIgensalt\fP,
                                 ssize_t (*\fIrng\fP)(void *\fIout\fP, size_t \fIn\fP, void *\fIuser\fP),
-                                void *\fIuser\fP, void *\fIreserved\fP);
+                                void *\fIuser\fP, LIBRECRYPT_CONTEXT *\fIctx\fP);
 .fi
 .PP
 Link with
@@ -78,9 +78,13 @@ with the same name, as is and may be used by
 for user-defined purposes.
 .PP
 The
-.I reserved
-parameter is reserved for future use and should be
-.IR NULL .
+.I ctx
+parameter is used for providing library
+configurations, see
+.BR librecrypt_create_context (3)
+for more information; used
+.I NULL
+for default configurations.
 .PP
 On successful completion, if
 .I size
@@ -118,11 +122,6 @@ is set to describe the error.
 The
 .BR librecrypt_make_settings ()
 function will fail if:
-.TP
-.B EINVAL
-.I reserved
-is not
-.IR NULL .
 .TP
 .B EINVAL
 .I algorithm
@@ -182,6 +181,23 @@ The
 .BR librecrypt_make_settings ()
 function was introduced in version 1.0 of
 .BR librecrypt .
+
+Since version 1.1 of the
+.BR librecrypt_make_settings ()
+function, the
+.I ctx
+parameter (previously called
+.IR reserved )
+has the type
+.B LIBRECRYPT_CONTEXT *
+(previously
+.BR "void *" ),
+and setting it to
+.RI non- NULL
+no longer causes failure with
+.I errno
+set to
+.IR EINVAL .
 
 .SH SEE ALSO
 .BR librecrypt (7),

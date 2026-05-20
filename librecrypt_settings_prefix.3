@@ -6,7 +6,8 @@ librecrypt_settings_prefix - Get length of settings prefix in a password hash st
 .nf
 #include <librecrypt.h>
 
-size_t \fBlibrecrypt_settings_prefix\fP(const char *\fIhash\fP, size_t *\fIhashsize_out\fP, void *\fIreserved\fP);
+size_t \fBlibrecrypt_settings_prefix\fP(const char *\fIhash\fP, size_t *\fIhashsize_out\fP,
+                                     LIBRECRYPT_CONTEXT *\fIctx\fP);
 .fi
 .PP
 Link with
@@ -45,9 +46,13 @@ See the
 section for more information.
 .PP
 The
-.I reserved
-parameter is reserved for future use and should be
-.IR NULL .
+.I ctx
+parameter is used for providing library
+configurations, see
+.BR librecrypt_create_context (3)
+for more information; used
+.I NULL
+for default configurations.
 .PP
 .I hash
 must not be
@@ -109,6 +114,17 @@ The
 .BR librecrypt_settings_prefix ()
 function was introduced in version 1.0 of
 .BR librecrypt .
+
+Since version 1.1 of the
+.BR librecrypt_settings_prefix ()
+function, the
+.I ctx
+parameter (previously called
+.IR reserved )
+has the type
+.B LIBRECRYPT_CONTEXT *
+(previously
+.BR "void *" ).
 
 .SH SEE ALSO
 .BR librecrypt (7),

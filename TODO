@@ -17,4 +17,4 @@ Add support for descrypt.
 Add support for bigcrypt.
 Add support for NT Hash.
 Add support for custom hash functions.
-Add support (via the "reserved" parameter) for pepper.
+Add support (via the "ctx" parameter) for pepper.

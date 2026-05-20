@@ -9,7 +9,8 @@
 
 
 ssize_t
-librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, const char *restrict augment, void *reserved)
+librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
+                         const char *restrict augment, LIBRECRYPT_CONTEXT *ctx)
 {
 	size_t prefix1, prefix2, min, ret, len, phraselen;
 	size_t hashsize1, hashsize2;
@@ -17,12 +18,6 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 	int strict_pad, r_int, nul_term;
 	const unsigned char *lut;
 	ssize_t r;
-
-	/* Ensure the reserved parameter is NULL */
-	if (reserved != NULL) {
-		errno = EINVAL;
-		return -1;
-	}
 
 	/* Reserve space for NUL-termination */
 	if (size) {
@@ -33,8 +28,8 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 	}
 
 	/* Get the prefix and hash size in `augend` and `augment` */
-	prefix1 = librecrypt_settings_prefix(augend, &hashsize1, reserved);
-	prefix2 = librecrypt_settings_prefix(augment, &hashsize2, reserved);
+	prefix1 = librecrypt_settings_prefix(augend, &hashsize1, ctx);
+	prefix2 = librecrypt_settings_prefix(augment, &hashsize2, ctx);
 
 	/* If `augend` specifies a hash size rather than a hash, include it as the prefix */
 	if (augend[prefix1] == '*') {
@@ -128,7 +123,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 		len = strlen(&augend[prefix1]);
 
 		/* Get encoding information */
-		lut = librecrypt_get_encoding(augend, prefix1 + len, &pad, &strict_pad, 1, reserved);
+		lut = librecrypt_get_encoding(augend, prefix1 + len, &pad, &strict_pad, 1, ctx);
 		if (!lut)
 			return -1;
 
@@ -170,7 +165,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend, cons
 	}
 
 	/* Chain the hash algorithms: write `augment` and hash */
-	r = librecrypt_crypt(out_buffer, nul_term ? size + 1u : 0u, phrase, phraselen, augment, reserved);
+	r = librecrypt_crypt(out_buffer, nul_term ? size + 1u : 0u, phrase, phraselen, augment, ctx);
 	if (r <= 0) {
 		librecrypt_wipe(phrase, phraselen);
 		free(phrase);
@@ -205,7 +200,6 @@ main(void)
 #define HASH1 "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTYVWXYZ/+"
 #define ASTRA "*48"
 
-	char reserved[1] = {0};
 	char buf[1024], phrase[sizeof(buf)], expected[sizeof(buf)], pad;
 	size_t i, min, phraselen;
 	int strict_pad;
@@ -270,15 +264,7 @@ main(void)
 		}\
 	} while (0)
 
-	errno = 0;
-	EXPECT(librecrypt_add_algorithm(NULL, 0u, "", "", reserved) == -1);
-	EXPECT(errno == EINVAL);
-
 #if defined(SUPPORT_ARGON2I) && defined(SUPPORT_ARGON2D)
-
-	errno = 0;
-	EXPECT(librecrypt_add_algorithm(NULL, 0u, "$argon2d$v=16$m=8,t=1,p=1$*16$*40", "$argon2d$v=16$m=8,t=1,p=1$*16$*40", reserved) == -1);
-	EXPECT(errno == EINVAL);
 
 	CHECK("$argon2d$v=16$m=8,t=1,p=1$*16$*40", "$argon2i$v=19$m=16,t=4,p=2$*18$*50",
 	      "$argon2d$v=16$m=8,t=1,p=1$*16$*40>" "$argon2i$v=19$m=16,t=4,p=2$*18$*50");

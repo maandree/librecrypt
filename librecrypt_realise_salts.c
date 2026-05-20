@@ -5,19 +5,14 @@
 
 ssize_t
 librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *settings,
-                         ssize_t (*rng)(void *out, size_t n, void *user), void *user, void *reserved)
+                         ssize_t (*rng)(void *out, size_t n, void *user), void *user,
+                         LIBRECRYPT_CONTEXT *ctx)
 {
 	const char *lut;
 	char pad;
 	int strict_pad, nul_term = 0;
 	size_t i, min, nasterisks, prefix, ret = 0u;
 	size_t count, digit, q, r, left, mid, right;
-
-	/* Ensure the reserved parameter is NULL */
-	if (reserved != NULL) {
-		errno = EINVAL;
-		return -1;
-	}
 
 	/* If we are doing output, it should be NUL-terminated */
 	if (size) {
@@ -46,7 +41,7 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
 		}
 
 		/* Get binary data encoding format */
-		lut = librecrypt_get_encoding(settings, prefix, &pad, &strict_pad, 0, reserved);
+		lut = librecrypt_get_encoding(settings, prefix, &pad, &strict_pad, 0, ctx);
 		if (!lut)
 			return -1;
 		pad = strict_pad ? pad : '\0';
@@ -209,7 +204,6 @@ main(void)
 	char buf[1024], buf2[1024], conf[128];
 	size_t i;
 	int r;
-	char reserved[1] = {0};
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
@@ -231,10 +225,6 @@ main(void)
 #endif
 
 #if defined(ALGO)
-
-	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, ALGO, NULL, NULL, reserved) == -1);
-	EXPECT(errno == EINVAL);
 
 # define CHECK(IN, OUT)\
 	do {\

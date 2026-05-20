@@ -82,7 +82,7 @@ HIDDEN ssize_t librecrypt__argon2ds__make_settings(char *out_buffer, size_t size
 # define argon2__STRICT_PAD 0
 # define argon2__PAD '='
 HIDDEN int librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
-                                    const char *settings, size_t prefix, void *reserved);
+                                    const char *settings, size_t prefix, LIBRECRYPT_CONTEXT *ctx);
 HIDDEN PURE int librecrypt__argon2__test_supported(const char *phrase, size_t len, int text,
                                                    const char *settings, size_t prefix, size_t *len_out);
 # ifndef REQUIRES_COMMON_RFC4848S4

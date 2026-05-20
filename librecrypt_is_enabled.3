@@ -14,7 +14,8 @@ enum librecrypt_hash_algorithm {
 	LIBRECRYPT_ARGON2ID_V1_0,
 	LIBRECRYPT_ARGON2ID_V1_3,
 	LIBRECRYPT_ARGON2DS_V1_0,
-	LIBRECRYPT_ARGON2DS_V1_3
+	LIBRECRYPT_ARGON2DS_V1_3,
+	LIBRECRYPT_HASH_ALGORITHM_END /* end of enum marker (always last) */
 };
 
 int \fBlibrecrypt_is_enabled\fP(enum librecrypt_hash_algorithm \fIalgo\fP);

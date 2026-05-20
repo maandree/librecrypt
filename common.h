@@ -109,6 +109,40 @@ enum action {
 
 
 /**
+ * Pepper for a hash algorithm
+ */
+struct pepper {
+	/**
+	 * The binary pepper
+	 */
+	const void *data;
+
+	/**
+	 * The number of bytes in `.data`
+	 */
+	size_t len;
+};
+
+
+/**
+ * The real type of `LIBRECRYPT_CONTEXT`
+ */
+struct librecrypt_context {
+	/**
+	 * Application-defined data
+	 */
+	void *user_data;
+
+	/**
+	 * Per hash algorithm peppers
+	 */
+	struct pepper peppers[LIBRECRYPT_HASH_ALGORITHM_END];
+	/* TODO we probably don't want slots allocated for
+	 *      algorithms that have been disabled */
+};
+
+
+/**
  * Hash algorithm information and implementation
  * 
  * Current limitations:
@@ -168,14 +202,14 @@ struct librecrypt_algorithm {
 	 * @param   settings    See `librecrypt_hash_binary`,
 	 *                      will not contains asterisk-encoding
 	 * @param   prefix      The length of `settings`, in bytes
-	 * @param   reserved    See `librecrypt_hash_binary`
+	 * @param   ctx         See `librecrypt_hash_binary`
 	 * @return              0 on success, -1 on failure
 	 * @throws              See `librecrypt_hash_binary`
 	 * 
 	 * This function shall be MT-Safe but may be AS-Unsafe
 	 */
 	int (*hash)(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
-	            const char *settings, size_t prefix, void *reserved);
+	            const char *settings, size_t prefix, LIBRECRYPT_CONTEXT *ctx);
 
 	/**
 	 * Check whether the hash algorithm is supported for given
@@ -198,7 +232,8 @@ struct librecrypt_algorithm {
 	 * 
 	 * This function shall be MT-Safe and AS-Safe
 	 */
-	int (*test_supported)(const char *phrase, size_t len, int text, const char *settings, size_t prefix, size_t *len_out);
+	int (*test_supported)(const char *phrase, size_t len, int text, const char *settings,
+	                      size_t prefix, size_t *len_out);
 
 	/**
 	 * See `librecrypt_make_settings`
@@ -219,8 +254,9 @@ struct librecrypt_algorithm {
 	 * 
 	 * This function shall be MT-Safe but may be AS-Safe
 	 */
-	ssize_t (*make_settings)(char *out_buffer, size_t size, const char *algorithm, size_t memcost, uintmax_t timecost,
-	                         int gensalt, ssize_t (*rng)(void *out, size_t n, void *user), void *user);
+	ssize_t (*make_settings)(char *out_buffer, size_t size, const char *algorithm,
+	                         size_t memcost, uintmax_t timecost, int gensalt,
+	                         ssize_t (*rng)(void *out, size_t n, void *user), void *user);
 
 	/**
 	 * Expected argument for the `lut` parameter
@@ -359,7 +395,7 @@ extern void (*volatile librecrypt_explicit_____)(unsigned char); /* librecrypt_e
  * @param   len         The number of bytes in `phrase`
  * @param   settings    The password hash configuration string,
  *                      may contain resulting hash, which will be ignored
- * @param   reserved    Reserved for future use, should be `NULL`
+ * @param   ctx         Library configuration
  * @param   action      The function this function shall implement
  * @return              The number of bytes that would have been written to `out_buffer`
  *                      if `size` was sufficiently large, excluding a terminating
@@ -371,7 +407,7 @@ extern void (*volatile librecrypt_explicit_____)(unsigned char); /* librecrypt_e
 LIBRECRYPT_WRITE_MEM__(1, 2) LIBRECRYPT_READ_MEM__(3, 4)
 LIBRECRYPT_READ_STR__(6) LIBRECRYPT_NONNULL_I__(5) LIBRECRYPT_WUR__ HIDDEN
 ssize_t librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
-                         const char *settings, void *reserved, enum action action);
+                         const char *settings, LIBRECRYPT_CONTEXT *ctx, enum action action);
 
 
 /**
@@ -427,6 +463,7 @@ int librecrypt_fill_with_random_(void *out, size_t n, ssize_t (*rng)(void *out, 
  * 
  * @param   settings   The password has string
  * @param   len        The number of bytes in `settings`
+ * @param   ctx        Library configuration
  * @return             Pointer to the algorithm information,
  *                     `NULL` if not found
  * 
@@ -436,8 +473,33 @@ int librecrypt_fill_with_random_(void *out, size_t n, ssize_t (*rng)(void *out, 
  * 
  * This function is MT-Safe And AS-Safe
  */
-LIBRECRYPT_READ_MEM__(1, 2) LIBRECRYPT_NONNULL__ LIBRECRYPT_WUR__ HIDDEN
-const struct librecrypt_algorithm *librecrypt_find_first_algorithm_(const char *settings, size_t len);
+LIBRECRYPT_READ_MEM__(1, 2) LIBRECRYPT_NONNULL_1__ LIBRECRYPT_WUR__ HIDDEN
+const struct librecrypt_algorithm *librecrypt_find_first_algorithm_(const char *settings, size_t len,
+                                                                    LIBRECRYPT_CONTEXT *ctx);
+
+
+/**
+ * Sets the pepper for a hash algorithm
+ * 
+ * @param   ctx   The library configuration object
+ * @param   algo  The hash algorithm to apply the pepper to
+ * @param   len   Pepper size to test support for, or 0 to not
+ *                test (0 is always supported for algorithms that
+ *                support pepper as it means no pepper)
+ * @return        Pointer to the pepper configuration for
+ *                `algo` in `ctx`; `NULL` on failure
+ * 
+ * @throws  ENOSYS  The hash algorithm `algo` is either not
+ *                  recognised or was disabled at compile-time
+ * @throws  ENOSUP  The hash algorithm `algo` does not support
+ *                  peppers; the application is instead adviced
+ *                  to, itself, append or prepend the pepper
+ *                  to the password
+ * @throws  EINVAL  The size of the pepper is unsupported
+ *                  for the hash algorithm `algo`
+ */
+LIBRECRYPT_NONNULL_1__
+struct pepper *librecrypt_context_get_pepper_(LIBRECRYPT_CONTEXT *ctx, enum librecrypt_hash_algorithm algo, size_t len);
 
 
 /**

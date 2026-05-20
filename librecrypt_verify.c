@@ -4,7 +4,7 @@
 
 
 int
-librecrypt_verify(const char *phrase, size_t len, const char *settings, void *reserved)
+librecrypt_verify(const char *phrase, size_t len, const char *settings, LIBRECRYPT_CONTEXT *ctx)
 {
 	char *hash = NULL;
 	size_t size = 0u;
@@ -13,7 +13,7 @@ librecrypt_verify(const char *phrase, size_t len, const char *settings, void *re
 	int ret, err;
 
 	/* Measure base64 hash size */
-	n = librecrypt_hash_(NULL, 0u, phrase, len, settings, reserved, ASCII_HASH);
+	n = librecrypt_hash_(NULL, 0u, phrase, len, settings, ctx, ASCII_HASH);
 	if (n < 0) {
 		if (errno == EOVERFLOW)
 			errno = ENOMEM; /* $covered$ (on 32-bit) */
@@ -21,7 +21,7 @@ librecrypt_verify(const char *phrase, size_t len, const char *settings, void *re
 	}
 
 	/* Get position of hash in `settings` */
-	off = librecrypt_settings_prefix(settings, NULL, reserved);
+	off = librecrypt_settings_prefix(settings, NULL, ctx);
 	if (settings[off] == '*') {
 		if ('0' <= settings[off + 1u] && settings[off + 1u] <= '9') {
 			errno = EINVAL;
@@ -39,7 +39,7 @@ librecrypt_verify(const char *phrase, size_t len, const char *settings, void *re
 		return -1;
 
 	/* Calculate password hash and encode to base64 */
-	n = librecrypt_hash_(hash, size, phrase, len, settings, reserved, ASCII_HASH);
+	n = librecrypt_hash_(hash, size, phrase, len, settings, ctx, ASCII_HASH);
 	if (n < 0) {
 		err = errno;
 		librecrypt_wipe(hash, size);

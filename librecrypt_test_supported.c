@@ -4,12 +4,10 @@
 
 
 int
-librecrypt_test_supported(const char *phrase, size_t len, int text, const char *settings, void *reserved)
+librecrypt_test_supported(const char *phrase, size_t len, int text, const char *settings, LIBRECRYPT_CONTEXT *ctx)
 {
 	const struct librecrypt_algorithm *algo;
 	size_t n;
-
-	(void) reserved;
 
 	/* For each chained algorithm */
 	for (;;) {
@@ -19,7 +17,7 @@ librecrypt_test_supported(const char *phrase, size_t len, int text, const char *
 				break;
 
 		/* Identify algorithm */
-		algo = librecrypt_find_first_algorithm_(settings, n);
+		algo = librecrypt_find_first_algorithm_(settings, n, ctx);
 		if (!algo)
 			return 0;
 
