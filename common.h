@@ -110,8 +110,32 @@ enum action {
 
 /**
  * Hash algorithm information and implementation
+ * 
+ * Current limitations:
+ *
+ * -  The algorithm must not use the '*' symbol except
+ *    in the way the librecrypt library uses '*' for
+ *    specifying sizes, in bytes (after base64-decoding),
+ *    of randomised data (salt) and the hash result
+ * 
+ * -  The algorithm must not use the '>' symbol
+ * 
+ * -  The hash must be att the end, immediately after
+ *    the last '$' (some expections exists for legacy
+ *    hash algorithms), and empty must be usable to
+ *    specify default hash size
+ * 
+ * -  Salts and hashes must be encoded in some variant
+ *    of base64 where the bytes (represented with the
+ *    most significant bit first) a₇a₆a₅a₄a₃a₂a₁a₀,
+ *    b₇b₆b₅b₄b₃b₂b₁b₀, and c₇c₆c₅c₄c₃c₂c₁c₀ are
+ *    rearranged to a₇a₆a₅a₄a₃a₂, a₁a₀b₇b₆b₅b₄,
+ *    b₃b₂b₁b₀c₇c₆, c₅c₄c₃c₂c₁c₀, and missing bits
+ *    are set to 0; and padding if supported at all,
+ *    is only allowed, up to 3 pad letters, at the
+ *    end to pad the output to a multiple of 4 letters
  */
-struct algorithm {
+struct librecrypt_algorithm {
 	/**
 	 * Determine if a password hash string
 	 * selects the algorithm
@@ -186,7 +210,9 @@ struct algorithm {
 	 * @param   memcost     See `librecrypt_make_settings`
 	 * @param   timecost    See `librecrypt_make_settings`
 	 * @param   gensalt     See `librecrypt_make_settings`
-	 * @param   rng         See `librecrypt_make_settings`
+	 * @param   rng         See `librecrypt_make_settings`,
+	 *                      except the function will not be called
+	 *                      with `rng` set to `NULL`
 	 * @param   user        See `librecrypt_make_settings`
 	 * @return              See `librecrypt_make_settings`
 	 * @throws              See `librecrypt_make_settings`
@@ -199,12 +225,21 @@ struct algorithm {
 	/**
 	 * Expected argument for the `lut` parameter
 	 * of the `librecrypt_encode` function
+	 * 
+	 * This shall repeat a 64 character ASCII
+	 * alphabet 4 times
 	 */
 	const char *encoding_lut;
 
 	/**
 	 * Expected argument for the `lut` parameter
 	 * of the `librecrypt_decode` function
+	 * 
+	 * This shall unique map the letters in
+	 * `.encoding_lut` to there initial position
+	 * in `.encoding_lut` (that's, uniquely to
+	 * the range [0, 63]). All other bytes
+	 * (including `.pad`) shall map to `0xFFu`
 	 */
 	const unsigned char *decoding_lut;
 
@@ -223,12 +258,21 @@ struct algorithm {
 	/**
 	 * Expected argument for the `strict_pad` parameter
 	 * of the `librecrypt_decode` function
+	 * 
+	 * Shall be either 1 (always pad when encoding,
+	 * and require padding when decoding) or 0
+	 * (do not pad when encoding, but allow padding
+	 * (provided that `.pad != 0`) when decoding)
 	 */
 	signed char strict_pad;
 
 	/**
 	 * Expected argument for the `pad` parameter
 	 * of the `librecrypt_decode` function
+	 *
+	 * The pad character, used to pad base64-encoding
+	 * to a multiple of 4 letters, shall be `'\0'` if
+	 * not specified
 	 */
 	char pad;
 };
@@ -286,7 +330,7 @@ struct algorithm {
  * The list is terminated by `END_OF_ALGORITHMS`,
  * which can be checked using `IS_END_OF_ALGORITHMS`
  */
-extern struct algorithm librecrypt_algorithms_[];
+extern struct librecrypt_algorithm librecrypt_algorithms_[];
 
 /**
  * This just points to memset(3), but the pointer is volalite
@@ -393,7 +437,7 @@ int librecrypt_fill_with_random_(void *out, size_t n, ssize_t (*rng)(void *out, 
  * This function is MT-Safe And AS-Safe
  */
 LIBRECRYPT_READ_MEM__(1, 2) LIBRECRYPT_NONNULL__ LIBRECRYPT_WUR__ HIDDEN
-const struct algorithm *librecrypt_find_first_algorithm_(const char *settings, size_t len);
+const struct librecrypt_algorithm *librecrypt_find_first_algorithm_(const char *settings, size_t len);
 
 
 /**
@@ -453,9 +497,11 @@ const struct algorithm *librecrypt_find_first_algorithm_(const char *settings, s
  *                      "%^h" - Same as "%^b"
  *                      "%&h" - Same as "%&b"
  * @return            1 if `string` matches `fmt`, 0 otherwise
+ * 
+ * This function will call abort(3) if misused.
  */
 LIBRECRYPT_READ_MEM__(1, 2) LIBRECRYPT_NONNULL_I__(3) LIBRECRYPT_WUR__ HIDDEN
-int librecrypt_check_settings_(const char *settings, size_t len, const char *fmt, ...);
+int librecrypt_scan_settings_(const char *settings, size_t len, const char *fmt, ...);
 
 
 

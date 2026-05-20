@@ -7,7 +7,7 @@ ssize_t
 librecrypt_make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memcost, uintmax_t timecost,
                          int gensalt, ssize_t (*rng)(void *out, size_t n, void *user), void *user, void *reserved)
 {
-	const struct algorithm *algo;
+	const struct librecrypt_algorithm *algo;
 
 	/* Ensure the reserved parameter is NULL */
 	if (reserved != NULL) {

@@ -7,7 +7,7 @@ const void *
 librecrypt_get_encoding(const char *settings, size_t len, char *pad_out, int *strict_pad_out, int decoding, void *reserved)
 {
 	size_t i, start = 0u;
-	const struct algorithm *algo;
+	const struct librecrypt_algorithm *algo;
 
 	/* Ensure the reserved parameter is NULL */
 	if (reserved != NULL) {

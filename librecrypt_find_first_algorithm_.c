@@ -3,11 +3,11 @@
 #ifndef TEST
 
 
-const struct algorithm *
+const struct librecrypt_algorithm *
 librecrypt_find_first_algorithm_(const char *settings, size_t len)
 {
 	unsigned r, priority = 0;
-	const struct algorithm *algo, *found = NULL;
+	const struct librecrypt_algorithm *algo, *found = NULL;
 	size_t i;
 
 	for (i = 0u;; i++) {
@@ -55,7 +55,7 @@ librecrypt_find_first_algorithm_(const char *settings, size_t len)
 int
 main(void)
 {
-	const struct algorithm *algo;
+	const struct librecrypt_algorithm *algo;
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();

@@ -20,7 +20,7 @@ librecrypt__argon2__test_supported(const char *phrase, size_t len, int text, con
 	(void) text;
 
 	/* Validate string format and parameters */
-	r = librecrypt_check_settings_(settings, prefix,
+	r = librecrypt_scan_settings_(settings, prefix,
 		"$%*$%sm=%p,t=%p,p=%p$%b$%^h",
 		"v=16$", "v=19$", "", NULL,
 		RANGE(LIBAR2_MIN_M_COST, LIBAR2_MAX_M_COST),

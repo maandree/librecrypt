@@ -19,7 +19,7 @@
 
 
 #define X(ALGO) IF__##ALGO##__SUPPORTED(ENTRY(ALGO) COMMA)
-struct algorithm librecrypt_algorithms_[] = {
+struct librecrypt_algorithm librecrypt_algorithms_[] = {
 	LIST_ALGORITHMS(X)
 	END_OF_ALGORITHMS
 };

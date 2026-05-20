@@ -8,7 +8,7 @@ librecrypt_settings_prefix(const char *hash, size_t *hashsize_out, void *reserve
 {
 	size_t i, len, ret = 0u;
 	size_t last_offset = 0u;
-	const struct algorithm *algo;
+	const struct librecrypt_algorithm *algo;
 	uintmax_t hashsize;
 
 	(void) reserved;
@@ -41,9 +41,9 @@ librecrypt_settings_prefix(const char *hash, size_t *hashsize_out, void *reserve
 		goto zero; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
 
 	/* Get the hash size */
-	if (!librecrypt_check_settings_(&hash[ret], len - ret, "%^b",
-	                                &hashsize, (uintmax_t)1u, (uintmax_t)SIZE_MAX,
-	                                algo->decoding_lut, algo->pad, algo->strict_pad))
+	if (!librecrypt_scan_settings_(&hash[ret], len - ret, "%^b",
+	                               &hashsize, (uintmax_t)1u, (uintmax_t)SIZE_MAX,
+	                               algo->decoding_lut, algo->pad, algo->strict_pad))
 		goto zero;
 
 	*hashsize_out = (size_t)hashsize;

@@ -106,7 +106,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	(void) reserved;
 
 	/* Parse `settings` */
-	r = librecrypt_check_settings_(settings, prefix,
+	r = librecrypt_scan_settings_(settings, prefix,
 		"$argon2%^s$%^sm=%^p,t=%^p,p=%^p$%&b$%^h",
 		&type, "id", "i", "ds", "d", NULL, /* order partially matters */
 		&version, "v=19$", "v=16$", "", NULL, /* empty string last */
