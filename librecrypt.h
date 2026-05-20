@@ -10,11 +10,13 @@
 
 #if defined(__GNUC__)
 # define LIBRECRYPT_PURE__ __attribute__((__pure__))
+# define LIBRECRYPT_CONST__ __attribute__((__const__))
 # define LIBRECRYPT_NONNULL__ __attribute__((__nonnull__))
 # define LIBRECRYPT_NONNULL_I__(I) __attribute__((__nonnull__(I)))
 # define LIBRECRYPT_WUR__ __attribute__((__warn_unused_result__))
 #else
 # define LIBRECRYPT_PURE__
+# define LIBRECRYPT_CONST__
 # define LIBRECRYPT_NONNULL__
 # define LIBRECRYPT_NONNULL_I__(I)
 # define LIBRECRYPT_WUR__
@@ -54,6 +56,53 @@
  * @since  1.0
  */
 #define LIBRECRYPT_ALGORITHM_LINK_DELIMITER '>'
+
+
+
+/**
+ * Hash algorithms that the library might support
+ */
+enum librecrypt_hash_algorithm {
+	/**
+	 * Argon2i, version 1.0 ("$argon2i$v=13$", optionally without "$v=13")
+	 */
+	LIBRECRYPT_ARGON2I_V1_0,
+
+	/**
+	 * Argon2i, version 1.3 ("$argon2i$v=19$")
+	 */
+	LIBRECRYPT_ARGON2I_V1_3,
+
+	/**
+	 * Argon2d, version 1.0 ("$argon2d$v=13$", optionally without "$v=13")
+	 */
+	LIBRECRYPT_ARGON2D_V1_0,
+
+	/**
+	 * Argon2d, version 1.3 ("$argon2d$v=19$")
+	 */
+	LIBRECRYPT_ARGON2D_V1_3,
+
+	/**
+	 * Argon2id, version 1.0 ("$argon2id$v=13$", optionally without "$v=13")
+	 */
+	LIBRECRYPT_ARGON2ID_V1_0,
+
+	/**
+	 * Argon2id, version 1.3 ("$argon2id$v=19$")
+	 */
+	LIBRECRYPT_ARGON2ID_V1_3,
+
+	/**
+	 * Argon2ds, version 1.0 ("$argon2ds$v=13$", optionally without "$v=13")
+	 */
+	LIBRECRYPT_ARGON2DS_V1_0,
+
+	/**
+	 * Argon2ds, version 1.3 ("$argon2ds$v=19$")
+	 */
+	LIBRECRYPT_ARGON2DS_V1_3
+};
 
 
 
@@ -859,12 +908,31 @@ int librecrypt_verify(const char *phrase, size_t len, const char *settings, void
  *                     if the selected word does not match such constraints
  *                     for the first algorithm in the chain, 0 is returned
  * 
+ * @seealso  librecrypt_is_enabled
+ * 
  * This function is MT-Safe and AS-Safe
  * 
  * @since  1.0
  */
 LIBRECRYPT_READ_STR__(4) LIBRECRYPT_NONNULL_I__(4) LIBRECRYPT_WUR__
 int librecrypt_test_supported(const char *phrase, size_t len, int text, const char *settings, void *reserved);
+
+
+/**
+ * Check whether the library has been compiled to
+ * support a specific hash algorithm
+ *
+ * @param   algo  The hash algorithm
+ * @return        1 if the hash algorithm is enabled, 0 otherwise
+ * 
+ * @seealso  librecrypt_test_supported
+ * 
+ * This function is MT-Safe and AS-Safe
+ * 
+ * @since  1.1
+ */
+LIBRECRYPT_CONST__ LIBRECRYPT_WUR__
+int librecrypt_is_enabled(enum librecrypt_hash_algorithm algo);
 
 
 /**

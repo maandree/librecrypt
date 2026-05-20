@@ -37,7 +37,8 @@ OBJ_PUBLIC_NO_FUZZ =\
 	librecrypt_wipe.o\
 	librecrypt_wipe_str.o\
 	librecrypt_equal_binary.o\
-	librecrypt_equal.o
+	librecrypt_equal.o\
+	librecrypt_is_enabled.o
 
 OBJ_PUBLIC =\
 	$(OBJ_PUBLIC_FUZZ)\

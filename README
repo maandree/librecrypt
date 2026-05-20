@@ -47,7 +47,7 @@ DESCRIPTION
 	librecrypt_add_algorithm(3)
 		Append an algorithm chain to a password hash string.
 
-   Password hashing configuration generation functions:
+   Password hashing configuration functions:
 	librecrypt_test_supported(3)
 		Check whether an algorithm chain is supported.
 
@@ -102,6 +102,11 @@ DESCRIPTION
 	librecrypt_get_encoding(3)
 		Get encoding alphabet for the last algorithm in a
 		chain.
+
+   Library introspection functions (ADVANCED):
+	librecrypt_is_enabled(3)
+		Check whenther the library is compiled with support
+		for a specific hash algorithm.
 
 NOTES
 	Using librecrypt_add_algorithm(3) to hash existing password
