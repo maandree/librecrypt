@@ -128,7 +128,7 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
 			/* Write padding charaters */
 			right = MIN(right, size);
 			for (i = 0u; i < right; i++)
-				out_buffer[right] = pad; /* TODO test with custom hash function */
+				out_buffer[i] = pad;
 			out_buffer = &out_buffer[right];
 			size -= right;
 		}
@@ -198,21 +198,48 @@ saltfail(void *out, size_t n, void *user)
 }
 
 
+static unsigned
+dumdum_is_algorithm(const char *settings, size_t len)
+{
+	(void) settings;
+	(void) len;
+	return 1u;
+}
+
+
+static const char *const dumdum_elut =
+	"????????????????""????????????????""????????????????""????????????????"
+	"????????????????""????????????????""????????????????""????????????????"
+	"????????????????""????????????????""????????????????""????????????????"
+	"????????????????""????????????????""????????????????""????????????????";
+
+
+static struct librecrypt_algorithm dumdum = {
+	.is_algorithm = &dumdum_is_algorithm,
+	.encoding_lut = dumdum_elut,
+	.hash_size = 16,
+	.flexible_hash_size = 1
+};
+
+
 int
 main(void)
 {
 	char buf[1024], buf2[1024], conf[128];
+	LIBRECRYPT_CONTEXT *ctx = NULL;
 	size_t i;
 	int r;
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
 
+start_over:
+
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, "$~no~such~algorithm~$", NULL, NULL, NULL) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, "$~no~such~algorithm~$", NULL, NULL, ctx) == -1);
 	EXPECT(errno == ENOSYS);
 
-	EXPECT(librecrypt_realise_salts(NULL, 0u, "", NULL, NULL, NULL) == 0);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, "", NULL, NULL, ctx) == 0);
 
 #if defined(SUPPORT_ARGON2ID)
 # define ALGO "$argon2id$"
@@ -228,14 +255,14 @@ main(void)
 
 # define CHECK(IN, OUT)\
 	do {\
-		EXPECT(librecrypt_realise_salts(NULL, 0u, (IN), NULL, NULL, NULL) == (ssize_t)sizeof(OUT) - 1);\
-		EXPECT(librecrypt_realise_salts(buf, 0u, (IN), NULL, NULL, NULL) == (ssize_t)sizeof(OUT) - 1);\
+		EXPECT(librecrypt_realise_salts(NULL, 0u, (IN), NULL, NULL, ctx) == (ssize_t)sizeof(OUT) - 1);\
+		EXPECT(librecrypt_realise_salts(buf, 0u, (IN), NULL, NULL, ctx) == (ssize_t)sizeof(OUT) - 1);\
 		memset(buf, 99, sizeof(buf));\
-		EXPECT(librecrypt_realise_salts(buf, sizeof(buf), (IN), &saltgen, &saltbyte, NULL) == (ssize_t)sizeof(OUT) - 1);\
+		EXPECT(librecrypt_realise_salts(buf, sizeof(buf), (IN), &saltgen, &saltbyte, ctx) == (ssize_t)sizeof(OUT) - 1);\
 		EXPECT(!strcmp(buf, (OUT)));\
 		for (i = 0u; i < sizeof(OUT); i++) {\
 			memset(buf, 99, sizeof(buf));\
-			EXPECT(librecrypt_realise_salts(buf, i + 1u, (IN), &saltgen, &saltbyte, NULL) == (ssize_t)sizeof(OUT) - 1);\
+			EXPECT(librecrypt_realise_salts(buf, i + 1u, (IN), &saltgen, &saltbyte, ctx) == (ssize_t)sizeof(OUT) - 1);\
 			EXPECT(!memcmp(buf, (OUT), i));\
 			EXPECT(!buf[i]);\
 		}\
@@ -266,50 +293,90 @@ main(void)
 # undef CHECK
 
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, ALGO">$~no~such~algorithm~$", &saltgen, &saltbyte, NULL) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, ALGO">$~no~such~algorithm~$", &saltgen, &saltbyte, ctx) == -1);
 	EXPECT(errno == ENOSYS);
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, "$~no~such~algorithm~$>"ALGO, &saltgen, &saltbyte, NULL) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, "$~no~such~algorithm~$>"ALGO, &saltgen, &saltbyte, ctx) == -1);
 	EXPECT(errno == ENOSYS);
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, ALGO"*"LARGE"$", &saltgen, &saltbyte, NULL) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, ALGO"*"LARGE"$", &saltgen, &saltbyte, ctx) == -1);
 	EXPECT(errno == ERANGE);
 
 	CANARY_FILL(buf);
-	EXPECT(librecrypt_realise_salts(buf, sizeof(ALGO) - 1u, ALGO"*3$", &saltfail, NULL, NULL) == (ssize_t)sizeof(ALGO"$") - 1 + 4);
+	EXPECT(librecrypt_realise_salts(buf, sizeof(ALGO) - 1u, ALGO"*3$", &saltfail, NULL, ctx) == (ssize_t)sizeof(ALGO"$") - 1 + 4);
 	CANARY_CHECK(buf, sizeof(ALGO) - 1u);
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), ALGO"*3$", &saltfail, NULL, NULL) == -1);
+	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), ALGO"*3$", &saltfail, NULL, ctx) == -1);
 	EXPECT(errno == EDOM);
 
 	r = snprintf(conf, sizeof(conf), "%s*%zu$", ALGO, (size_t)SSIZE_MAX / 4u * 3u + 3u);
 	assert(r > 0 && (size_t)r < sizeof(conf));
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte, NULL) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte, ctx) == -1);
 	EXPECT(errno == ERANGE);
 
 	r = snprintf(conf, sizeof(conf), "%s*%zu$", ALGO, (size_t)SSIZE_MAX / 4u * 3u);
 	assert(r > 0 && (size_t)r < sizeof(conf));
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte, NULL) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte, ctx) == -1);
 	EXPECT(errno == ERANGE);
 
 	r = snprintf(conf, sizeof(conf), "%s*%zu$abcdef", ALGO, ((size_t)SSIZE_MAX - (sizeof(ALGO) - 1u)) / 4u * 3u);
 	assert(r > 0 && (size_t)r < sizeof(conf));
 	errno = 0;
-	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte, NULL) == -1);
+	EXPECT(librecrypt_realise_salts(NULL, 0u, conf, &saltgen, &saltbyte, ctx) == -1);
 	EXPECT(errno == ERANGE);
 
 	CANARY_FILL(buf);
 	CANARY_FILL(buf2);
-	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), ALGO"*30$", NULL, NULL, NULL) == (ssize_t)sizeof(ALGO"$") - 1 + 40);
-	EXPECT(librecrypt_realise_salts(buf2, sizeof(buf2), ALGO"*30$", NULL, NULL, NULL) == (ssize_t)sizeof(ALGO"$") - 1 + 40);
+	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), ALGO"*30$", NULL, NULL, ctx) == (ssize_t)sizeof(ALGO"$") - 1 + 40);
+	EXPECT(librecrypt_realise_salts(buf2, sizeof(buf2), ALGO"*30$", NULL, NULL, ctx) == (ssize_t)sizeof(ALGO"$") - 1 + 40);
 	EXPECT(!buf[sizeof(ALGO"$") - 1u + 40u]);
 	EXPECT(!buf2[sizeof(ALGO"$") - 1u + 40u]);
 	EXPECT(memcmp(buf, buf2, sizeof(ALGO"$") - 1u + 40u));
 	CANARY_CHECK(buf, sizeof(ALGO"$") + 40u);
 	CANARY_CHECK(buf2, sizeof(ALGO"$") + 40u);
 #endif
+
+	if (!ctx) {
+		ctx = librecrypt_create_context();
+		assert(ctx != NULL);
+		goto start_over;
+	}
+
+	dumdum.strict_pad = 1;
+	dumdum.pad = '\0';
+	CANARY_FILL(buf);
+	librecrypt_set_custom_algorithms(ctx, &dumdum, 1u);
+	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), "$dumdum$*10$*16", NULL, NULL, ctx) == (ssize_t)sizeof("$dumdum$$*16") - 1 + 14);
+	EXPECT(!memcmp(buf, "$dumdum$??????????????$*16", sizeof("$dumdum$$*16") + 14u));
+	CANARY_CHECK(buf, sizeof("$dumdum$$*16") + 14u);
+
+	dumdum.strict_pad = 0;
+	dumdum.pad = '\0';
+	CANARY_FILL(buf);
+	librecrypt_set_custom_algorithms(ctx, &dumdum, 1u);
+	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), "$dumdum$*10$*16", NULL, NULL, ctx) == (ssize_t)sizeof("$dumdum$$*16") - 1 + 14);
+	EXPECT(!memcmp(buf, "$dumdum$??????????????$*16", sizeof("$dumdum$$*16") + 14u));
+	CANARY_CHECK(buf, sizeof("$dumdum$$*16") + 14u);
+
+	dumdum.strict_pad = 0;
+	dumdum.pad = '@';
+	CANARY_FILL(buf);
+	librecrypt_set_custom_algorithms(ctx, &dumdum, 1u);
+	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), "$dumdum$*10$*16", NULL, NULL, ctx) == (ssize_t)sizeof("$dumdum$$*16") - 1 + 14);
+	EXPECT(!memcmp(buf, "$dumdum$??????????????$*16", sizeof("$dumdum$$*16") + 14u));
+	CANARY_CHECK(buf, sizeof("$dumdum$$*16") + 14u);
+
+	dumdum.strict_pad = 1;
+	dumdum.pad = '@';
+	CANARY_FILL(buf);
+	librecrypt_set_custom_algorithms(ctx, &dumdum, 1u);
+	EXPECT(librecrypt_realise_salts(buf, sizeof(buf), "$dumdum$*10$*16", NULL, NULL, ctx) == (ssize_t)sizeof("$dumdum$$*16") - 1 + 16);
+	EXPECT(!memcmp(buf, "$dumdum$??????????????@@$*16", sizeof("$dumdum$$*16") + 16u));
+	CANARY_CHECK(buf, sizeof("$dumdum$$*16") + 16u);
+
+	librecrypt_free_context(ctx);
 
 	STOP_RESOURCE_TEST();
 	return 0;

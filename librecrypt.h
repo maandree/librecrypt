@@ -1331,7 +1331,7 @@ int librecrypt_set_pepper(LIBRECRYPT_CONTEXT *ctx, enum librecrypt_hash_algorith
  * @param   ctx     The library configuration object
  * @param   algos   The hash algorithms implementions to support
  *                  in addition to those implemented by the library
- * @parma   nalgos  The number of elements in `algos`
+ * @param   nalgos  The number of elements in `algos`
  * 
  * The caller is responsible for the lifetime of `algos`:
  * deallocating it will deallocate it for `ctx` as it

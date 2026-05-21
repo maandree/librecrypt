@@ -18,7 +18,7 @@ int
 main(void)
 {
 	LIBRECRYPT_CONTEXT *ctx;
-	const struct librecrypt_algorithm algos[5];
+	struct librecrypt_algorithm algos[5];
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
