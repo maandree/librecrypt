@@ -292,7 +292,7 @@ static int discarded_int;
 
 
 static void
-check(const char *phrase, const char *settings, const char *hash, size_t hashlen, size_t scratchsize)
+check(const char *phrase, const char *settings, const char *hash, size_t hashlen, size_t scratchsize, LIBRECRYPT_CONTEXT *ctx)
 {
 	size_t i, len = strlen(phrase);
 	size_t prefix = strlen(settings);
@@ -309,23 +309,23 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 	assert(r > 0 && (size_t)r == hashlen);
 
 	CANARY_FILL(buf);
-	EXPECT(librecrypt__argon2__hash(buf, sizeof(buf), phrase, len, settings, prefix, NULL) == 0);
+	EXPECT(librecrypt__argon2__hash(buf, sizeof(buf), phrase, len, settings, prefix, ctx) == 0);
 	EXPECT(!memcmp(expected, buf, hashlen));
 	CANARY_X_CHECK(buf, hashlen, scratchsize);
 
 	CANARY_FILL(buf);
-	EXPECT(librecrypt__argon2__hash(buf, hashlen, phrase, len, settings, prefix, NULL) == 0);
+	EXPECT(librecrypt__argon2__hash(buf, hashlen, phrase, len, settings, prefix, ctx) == 0);
 	EXPECT(!memcmp(expected, buf, hashlen));
 	CANARY_X_CHECK(buf, hashlen, scratchsize);
 
 	CANARY_FILL(buf);
-	EXPECT(librecrypt__argon2__hash(buf, 0u, phrase, len, settings, prefix, NULL) == 0);
+	EXPECT(librecrypt__argon2__hash(buf, 0u, phrase, len, settings, prefix, ctx) == 0);
 	CANARY_X_CHECK(buf, 0u, 0u);
-	EXPECT(librecrypt__argon2__hash(NULL, 0u, phrase, len, settings, prefix, NULL) == 0);
+	EXPECT(librecrypt__argon2__hash(NULL, 0u, phrase, len, settings, prefix, ctx) == 0);
 
 	for (i = 1u; i <= hashlen * 2u; i++) {
 		CANARY_FILL(buf);
-		EXPECT(librecrypt__argon2__hash(buf, i, phrase, len, settings, prefix, NULL) == 0);
+		EXPECT(librecrypt__argon2__hash(buf, i, phrase, len, settings, prefix, ctx) == 0);
 		EXPECT(!memcmp(expected, buf, MIN(i, hashlen)));
 		CANARY_X_CHECK(buf, MIN(i, hashlen), scratchsize);
 	}
@@ -338,10 +338,10 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 #define CHECK(PHRASE, CONF, HASHLEN, HASH)\
 	do {\
 		size_t scratchsize = GET_SCRATCH_SIZE(HASHLEN);\
-		check(PHRASE, CONF HASH, HASH, (size_t)HASHLEN, scratchsize);\
+		check(PHRASE, CONF HASH, HASH, (size_t)HASHLEN, scratchsize, ctx);\
 		if ((size_t)HASHLEN == argon2__HASH_SIZE)\
-			check(PHRASE, CONF, HASH, (size_t)HASHLEN, scratchsize);\
-		check(PHRASE, CONF "*" #HASHLEN, HASH, (size_t)HASHLEN, scratchsize);\
+			check(PHRASE, CONF, HASH, (size_t)HASHLEN, scratchsize, ctx);\
+		check(PHRASE, CONF "*" #HASHLEN, HASH, (size_t)HASHLEN, scratchsize, ctx);\
 	} while (0)
 
 
@@ -350,7 +350,7 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 	libtest_set_alloc_failure_in(3u);\
 	errno = 0;\
 	EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, (size_t)UINT32_MAX + 1u,\
-					S(ALGO"m=1024,t=10,p=1$ABCDabcdABCDabcd$"), NULL) == -1);\
+					S(ALGO"m=1024,t=10,p=1$ABCDabcdABCDabcd$"), ctx) == -1);\
 	EXPECT(errno == EINVAL);\
 	libtest_set_alloc_failure_in(0u)
 #else
@@ -363,11 +363,11 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 #define CHECK_BAD(ALGO)\
 	do {\
 		errno = 0;\
-		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=0,t=999999999999999999,p=0$AAAABBBB$*0"), NULL) == -1);\
+		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=0,t=999999999999999999,p=0$AAAABBBB$*0"), ctx) == -1);\
 		EXPECT(errno == EINVAL);\
 		\
 		/* target `if (!salt_encoded)` */\
-		EXPECT_ABORT(discarded_int = librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$*10$"), NULL));\
+		EXPECT_ABORT(discarded_int = librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$*10$"), ctx));\
 		\
 		if (!libtest_have_custom_malloc())\
 			break;\
@@ -377,19 +377,19 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 		/* target `salt = malloc((size_t)r);` */\
 		libtest_set_alloc_failure_in(1u);\
 		errno = 0;\
-		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$AAAABBBBCCCCDDDD$"), NULL) == -1);\
+		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$AAAABBBBCCCCDDDD$"), ctx) == -1);\
 		EXPECT(errno == ENOMEM);\
 		\
 		/* target `scratch = malloc(scratch_size);` */\
 		libtest_set_alloc_failure_in(2u);\
 		errno = 0;\
-		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$BBBBCCCCDDDDAAAA$"), NULL) == -1);\
+		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$BBBBCCCCDDDDAAAA$"), ctx) == -1);\
 		EXPECT(errno == ENOMEM);\
 		\
 		/* target `libar2_hash` */\
 		libtest_set_alloc_failure_in(3u);\
 		errno = 0;\
-		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$CCCCDDDDAAAABBBB$"), NULL) == -1);\
+		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$CCCCDDDDAAAABBBB$"), ctx) == -1);\
 		EXPECT(errno == ENOMEM);\
 		\
 		assert(!libtest_get_alloc_failure_in());\
@@ -404,18 +404,21 @@ void *volatile librecrypt_test_phony__ = (void *)(uintptr_t)4096u;
 int
 main(void)
 {
+	LIBRECRYPT_CONTEXT *ctx = NULL;
 	char buf[1024];
 
 	SET_UP_ALARM();
 	INIT_TEST_ABORT();
 	INIT_RESOURCE_TEST();
 
+start_over:
+
 #define GET_SCRATCH_SIZE(HASHLEN) ((HASHLEN) > 64u ? ((HASHLEN) + 63u) & ~31u : (HASHLEN))
 #if defined(SUPPORT_ARGON2I)
 # if SIZE_MAX > UINT32_MAX
 	errno = 0;
 	EXPECT(librecrypt__argon2__hash(NULL, 0u, phony, (size_t)UINT32_MAX + 1u, "$argon2i$m=256,t=2,p=1$c29tZXNhbHQ$",
-	                                sizeof("$argon2i$m=256,t=2,p=1$c29tZXNhbHQ$"), NULL) == -1);
+	                                sizeof("$argon2i$m=256,t=2,p=1$c29tZXNhbHQ$"), ctx) == -1);
 	EXPECT(errno == EINVAL);
 #else
 	if (libtest_have_custom_malloc()) {
@@ -427,7 +430,7 @@ main(void)
 		assert(r < sizeof(conf));
 		libtest_set_alloc_failure_in(1u);
 		errno = 0;
-		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, conf, strlen(conf), NULL) == -1);
+		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, conf, strlen(conf), ctx) == -1);
 		EXPECT(errno == ENOMEM);
 		EXPECT(libtest_get_alloc_failure_in() == 0u);
 		libtest_set_alloc_failure_in(0u);
@@ -437,7 +440,7 @@ main(void)
 		assert(r < sizeof(conf));
 		libtest_set_alloc_failure_in(1u);
 		errno = 0;
-		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, conf, strlen(conf), NULL) == -1);
+		EXPECT(librecrypt__argon2__hash(NULL, 0u, NULL, 0u, conf, strlen(conf), ctx) == -1);
 		EXPECT(errno == ENOMEM);
 		EXPECT(libtest_get_alloc_failure_in() == 1u);
 		libtest_set_alloc_failure_in(0u);
@@ -464,11 +467,19 @@ main(void)
 #endif
 #undef GET_SCRATCH_SIZE
 
+	if (!ctx) {
+		ctx = librecrypt_create_context();
+		assert(ctx != NULL);
+		goto start_over;
+	}
+
+	/* TODO check with pepper */
+
+	librecrypt_free_context(ctx);
+
 	STOP_RESOURCE_TEST();
 	return 0;
 }
-/* TODO check with pepper */
-/* TODO check with context but no pepper */
 
 
 #endif

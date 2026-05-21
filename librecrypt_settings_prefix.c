@@ -36,7 +36,7 @@ librecrypt_settings_prefix(const char *hash, size_t *hashsize_out, LIBRECRYPT_CO
 	if (!algo)
 		goto zero;
 	if (!algo->flexible_hash_size)
-		goto zero; /* TODO test with custom hash function */
+		goto zero;
 
 	/* Get the hash size */
 	if (!librecrypt_scan_settings(&hash[ret], len - ret, "%^b",
@@ -79,9 +79,26 @@ out:
 	} while (0)
 
 
+static unsigned
+dumdum_is_algorithm(const char *settings, size_t len)
+{
+	(void) settings;
+	(void) len;
+	return 1u;
+}
+
+
+static struct librecrypt_algorithm dumdum = {
+	.is_algorithm = &dumdum_is_algorithm,
+	.flexible_hash_size = 0
+};
+
+
 int
 main(void)
 {
+	LIBRECRYPT_CONTEXT *ctx;
+
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
 
@@ -149,6 +166,13 @@ main(void)
 	IF__argon2d__SUPPORTED(CHECK_ZERO("$argon2d$m=8,t=1,p=1$*99$", "#");)
 	IF__argon2id__SUPPORTED(CHECK_ZERO("$argon2id$m=8,t=1,p=1$*99$", "#");)
 	IF__argon2ds__SUPPORTED(CHECK_ZERO("$argon2ds$m=8,t=1,p=1$*99$", "#");)
+
+	/* Test without flexible hash size (but with context I guess) */
+	ctx = librecrypt_create_context();
+	assert(ctx != NULL);
+	librecrypt_set_custom_algorithms(ctx, &dumdum, 1u);
+	CHECK_ZERO("$dumdum$", "abcd");
+	librecrypt_free_context(ctx);
 
 	STOP_RESOURCE_TEST();
 	return 0;
