@@ -1,0 +1,295 @@
+.TH LIBRECRYPT_SCAN_SETTINGS 3 LIBRECRYPT
+.SH NAME
+librecrypt_scan_settings - Parse and validate a password hash string
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+int \fBlibrecrypt_scan_settings\fP(const char *\fIsettings\fP, size_t \fIlen\fP, const char *\fIfmt\fP, ...);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_scan_settings ()
+function parses the
+.I len
+first bytes of
+.I settings
+according the a format specified in the
+.I fmt
+argument and checks that the entire
+.I settings
+string matches entirety of
+.IR fmt .
+.PP
+The arguments after
+.I fmt
+specify output arguments and parameters
+the format. The are placed in the same order
+as the formatting codes in
+.I fmt
+that they are associated with.
+.PP
+.I fmt
+must not be
+.IR NULL .
+.PP
+Format codes in
+.I fmt
+are parsed left to right, anything that is
+not a format code is a literal characters
+that shall be matched exactly in
+.IR settings .
+The dollowing format codes are recognised:
+.TP
+.B %%
+Shall match a literal procent sign
+.RB ( % ).
+No argument is placed after
+.IR fmt .
+.TP
+.B %*
+Greedily matches any sequence of non-dollar-sign
+bytes
+.RB (non- $ ).
+No argument is placed after
+.IR fmt .
+.TP
+.B %s
+Match a string. The possible strings to match
+with are placed after
+.IR fmt .
+An additional
+.I NULL
+is placed after the last string to terminate the
+list of matchable strings. The first string
+that matches is selected, meaning that the longest
+string shall be specified first if there are two
+that are identical except that one is truncated
+(as fewer characters to the right). The strings
+shall have the type
+.BR "const char *" .
+.TP
+.B %^s
+Identical to
+.BR %s ,
+except an additional argument is place before the
+first string. This argument shall have the type
+.BR "const char **" .
+The reference to matched string will be stored
+at the memory the pointer points to.
+.TP
+.B %u
+.TQ
+.B %p
+Match an unsigned, decimal integer. For
+.BR %u ,
+but not for
+.BR %p ,
+leading zeroes are allowed. The minimum value
+that may be matched shall be placed after
+.I fmt
+as a
+.BR uintmax_t ,
+followed by the maximum value
+(also a
+.BR uintmax_t ).
+.TP
+.B %^u
+.TQ
+.B %^p
+Match an unsigned, decimal integer. For
+.BR %u ,
+but not for
+.BR %p ,
+leading zeroes are allowed. An output
+argument, with the type
+.B uintmax_t *
+shall be placed after
+.IR fmt ,
+followed by the minimum value as a
+.B uintmax_t
+and then the maximum value
+(also a
+.BR uintmax_t ).
+.TP
+.B %b
+.TQ
+.B %h
+.TQ
+.B %^b
+.TQ
+.B %^h
+.TQ
+.B %&b
+.TQ
+.B %&h
+Match base64-encoded data or asterisk-encoded
+data size. The arguments after
+.I fmt
+shall be, in order:
+.RS
+.TP
+*
+(Only for
+.B %&b
+and
+.BR %&h .)
+.br
+An output argument with the type
+.B const char **
+that will be set to point to the
+beginning, in
+.IR settings ,
+of the base64-encoded data. If
+asterisk-encodng is used,
+.I NULL
+will be stored.
+.TP
+*
+(Only for
+.BR %^b ,
+.BR %^h ,
+.BR %&b ,
+and
+.BR %&h .)
+.br
+An output argument with the type
+.BR "uintmax_t *" .
+For asterisk-encoding, it will be
+set to the encoded value.
+For base64-encoding, it will be set
+to the encoded number of bytes for
+.B %^b
+and
+.BR %^h ,
+but to the number of base-64 letters
+used to encode the data for
+.B %&b
+and
+.BR %&h .
+.TP
+*
+The minimum number of bytes in the
+binary data, as a
+.BR uintmax_t .
+
+For
+.BR %h ,
+.BR %^h ,
+and
+.BR %&h ,
+the empty data is allowed even if the
+bounary is set to a positive value. This
+is the differenc between
+.BR %h ,
+.BR %^h ,
+and
+.B %&h
+and
+.BR %b ,
+.BR %^b ,
+and
+.BR %&b .
+.TP
+*
+The maximum number of bytes in the
+binary data, as a
+.BR uintmax_t .
+.TP
+*
+The base64 byte-to-ASCII decoding
+table, as a
+.BR "const unsigned char[static 256]" .
+.TP
+*
+The base64 padding character, or the null
+byte if there isn't one. The type shall be
+.BR char .
+.TP
+*
+1 if the base64 encoding is always minimally
+padded at a multiple of 4 base64 letters
+(when it isn't already), and 0 otherwise.
+The type shall be
+.BR int .
+.RE
+
+.SH RETURN VALUES
+The
+.BR librecrypt_scan_settings ()
+function returns 1 if the
+.I settings
+match
+.IR fmt ,
+and 0 otherwise.
+
+.SH ERRORS
+The
+.BR librecrypt_scan_settings ()
+function cannot fail, however if
+.I fmt
+is malformatted, it will call
+.BR abort (3)
+to terminate the process.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_scan_settings ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_scan_settings ()
+T}	Async-signal safety	AS-Safe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_scan_settings ()
+function was introduced in version 1.1 of
+.BR librecrypt .
+
+.SH NOTES
+Parsing of
+.I settings
+does not stop at it's first null byte,
+and it is not expected to have one, instead
+it strictly stops once
+.I len
+bytes have been read, or when the string
+stops matching
+.I fmt
+(whichever comes earlier).
+.I fmt
+however is expected to be null-byte
+terminated, and if the null byte has been
+reached before all
+.I len
+bytes of
+.I settings
+have been read,
+.I settings
+does not match
+.IR fmt .
+.PP
+The
+.BR librecrypt_scan_settings (3)
+function is provided as a helper function
+for those wishing to implement custom hash
+algorithms.
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_set_custom_algorithms (3)

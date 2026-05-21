@@ -36,12 +36,12 @@ librecrypt_settings_prefix(const char *hash, size_t *hashsize_out, LIBRECRYPT_CO
 	if (!algo)
 		goto zero;
 	if (!algo->flexible_hash_size)
-		goto zero; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
+		goto zero; /* TODO test with custom hash function */
 
 	/* Get the hash size */
-	if (!librecrypt_scan_settings_(&hash[ret], len - ret, "%^b",
-	                               &hashsize, (uintmax_t)1u, (uintmax_t)SIZE_MAX,
-	                               algo->decoding_lut, algo->pad, algo->strict_pad))
+	if (!librecrypt_scan_settings(&hash[ret], len - ret, "%^b",
+	                              &hashsize, (uintmax_t)1u, (uintmax_t)SIZE_MAX,
+	                              algo->decoding_lut, algo->pad, algo->strict_pad))
 		goto zero;
 
 	*hashsize_out = (size_t)hashsize;

@@ -7,15 +7,7 @@ librecrypt_is_enabled - Check whether an algorithm was enabled at compile-time
 #include <librecrypt.h>
 
 enum librecrypt_hash_algorithm {
-	LIBRECRYPT_ARGON2I_V1_0,
-	LIBRECRYPT_ARGON2I_V1_3,
-	LIBRECRYPT_ARGON2D_V1_0,
-	LIBRECRYPT_ARGON2D_V1_3,
-	LIBRECRYPT_ARGON2ID_V1_0,
-	LIBRECRYPT_ARGON2ID_V1_3,
-	LIBRECRYPT_ARGON2DS_V1_0,
-	LIBRECRYPT_ARGON2DS_V1_3,
-	LIBRECRYPT_HASH_ALGORITHM_END /* end of enum marker (always last) */
+	/* See librecrypt_set_pepper(3) */
 };
 
 int \fBlibrecrypt_is_enabled\fP(enum librecrypt_hash_algorithm \fIalgo\fP);
@@ -29,10 +21,17 @@ The
 .BR librecrypt_is_enabled ()
 function checks whether the the
 .B librecrypt
-library end it's dependencies where compiled to
+library and its dependencies where compiled to
 support the hash algorithm specified in the
 .I algo
-parameter.
+parameter. See the
+.B EXTENDED DESCRIPTION
+in
+.BR librecrypt_set_pepper (3)
+for listing of constants for
+.B enum librecrypt_hash_algorithm
+(and
+.IR algo ).
 
 .SH RETURN VALUES
 The
@@ -62,46 +61,6 @@ T{
 T}	Async-signal safety	AS-Safe
 .TE
 .sp
-
-.SH EXTENDED DESCRIPTION
-The following values for
-.I algo
-are supported and may cause the
-.BR librecrypt_is_enabled ()
-function to return either 0 or 1
-(all other cause the function to return 0):
-.TP
-.B LIBRECRYPT_ARGON2I_V1_0
-Argon2i, version 1.0, which is presented by
-\(dq$argon2i$v=13$\(dq, optionally without \(dq$v=13\(dq.
-.TP
-.B LIBRECRYPT_ARGON2I_V1_3
-Argon2i, version 1.3, which is presented by
-\(dq$argon2i$v=19$\(dq.
-.TP
-.B LIBRECRYPT_ARGON2D_V1_0
-Argon2d, version 1.0, which is presented by
-\(dq$argon2d$v=13$\(dq, optionally without \(dq$v=13\(dq.
-.TP
-.B LIBRECRYPT_ARGON2D_V1_3
-Argon2d, version 1.3, which is presented by
-\(dq$argon2d$v=19$\(dq.
-.TP
-.B LIBRECRYPT_ARGON2ID_V1_0
-Argon2id, version 1.0, which is presented by
-\(dq$argon2id$v=13$\(dq, optionally without \(dq$v=13\(dq.
-.TP
-.B LIBRECRYPT_ARGON2ID_V1_3
-Argon2id, version 1.3, which is presented by
-\(dq$argon2id$v=19$\(dq.
-.TP
-.B LIBRECRYPT_ARGON2DS_V1_0
-Argon2ds, version 1.0, which is presented by
-\(dq$argon2ds$v=13$\(dq, optionally without \(dq$v=13\(dq.
-.TP
-.B LIBRECRYPT_ARGON2DS_V1_3
-Argon2ds, version 1.3, which is presented by
-\(dq$argon2ds$v=19$\(dq.
 
 .SH HISTORY
 The

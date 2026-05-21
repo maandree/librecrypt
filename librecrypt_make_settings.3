@@ -7,9 +7,9 @@ librecrypt_make_settings - Generate a password hash settings string
 #include <librecrypt.h>
 
 ssize_t \fBlibrecrypt_make_settings\fP(char *\fIout_buffer\fP, size_t \fIsize\fP, const char *\fIalgorithm\fP,
-                                size_t \fImemcost\fP, uintmax_t \fItimecost\fP, int \fIgensalt\fP,
-                                ssize_t (*\fIrng\fP)(void *\fIout\fP, size_t \fIn\fP, void *\fIuser\fP),
-                                void *\fIuser\fP, LIBRECRYPT_CONTEXT *\fIctx\fP);
+                                 size_t \fImemcost\fP, uintmax_t \fItimecost\fP, int \fIgensalt\fP,
+                                 ssize_t (*\fIrng\fP)(void *\fIout\fP, size_t \fIn\fP, void *\fIuser\fP),
+                                 void *\fIuser\fP, LIBRECRYPT_CONTEXT *\fIctx\fP);
 .fi
 .PP
 Link with

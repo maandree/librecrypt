@@ -58,7 +58,7 @@ DESCRIPTION
 		Realise asterisk-encoded random salts in a settings
 		string.
 
-   Secure application helper functions:
+   Application helper functions:
 	librecrypt_equal(3)
 		Compare strings in constant time.
 
@@ -70,6 +70,9 @@ DESCRIPTION
 
 	librecrypt_wipe_str(3)
 		Securely erase a string.
+
+	librecrypt_scan_settings(3) (ADVANCED)
+		Parse and validate a password hash string.
 
    Password hash string decomposition functions (ADVANCED):
 	librecrypt_settings_prefix(3)
@@ -103,10 +106,33 @@ DESCRIPTION
 		Get encoding alphabet for the last algorithm in a
 		chain.
 
-   Library introspection functions (ADVANCED):
+   Library introspection (ADVANCED):
 	librecrypt_is_enabled(3)
 		Check whenther the library is compiled with support
 		for a specific hash algorithm.
+
+	librecrypt_hash_algorithm_end(3)
+		Number of hash algorithms the linked library knows
+		about.
+
+   Library tweaking functions (ADVANCED):
+	librecrypt_create_context(3)
+		Create a library configuration object.
+
+	librecrypt_free_context(3)
+		Deallocate a library configuration object.
+
+	librecrypt_set_pepper(3)
+		Set the pepper to use for a hash algorithm.
+
+	librecrypt_set_custom_algorithms(3)
+		Set application-provided hash algorithms.
+
+	librecrypt_set_user_data(3)
+		Set application-defined data.
+
+	librecrypt_get_user_data(3)
+		Retrieve application-defined data.
 
 NOTES
 	Using librecrypt_add_algorithm(3) to hash existing password

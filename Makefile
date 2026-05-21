@@ -42,9 +42,10 @@ OBJ_PUBLIC_NO_FUZZ =\
 	librecrypt_hash_algorithm_end.o\
 	librecrypt_create_context.o\
 	librecrypt_free_context.o\
-	librecrypt_context_set_user_data.o\
-	librecrypt_context_get_user_data.o\
-	librecrypt_context_set_pepper.o
+	librecrypt_set_user_data.o\
+	librecrypt_get_user_data.o\
+	librecrypt_set_pepper.o\
+	librecrypt_set_custom_algorithms.o
 
 OBJ_PUBLIC =\
 	$(OBJ_PUBLIC_FUZZ)\
@@ -55,7 +56,8 @@ OBJ_PUBLIC =\
 	librecrypt_hash.o\
 	librecrypt_crypt.o\
 	librecrypt_add_algorithm.o\
-	librecrypt_verify.o
+	librecrypt_verify.o\
+	librecrypt_scan_settings.o
 
 OBJ_PRIVATE =\
 	librecrypt_algorithms_.o\
@@ -63,8 +65,7 @@ OBJ_PRIVATE =\
 	librecrypt_hash_.o\
 	librecrypt_fill_with_random_.o\
 	librecrypt_find_first_algorithm_.o\
-	librecrypt_check_settings_.o\
-	librecrypt_context_get_pepper_.o\
+	librecrypt_get_pepper_.o\
 	$(OBJ_COMMON_RFC4848S4)
 
 USE_OBJ_COMMON_RFC4848S4 =\

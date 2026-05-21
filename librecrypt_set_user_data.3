@@ -1,0 +1,49 @@
+.TH LIBRECRYPT_SET_USER_DATA 3 LIBRECRYPT
+.SH NAME
+librecrypt_set_user_data - Set application-defined data
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+void \fBlibrecrypt_set_user_data\fP(LIBRECRYPT_CONTEXT *\fIctx\fP, void *\fIuser\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_set_user_data ()
+function stores a pointer to application-defined
+data, provided via the
+.I user
+parameter, inside the
+.IR ctx .
+.PP
+The caller is responsible for the lifetime of
+.IR user :
+deallocating it will deallocate it for
+.I *ctx
+as it only holds a reference to
+.IR user ,
+not a copy of it.
+
+.SH RETURN VALUES
+None.
+
+.SH ERRORS
+The
+.BR librecrypt_set_user_data ()
+function cannot fail.
+
+.SH HISTORY
+The
+.BR librecrypt_set_user_data ()
+function was introduced in version 1.1 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_get_user_data (3),
+.BR librecrypt_set_custom_algorithms (3)

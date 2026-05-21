@@ -1,0 +1,76 @@
+.TH LIBRECRYPT_CREATE_CONTEXT 3 LIBRECRYPT
+.SH NAME
+librecrypt_create_context - Create a library configuration object
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+typedef struct librecrypt_context LIBRECRYPT_CONTEXT;
+
+LIBRECRYPT_CONTEXT *\fBlibrecrypt_create_context\fP(void);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_create_context ()
+function allocates, and initialises, a new
+library configuration object of the opaque type
+.IR LIBRECRYPT_CONTEXT ,
+which is also an incomplete type in the header file,
+as it's size and layout may differ depending on
+version and implementation of the library.
+
+.SH RETURN VALUES
+The
+.BR librecrypt_create_context ()
+function returns a new pointer upon successful
+completion, when no longer needed, it should be
+deallocated using the
+.BR librecrypt_free_context (3)
+function. On failure
+.I NULL
+is returned and
+.I errno
+is set to describe the error.
+
+.SH ERRORS
+The
+.BR librecrypt_create_context ()
+function will fail if:
+.TP
+.B ENOMEM
+Failed to allocate enough memory.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_create_context ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_create_context()
+T}	Async-signal safety	AS-Unsafe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_create_context ()
+function was introduced in version 1.1 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_free_context (3),
+.BR librecrypt_set_pepper (3),
+.BR librecrypt_set_custom_algorithms (3)

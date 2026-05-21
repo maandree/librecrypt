@@ -119,12 +119,12 @@ next:
 		prefix = 1u; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
 	}
 	if (!algo->flexible_hash_size && prefix != n)
-		goto einval; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
+		goto einval; /* TODO test with custom hash function */
 
 	/* Get hash size */
 	if (!algo->flexible_hash_size) {
 		/* fixed */
-		hash_size = algo->hash_size; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
+		hash_size = algo->hash_size; /* TODO test with custom hash function */
 	} else if (prefix == n) {
 		/* default */
 		hash_size = algo->hash_size;
@@ -152,7 +152,7 @@ next:
 				break;
 		hash_size = i - prefix;
 		if (algo->pad && algo->strict_pad) {
-			/* $covered{$ (TODO we currently don't have an algorithm to trigger this) */
+			/* TODO test with custom hash function */
 			for (; i < n; i++)
 				if (settings[i] != algo->pad)
 					break;
@@ -160,7 +160,6 @@ next:
 				goto einval;
 			if (i - prefix - hash_size >= 4u)
 				goto einval;
-			/* $covered}$ */
 		}
 		if (i != n)
 			goto einval;
@@ -242,7 +241,7 @@ next:
 			ascii_len = hash_size % 3u;
 			if (ascii_len) {
 				if (algo->pad && algo->strict_pad)
-					ascii_len = 4u; /* padding to for bytes */ /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
+					ascii_len = 4u; /* padding to for bytes */ /* TODO test with custom hash function */
 				else
 					ascii_len += 1u; /* 3n+m bytes: 4n+m+1 chars, unless m=0 */
 			}

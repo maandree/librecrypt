@@ -14,25 +14,25 @@
 # define LIBRECRYPT_NONNULL__ __attribute__((__nonnull__))
 # define LIBRECRYPT_NONNULL_I__(I) __attribute__((__nonnull__(I)))
 # define LIBRECRYPT_WUR__ __attribute__((__warn_unused_result__))
-# define LIBRECRYPT_MALLOC__(D, D_ARG) __attribute__((__malloc__(D, D_ARG)))
 #else
 # define LIBRECRYPT_PURE__
 # define LIBRECRYPT_CONST__
 # define LIBRECRYPT_NONNULL__
 # define LIBRECRYPT_NONNULL_I__(I)
 # define LIBRECRYPT_WUR__
-# define LIBRECRYPT_MALLOC__(D, D_ARG)
 #endif
 #if defined(__GNUC__) && !defined(__clang__)
 # define LIBRECRYPT_READ_STR__(S) __attribute__((__access__(read_only, S)))
 # define LIBRECRYPT_READ_MEM__(B, N) __attribute__((__access__(read_only, B, N)))
 # define LIBRECRYPT_WRITE_MEM__(B, N) __attribute__((__access__(write_only, B, N)))
 # define LIBRECRYPT_READ_WRITE_STR__(S) __attribute__((__access__(read_write, S)))
+# define LIBRECRYPT_MALLOC__(D, D_ARG) __attribute__((__malloc__(D, D_ARG)))
 #else
 # define LIBRECRYPT_READ_STR__(S)
 # define LIBRECRYPT_READ_MEM__(B, N)
 # define LIBRECRYPT_WRITE_MEM__(B, N)
 # define LIBRECRYPT_READ_WRITE_STR__(S)
+# define LIBRECRYPT_MALLOC__(D, D_ARG)
 #endif
 #define LIBRECRYPT_NONNULL_1__ LIBRECRYPT_NONNULL_I__(1)
 
@@ -146,6 +146,182 @@ enum librecrypt_hash_algorithm {
 };
 
 
+/**
+ * Hash algorithm information and implementation
+ *
+ * This is provided so you can implement custom
+ * hash algorithms; must user's will not need this
+ * 
+ * Current limitations:
+ * 
+ * -  The algorithm must not use the '*' symbol except
+ *    in the way the librecrypt library uses '*' for
+ *    specifying sizes, in bytes (after base64-decoding),
+ *    of randomised data (salt) and the hash result
+ * 
+ * -  The algorithm must not use the '>' symbol
+ * 
+ * -  The hash must be att the end, immediately after
+ *    the last '$' (some expections exists for legacy
+ *    hash algorithms), and empty must be usable to
+ *    specify default hash size
+ * 
+ * -  Salts and hashes must be encoded in some variant
+ *    of base64 where the bytes (represented with the
+ *    most significant bit first) a₇a₆a₅a₄a₃a₂a₁a₀,
+ *    b₇b₆b₅b₄b₃b₂b₁b₀, and c₇c₆c₅c₄c₃c₂c₁c₀ are
+ *    rearranged to a₇a₆a₅a₄a₃a₂, a₁a₀b₇b₆b₅b₄,
+ *    b₃b₂b₁b₀c₇c₆, c₅c₄c₃c₂c₁c₀, and missing bits
+ *    are set to 0; and padding if supported at all,
+ *    is only allowed, up to 3 pad letters, at the
+ *    end to pad the output to a multiple of 4 letters
+ * 
+ * @since  1.1
+ */
+struct librecrypt_algorithm {
+	/**
+	 * Determine if a password hash string
+	 * selects the algorithm
+	 * 
+	 * @param   settings  The password hash string, containing a single algorithm
+	 * @param   len       The number of bytes in `settings`
+	 * @return            A positive value if the string matches the algorithm,
+	 *                    0 otherwise
+	 * 
+	 * If non-zero is returned for multiple algorithm,
+	 * the first with the highest value wins
+	 * 
+	 * This function shall be MT-Safe and AS-Safe
+	 */
+	unsigned (*is_algorithm)(const char *settings, size_t len);
+
+	/**
+	 * Implements `librecrypt_hash_binary` for a single hash algorithm;
+	 * see `librecrypt_hash_binary` for more information
+	 * 
+	 * @param   out_buffer  See `librecrypt_hash_binary`
+	 * @param   size        See `librecrypt_hash_binary`
+	 * @param   phrase      See `librecrypt_hash_binary`; may be `NULL`
+	 *                      even if `len` is positive, this happens when
+	 *                      `size` is too small and the hash result will
+	 *                      not be included, so there is no need to actually
+	 *                      calculate the hash, however `len` and `settings`
+	 *                      should still be checked
+	 * @param   len         See `librecrypt_hash_binary`
+	 * @param   settings    See `librecrypt_hash_binary`,
+	 *                      will not contains asterisk-encoding
+	 * @param   prefix      The length of `settings`, in bytes
+	 * @param   ctx         See `librecrypt_hash_binary`
+	 * @return              0 on success, -1 on failure
+	 * @throws              See `librecrypt_hash_binary`
+	 * 
+	 * This function shall be MT-Safe but may be AS-Unsafe
+	 */
+	int (*hash)(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
+	            const char *settings, size_t prefix, LIBRECRYPT_CONTEXT *ctx);
+
+	/**
+	 * Check whether the hash algorithm is supported for given
+	 * configuration and input
+	 * 
+	 * @param   phrase    The password to hash, may contain NUL bytes;
+	 *                    may be `NULL` even if `len` is non-zero
+	 * @param   len       The number of bytes in `phrase`, if `phrase` is `NULL`,
+	 *                    the function will check that the specified number of
+	 *                    bytes is supported as well as any byte sequence unless
+	 *                    `text` is non-zero
+	 * @param   text      Assume the password is valid UTF-8 text (without NUL bytes)
+	 *                    iff non-zero; ignored if `phrase` is non-`NULL`
+	 * @param   settings  The password hash string; it is allowed for algorithm
+	 *                    tuning parameters, and the hash result, to be omitted
+	 * @param   prefix    The number of bytes in `settings`
+	 * @param   len_out   Output parameter for the binary hash size, in bytes
+	 * @return            1 if the configuration is supported and correctly
+	 *                    configured, 0 otherwise
+	 * 
+	 * This function shall be MT-Safe and AS-Safe
+	 */
+	int (*test_supported)(const char *phrase, size_t len, int text, const char *settings,
+	                      size_t prefix, size_t *len_out);
+
+	/**
+	 * See `librecrypt_make_settings`
+	 * 
+	 * @param   out_buffer  See `librecrypt_make_settings`
+	 * @param   size        See `librecrypt_make_settings`
+	 * @param   algorithm   See `librecrypt_make_settings`,
+	 *                      will match the algorithm or be `NULL`
+	 * @param   memcost     See `librecrypt_make_settings`
+	 * @param   timecost    See `librecrypt_make_settings`
+	 * @param   gensalt     See `librecrypt_make_settings`
+	 * @param   rng         See `librecrypt_make_settings`,
+	 *                      except the function will not be called
+	 *                      with `rng` set to `NULL`
+	 * @param   user        See `librecrypt_make_settings`
+	 * @return              See `librecrypt_make_settings`
+	 * @throws              See `librecrypt_make_settings`
+	 * 
+	 * This function shall be MT-Safe but may be AS-Safe
+	 */
+	ssize_t (*make_settings)(char *out_buffer, size_t size, const char *algorithm,
+	                         size_t memcost, uintmax_t timecost, int gensalt,
+	                         ssize_t (*rng)(void *out, size_t n, void *user), void *user);
+
+	/**
+	 * Expected argument for the `lut` parameter
+	 * of the `librecrypt_encode` function
+	 * 
+	 * This shall repeat a 64 character ASCII
+	 * alphabet 4 times
+	 */
+	const char *encoding_lut;
+
+	/**
+	 * Expected argument for the `lut` parameter
+	 * of the `librecrypt_decode` function
+	 * 
+	 * This shall unique map the letters in
+	 * `.encoding_lut` to there initial position
+	 * in `.encoding_lut` (that's, uniquely to
+	 * the range [0, 63]). All other bytes
+	 * (including `.pad`) shall map to `0xFFu`
+	 */
+	const unsigned char *decoding_lut;
+
+	/**
+	 * The algoritm's hash result size, in number
+	 * of bytes when using binary encoding
+	 */
+	size_t hash_size;
+
+	/**
+	 * 1 if `.hash_size` is just a default,
+	 * 0 if `.hash_size` is always used
+	 */
+	signed char flexible_hash_size;
+
+	/**
+	 * Expected argument for the `strict_pad` parameter
+	 * of the `librecrypt_decode` function
+	 * 
+	 * Shall be either 1 (always pad when encoding,
+	 * and require padding when decoding) or 0
+	 * (do not pad when encoding, but allow padding
+	 * (provided that `.pad != 0`) when decoding)
+	 */
+	signed char strict_pad;
+
+	/**
+	 * Expected argument for the `pad` parameter
+	 * of the `librecrypt_decode` function
+	 *
+	 * The pad character, used to pad base64-encoding
+	 * to a multiple of 4 letters, shall be `'\0'` if
+	 * not specified
+	 */
+	char pad;
+};
+
 
 /**
  * The value `LIBRECRYPT_HASH_ALGORITHM_END` as in the
@@ -154,8 +330,7 @@ enum librecrypt_hash_algorithm {
  * 
  * @since  1.1
  */
-extern enum librecrypt_hash_algorithm librecrypt_hash_algorithm_end; /* TODO man */
-
+extern const enum librecrypt_hash_algorithm librecrypt_hash_algorithm_end;
 
 
 /**
@@ -1052,9 +1227,11 @@ ssize_t librecrypt_add_algorithm(char *out_buffer, size_t size, const char *auge
  *
  * @param  ctx  The object to deallocate
  * 
+ * This function is MT-Safe but AS-Unsafe
+ * 
  * @since  1.1
  */
-void librecrypt_free_context(LIBRECRYPT_CONTEXT *ctx); /* TODO man */
+void librecrypt_free_context(LIBRECRYPT_CONTEXT *ctx);
 
 
 /**
@@ -1066,13 +1243,15 @@ void librecrypt_free_context(LIBRECRYPT_CONTEXT *ctx); /* TODO man */
  * 
  * @throws  ENOMEM  Failed to allocate enough memory
  * 
- * @seealso  librecrypt_context_set_user_data
- * @seealso  librecrypt_context_set_pepper
+ * @seealso  librecrypt_set_pepper
+ * @seealso  librecrypt_set_custom_algorithms
+ * 
+ * This function is MT-Safe but AS-Unsafe
  * 
  * @since  1.1
  */
 LIBRECRYPT_MALLOC__(librecrypt_free_context, 1) LIBRECRYPT_WUR__
-LIBRECRYPT_CONTEXT *librecrypt_create_context(void); /* TODO man */
+LIBRECRYPT_CONTEXT *librecrypt_create_context(void);
 
 
 /**
@@ -1088,29 +1267,31 @@ LIBRECRYPT_CONTEXT *librecrypt_create_context(void); /* TODO man */
  * only holds a reference to `user`, not a copy of it
  * 
  * @seealso  librecrypt_create_context
- * @seealso  librecrypt_context_get_user_data
+ * @seealso  librecrypt_get_user_data
+ * @seealso  librecrypt_set_custom_algorithms
  * 
  * @since  1.1
  */
 LIBRECRYPT_NONNULL_1__
-void librecrypt_context_set_user_data(LIBRECRYPT_CONTEXT *ctx, void *user); /* TODO man */
+void librecrypt_set_user_data(LIBRECRYPT_CONTEXT *ctx, void *user);
 
 
 /**
  * Get application-defined data, in a library configuration object,
- * which was set using the `librecrypt_context_set_user_data` function
+ * which was set using the `librecrypt_set_user_data` function
  * 
  * @param   ctx   The library configuration object
  * @return  user  The application-defined data, `NULL` if
  *                it hasn't been set (or if it was set to `NULL`)
  * 
  * @seealso  librecrypt_create_context
- * @seealso  librecrypt_context_set_user_data
+ * @seealso  librecrypt_set_user_data
+ * @seealso  librecrypt_set_custom_algorithms
  * 
  * @since  1.1
  */
-LIBRECRYPT_NONNULL_1__ LIBRECRYPT_PURE__
-void *librecrypt_context_get_user_data(LIBRECRYPT_CONTEXT *ctx); /* TODO man */
+LIBRECRYPT_NONNULL_1__ LIBRECRYPT_PURE__ LIBRECRYPT_WUR__
+void *librecrypt_get_user_data(const LIBRECRYPT_CONTEXT *ctx);
 
 
 /**
@@ -1140,8 +1321,103 @@ void *librecrypt_context_get_user_data(LIBRECRYPT_CONTEXT *ctx); /* TODO man */
  * 
  * @since  1.1
  */
+LIBRECRYPT_NONNULL_1__ LIBRECRYPT_WUR__
+int librecrypt_set_pepper(LIBRECRYPT_CONTEXT *ctx, enum librecrypt_hash_algorithm algo, const void *data, size_t len);
+
+
+/**
+ * Set the custom hash algorithms
+ * 
+ * @param   ctx     The library configuration object
+ * @param   algos   The hash algorithms implementions to support
+ *                  in addition to those implemented by the library
+ * @parma   nalgos  The number of elements in `algos`
+ * 
+ * The caller is responsible for the lifetime of `algos`:
+ * deallocating it will deallocate it for `ctx` as it
+ * only holds a reference to `algos`, not a copy of it
+ * 
+ * @seealso  librecrypt_create_context
+ * @seealso  librecrypt_set_user_data
+ * @seealso  librecrypt_get_user_data
+ * @seealso  librecrypt_scan_settings
+ * 
+ * @since  1.1
+ */
 LIBRECRYPT_NONNULL_1__
-int librecrypt_context_set_pepper(LIBRECRYPT_CONTEXT *ctx, enum librecrypt_hash_algorithm algo, const void *data, size_t len); /* TODO man */
+void librecrypt_set_custom_algorithms(LIBRECRYPT_CONTEXT *ctx, const struct librecrypt_algorithm *algos, size_t nalgos);
+
+
+/**
+ * Parse and validate a password hash string
+ * 
+ * This function is provided as a helper function
+ * for those wishing to implement custom hash
+ * algorithms
+ * 
+ * @param   settings  The string to validate
+ * @param   len       The number of bytes in `settings`
+ * @param   fmt       The expected format of the string, it may contain
+ *                    the metacharacter '%' (`fmt` is parsed left to right)
+ *                    to perform special string content checks:
+ *                      "%%"  - Literal '%'
+ *                      "%*"  - Any sequence of non-'$' bytes (greedily matched)
+ *                      "%s"  - String
+ *                      "%u"  - Unsigned integer that may start with a leading zeroes
+ *                      "%p"  - Unsigned integer that must not start with a leading zeroes
+ *                      "%b"  - Binary data, either encoded to ASCII or ungenerated content
+ *                              that is length specified using asterisk-notation
+ *                      "%h"  - Same as "%b", except empty content as always allowed unless
+ *                              asterisk-notation is used
+ *                      "%^s" - Same as "%s" except with output argument
+ *                      "%^u" - Same as "%u" except with output argument
+ *                      "%^p" - Same as "%p" except with output argument
+ *                      "%^b" - Same as "%b" except with one output argument: length
+ *                      "%&b" - Same as "%b" except with two output argument:
+ *                              pointer to text, text length, or NULL and binary length
+ *                      "%^h" - Same as "%h" except with one output argument: length
+ *                      "%&h" - Same as "%h" except with two output argument:
+ *                              pointer to text, text length, or NULL and binary length
+ * @param   ...       Arguments for each use of '%' in `fmt`:
+ *                      "%%"  - None
+ *                      "%*"  - None
+ *                      "%s"  - At least one `const char *`: allowed matches (in order of preference),
+ *                              followed by a `NULL`
+ *                      "%u"  - Two `uintmax_t`: the minimum value and the maximum value
+ *                      "%p"  - Same as "%u"
+ *                      "%b"  - Two `uintmax_t`: the minimum value and the maximum value,
+ *                              one `const unsigned char[static 256]`: the ASCII-encoding decoding table,
+ *                              one `char`: the padding character or `'\0'` if none may be used, and
+ *                              one `int`: whether padding must always be used unless the previous argument is `'\0'`
+ *                      "%h"  - Same as "%b"
+ *                      "%^s" - Same as "%s" but with an additional argument, as the first one:
+ *                              a `const char **` used to store the matched string
+ *                      "%^u" - Same as "%u" but with an additional argument, as the first one:
+ *                              a `uintmax_t *` used to store the encoded integer
+ *                      "%^p" - Same as "%p" but with an additional argument, as the first one:
+ *                              a `uintmax_t *` used to store the encoded integer
+ *                      "%^b" - Same as "%b" but with an additional argument, as the first one:
+ *                              a `uintmax_t *` used to store the number of encoded bytes or
+ *                              the encoded integer after the asterisk if asterisk-encoding is used
+ *                      "%&b" - Same as "%b" but with two additional arguments, as the first two:
+ *                              a `const char **` and a `uintmax_t *`: if asterisk-notation is used
+ *                              the `const char *` will be set to `NULL` and the `uintmax_t` will be
+ *                              set to the encoded number, othererwise the `const char *` will be
+ *                              set to point to the position in `settings` where the base-64 encoded
+ *                              text begins and the `uintmax_t` will be set to length of the text
+ *                              (as encoded in base-64, _not_ as decoded to binary)
+ *                      "%^h" - Same as "%^b"
+ *                      "%&h" - Same as "%&b"
+ * @return            1 if `settings` matches `fmt`, 0 otherwise
+ * 
+ * This function will call abort(3) if misused.
+ * 
+ * @seealso  librecrypt_set_custom_algorithms
+ * 
+ * @since  1.1
+ */
+LIBRECRYPT_READ_MEM__(1, 2) LIBRECRYPT_NONNULL_I__(3) LIBRECRYPT_WUR__
+int librecrypt_scan_settings(const char *settings, size_t len, const char *fmt, ...);
 
 
 #if defined(__clang__)

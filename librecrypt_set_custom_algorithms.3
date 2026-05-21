@@ -1,0 +1,70 @@
+.TH LIBRECRYPT_SET_CUSTOM_ALGORITHMS 3 LIBRECRYPT
+.SH NAME
+librecrypt_set_custom_algorithms - Set application-provided hash algorithms
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+struct librecrypt_algorithm {
+	/* Refer to <librecrypt.h> for details! */
+};
+
+void \fBlibrecrypt_set_custom_algorithms\fP(LIBRECRYPT_CONTEXT *\fIctx\fP,
+                                      const struct librecrypt_algorithm *\fIalgos\fP,
+                                      size_t \fInalgos\fP);
+
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_set_custom_algorithms ()
+function stores to
+.I ctx
+which application-provided hash algorithms
+to use, when
+.I ctx
+is used.
+.PP
+.I algos
+shall be an array of hash algorithm
+implementations, and
+.I nalgos
+shall be the number of hash algorithms
+in the array.
+.PP
+Note that this resets setup of
+custom hash algorithm on
+.I *ctx.
+.PP
+The caller is responsible for the lifetime of
+.IR algos :
+deallocating it will deallocate it for
+.I *ctx
+as it only holds a reference to
+.IR algos ,
+not a copy of it.
+
+.SH RETURN VALUES
+None.
+
+.SH ERRORS
+The
+.BR librecrypt_set_custom_algorithms ()
+function cannot fail.
+
+.SH HISTORY
+The
+.BR librecrypt_set_custom_algorithms ()
+function was introduced in version 1.1 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_create_context (3)
+.BR librecrypt_set_user_data (3),
+.BR librecrypt_get_user_data (3),
+.BR librecrypt_scan_settings (3)

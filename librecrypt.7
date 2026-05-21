@@ -78,7 +78,7 @@ Generate a password hash settings string.
 Realise asterisk-encoded random salts in a settings
 string.
 .sp
-.SS Secure application helper functions:
+.SS Application helper functions:
 .TP
 .BR librecrypt_equal (3)
 Compare strings in constant time.
@@ -91,6 +91,9 @@ Securely erase a memory buffer.
 .TP
 .BR librecrypt_wipe_str (3)
 Securely erase a string.
+.TP
+.BR librecrypt_scan_settings "(3) (ADVANCED)"
+Parse and validate a password hash string.
 .sp
 .SS Password hash string decomposition functions (ADVANCED):
 .TP
@@ -126,10 +129,35 @@ binary.
 Get encoding alphabet for the last algorithm in a
 chain.
 .sp
-.SS Library introspection functions (ADVANCED):
+.SS Library introspection (ADVANCED):
+.TP
 .BR librecrypt_is_enabled (3)
 Check whenther the library is compiled with support
 for a specific hash algorithm.
+.TP
+.BR librecrypt_hash_algorithm_end (3)
+Number of hash algorithms the linked library knows
+about.
+.sp
+.SS Library tweaking functions (ADVANCED):
+.TP
+.BR librecrypt_create_context (3)
+Create a library configuration object.
+.TP
+.BR librecrypt_free_context (3)
+Deallocate a library configuration object.
+.TP
+.BR librecrypt_set_pepper (3)
+Set the pepper to use for a hash algorithm.
+.TP
+.BR librecrypt_set_custom_algorithms (3)
+Set application-provided hash algorithms.
+.TP
+.BR librecrypt_set_user_data (3)
+Set application-defined data.
+.TP
+.BR librecrypt_get_user_data (3)
+Retrieve application-defined data.
 
 .SH NOTES
 Using

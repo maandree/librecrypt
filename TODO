@@ -1,3 +1,4 @@
+Document `struct librecrypt_algorithm` in librecrypt_set_custom_algorithms.3
 Write fuzzing code for the files listed in OBJ_PUBLIC.
 Add corpuses for fuzzing.
 Add documentation similar to crypt(5).
@@ -16,5 +17,3 @@ Add support for bsdicrypt.
 Add support for descrypt.
 Add support for bigcrypt.
 Add support for NT Hash.
-Add support for custom hash functions.
-Add support (via the "ctx" parameter) for pepper.

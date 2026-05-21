@@ -1,0 +1,55 @@
+.TH LIBRECRYPT_FREE_CONTEXT 3 LIBRECRYPT
+.SH NAME
+librecrypt_free_context - Deallocate a library configuration object
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+\fBlibrecrypt_free_context\fP(LIBRECRYPT_CONTEXT *\fIctx\fP);
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_free_context ()
+functions deallocates
+.IR ctx .
+
+.SH RETURN VALUES
+None.
+
+.SH ERRORS
+The
+.BR librecrypt_free_context ()
+function cannot fail.
+
+.SH ATTRIBUTES
+For an explanation of the terms used in this section, see
+.BR attributes (7).
+.PP
+.TS
+allbox;
+lb lb lb
+l l l.
+Interface	Attribute	Value
+T{
+.BR librecrypt_free_context ()
+T}	Thread safety	MT-Safe
+T{
+.BR librecrypt_free_context()
+T}	Async-signal safety	AS-Unsafe
+.TE
+.sp
+
+.SH HISTORY
+The
+.BR librecrypt_free_context ()
+function was introduced in version 1.1 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR librecrypt_create_context (3)

@@ -4,7 +4,7 @@
 
 
 void *
-librecrypt_context_get_user_data(LIBRECRYPT_CONTEXT *ctx)
+librecrypt_get_user_data(const LIBRECRYPT_CONTEXT *ctx)
 {
 	return ctx->user_data;
 }
@@ -13,15 +13,10 @@ librecrypt_context_get_user_data(LIBRECRYPT_CONTEXT *ctx)
 #else
 
 
-int
+CONST int
 main(void)
 {
-	SET_UP_ALARM();
-	INIT_RESOURCE_TEST();
-
-	/* TODO test */
-
-	STOP_RESOURCE_TEST();
+	/* Tested in librecrypt_set_user_data.c */
 	return 0;
 }
 

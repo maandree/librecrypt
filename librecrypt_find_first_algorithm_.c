@@ -10,8 +10,22 @@ librecrypt_find_first_algorithm_(const char *settings, size_t len, LIBRECRYPT_CO
 	const struct librecrypt_algorithm *algo, *found = NULL;
 	size_t i;
 
-	(void) ctx; /* TODO */
+	/* Search application provided hash functions first;
+	 * they should have priority of they report the same
+	 * priority as library-provided hash functions */
+	if (!ctx)
+		goto library_provided;
+	/* TODO test */
+	for (i = 0u; i < ctx->nalgos; i++) {
+		algo = &ctx->algos[i];
+		r = (*algo->is_algorithm)(settings, len);
+		if (r > priority) {
+			priority = r;
+			found = algo;
+		}
+	}
 
+library_provided:
 	for (i = 0u;; i++) {
 		/* Get next algorithm in the list */
 		algo = &librecrypt_algorithms_[i];

@@ -3,7 +3,7 @@
 #ifndef TEST
 
 
-enum librecrypt_hash_algorithm librecrypt_hash_algorithm_end = LIBRECRYPT_HASH_ALGORITHM_END;
+const enum librecrypt_hash_algorithm librecrypt_hash_algorithm_end = LIBRECRYPT_HASH_ALGORITHM_END;
 
 
 #else

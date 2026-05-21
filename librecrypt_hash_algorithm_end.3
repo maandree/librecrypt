@@ -1,0 +1,44 @@
+.TH LIBRECRYPT_HASH_ALGORITHM_END 3 LIBRECRYPT
+.SH NAME
+librecrypt_hash_algorithm_end - Number of hash algorithms the linked library knows about
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+enum librecrypt_hash_algorithm {
+	LIBRECRYPT_ARGON2I_V1_0,
+	LIBRECRYPT_ARGON2I_V1_3,
+	LIBRECRYPT_ARGON2D_V1_0,
+	LIBRECRYPT_ARGON2D_V1_3,
+	LIBRECRYPT_ARGON2ID_V1_0,
+	LIBRECRYPT_ARGON2ID_V1_3,
+	LIBRECRYPT_ARGON2DS_V1_0,
+	LIBRECRYPT_ARGON2DS_V1_3,
+	LIBRECRYPT_HASH_ALGORITHM_END /* end of enum marker (always last) */
+};
+
+extern const enum librecrypt_hash_algorithm \fBlibrecrypt_hash_algorithm_end\fP;
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_hash_algorithm_end
+variable is set to the value
+.I LIBRECRYPT_HASH_ALGORITHM_END
+had when the library was compiled, meaning that
+it is the linked library's version of
+.I LIBRECRYPT_HASH_ALGORITHM_END
+rather than the application's version.
+
+.SH HISTORY
+The
+.BR librecrypt_hash_algorithm_end
+variable was introduced in version 1.1 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7)
