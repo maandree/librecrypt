@@ -119,12 +119,12 @@ next:
 		prefix = 1u; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
 	}
 	if (!algo->flexible_hash_size && prefix != n)
-		goto einval; /* TODO test with custom hash function */
+		goto einval;
 
 	/* Get hash size */
 	if (!algo->flexible_hash_size) {
 		/* fixed */
-		hash_size = algo->hash_size; /* TODO test with custom hash function */
+		hash_size = algo->hash_size;
 	} else if (prefix == n) {
 		/* default */
 		hash_size = algo->hash_size;
@@ -152,11 +152,10 @@ next:
 				break;
 		hash_size = i - prefix;
 		if (algo->pad && algo->strict_pad) {
-			/* TODO test with custom hash function */
 			for (; i < n; i++)
 				if (settings[i] != algo->pad)
 					break;
-			if (i - prefix % 4u)
+			if ((i - prefix) % 4u)
 				goto einval;
 			if (i - prefix - hash_size >= 4u)
 				goto einval;
@@ -241,7 +240,7 @@ next:
 			ascii_len = hash_size % 3u;
 			if (ascii_len) {
 				if (algo->pad && algo->strict_pad)
-					ascii_len = 4u; /* padding to for bytes */ /* TODO test with custom hash function */
+					ascii_len = 4u; /* padding to for bytes */
 				else
 					ascii_len += 1u; /* 3n+m bytes: 4n+m+1 chars, unless m=0 */
 			}
@@ -357,6 +356,109 @@ fail:
 /* Mainly tested via librecrypt_hash_binary, librecrypt_hash, and librecrypt_crypt */
 
 
+#define ALPHABET "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+NONSTRING static const char elut[256u] = MAKE_ENCODING_LUT(ALPHABET);
+#undef ALPHABET
+
+static const unsigned char dlut[256u] = {
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, 62, XX, XX, XX, 63,
+	52, 53, 54, 55, 56, 57, 58, 59, 60, 61, XX, XX, XX, XX, XX, XX,
+	XX,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+	15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, XX, XX, XX, XX, XX,
+	XX, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+	41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX
+};
+
+
+static unsigned
+rot4_is_algorithm(const char *settings, size_t len)
+{
+	if (len >= sizeof("$rot4$") - 1u)
+		if (!strncmp(settings, "$rot4$", sizeof("$rot4$") - 1u))
+			return 1u;
+	return 0u;
+}
+
+static unsigned
+add1_is_algorithm(const char *settings, size_t len)
+{
+	if (len >= sizeof("$add1$") - 1u)
+		if (!strncmp(settings, "$add1$", sizeof("$add1$") - 1u))
+			return 1u;
+	return 0u;
+}
+
+static int
+rot4_hash(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
+          const char *settings, size_t prefix, LIBRECRYPT_CONTEXT *ctx)
+{
+	size_t i;
+
+	(void) settings;
+	(void) prefix;
+	(void) ctx;
+
+	for (i = 0u; i < 8u && i < size; i++) {
+		out_buffer[i] = '\0';
+		if (i < len)
+			out_buffer[i] = (char)((((int)phrase[i] & 0x0F) << 4) | (((int)phrase[i] >> 4) & 0x0F));
+	}
+
+	return 0;
+}
+
+static int
+add1_hash(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
+          const char *settings, size_t prefix, LIBRECRYPT_CONTEXT *ctx)
+{
+	size_t i;
+
+	(void) settings;
+	(void) prefix;
+	(void) ctx;
+
+	for (i = 0u; i < 8u && i < size; i++) {
+		out_buffer[i] = '\0';
+		if (i < len)
+			out_buffer[i] = (char)(unsigned char)((unsigned)(unsigned char)phrase[i] + 1u);
+	}
+
+	return 0;
+}
+
+static const struct librecrypt_algorithm rot4 = {
+	.is_algorithm = &rot4_is_algorithm,
+	.hash = &rot4_hash,
+	.encoding_lut = elut,
+	.decoding_lut = dlut,
+	.hash_size = 8u,
+	.flexible_hash_size = 0,
+	.strict_pad = 1,
+	.pad = '#'
+};
+
+static const struct librecrypt_algorithm add1 = {
+	.is_algorithm = &add1_is_algorithm,
+	.hash = &add1_hash,
+	.encoding_lut = elut,
+	.decoding_lut = dlut,
+	.hash_size = 8u,
+	.flexible_hash_size = 0,
+	.strict_pad = 1,
+	.pad = '#'
+};
+
+
 int
 main(void)
 {
@@ -373,16 +475,20 @@ main(void)
 	char sbuf[160];
 	size_t i, n;
 	ssize_t r, r1, r1b, r1c, r2, r3;
+	LIBRECRYPT_CONTEXT *ctx = NULL;
+	struct librecrypt_algorithm custom[] = {rot4, add1};
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
 
+start_over:
+
 	errno = 0;
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$", NULL, ASCII_CRYPT) == -1);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$", ctx, ASCII_CRYPT) == -1);
 	EXPECT(errno == ENOSYS);
 
 	errno = 0;
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$*100$", NULL, ASCII_CRYPT) == -1);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$*100$", ctx, ASCII_CRYPT) == -1);
 	EXPECT(errno == ENOSYS);
 
 #if defined(SUPPORT_ARGON2ID)
@@ -391,22 +497,22 @@ main(void)
 
 	CANARY_FILL(buf);
 	errno = 0;
-	EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, "!"ARGON2ID_STR, NULL, ASCII_CRYPT) == -1);
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, "!"ARGON2ID_STR, ctx, ASCII_CRYPT) == -1);
 	EXPECT(errno == ENOSYS);
 	CANARY_CHECK(buf, 0u);
 
 	CANARY_FILL(buf);
 	errno = 0;
-	EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, ARGON2ID_PREFIX"*"LARGE"$", NULL, ASCII_CRYPT) == -1);
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, ARGON2ID_PREFIX"*"LARGE"$", ctx, ASCII_CRYPT) == -1);
 	EXPECT(errno == ENOMEM);
 	CANARY_CHECK(buf, sizeof(ARGON2ID_PREFIX"*"));
 
-	r = librecrypt_hash_(NULL, 0u, "hello", 5u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT);
+	r = librecrypt_hash_(NULL, 0u, "hello", 5u, ARGON2ID_PREFIX"*1000$", ctx, ASCII_CRYPT);
 	EXPECT(r > 0);
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT) == r);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, ARGON2ID_PREFIX"*1000$", ctx, ASCII_CRYPT) == r);
 	for (i = 0u; i <= sizeof(sbuf); i++) {
 		CANARY_FILL(sbuf);
-		EXPECT(librecrypt_hash_(sbuf, i, NULL, 0u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT) == r);
+		EXPECT(librecrypt_hash_(sbuf, i, NULL, 0u, ARGON2ID_PREFIX"*1000$", ctx, ASCII_CRYPT) == r);
 		CANARY_X_CHECK(sbuf, MIN(i, (size_t)r), MIN(i, 32u));
 	}
 
@@ -418,45 +524,45 @@ main(void)
 		r = (ssize_t)snprintf(buf, sizeof(buf), "%s*%zu$", ARGON2ID_PREFIX, (size_t)SSIZE_MAX + 1u);
 		assert(r > 0 && r < (ssize_t)sizeof(buf));
 		errno = 0;
-		EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, buf, NULL, ASCII_CRYPT) == -1);
+		EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, buf, ctx, ASCII_CRYPT) == -1);
 		EXPECT(errno == ENOMEM);
 		libtest_set_alloc_failure_in(0u);
 
 		/* target settings_scratch */
 		errno = 0;
 		libtest_set_alloc_failure_in(1u);
-		EXPECT(librecrypt_hash_(NULL, 0u, "hello", 5u, ARGON2ID_PREFIX"*1000$", NULL, ASCII_CRYPT) == -1);
+		EXPECT(librecrypt_hash_(NULL, 0u, "hello", 5u, ARGON2ID_PREFIX"*1000$", ctx, ASCII_CRYPT) == -1);
 		EXPECT(errno == ENOMEM);
 		EXPECT(libtest_get_alloc_failure_in() == 0u);
 
 		/* target phrase_scratches */
 		errno = 0;
 		libtest_set_alloc_failure_in(1u);
-		EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT) == -1);
+		EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, X2(ARGON2ID_STR), ctx, ASCII_CRYPT) == -1);
 		EXPECT(errno == ENOMEM);
 		EXPECT(libtest_get_alloc_failure_in() == 0u);
 
 		/* target *algo->hash */
 		errno = 0;
 		libtest_set_alloc_failure_in(2u);
-		EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT) == -1);
+		EXPECT(librecrypt_hash_(buf, sizeof(buf), "hello", 5u, X2(ARGON2ID_STR), ctx, ASCII_CRYPT) == -1);
 		EXPECT(errno == ENOMEM);
 		EXPECT(libtest_get_alloc_failure_in() == 0u);
 
 		/* target deallocation of settings_scratch */
 		errno = 0;
 		libtest_set_alloc_failure_in(2u);
-		EXPECT(librecrypt_hash_(buf, 1u, "hello", 5u, ARGON2ID_PREFIX"*1000$>"ARGON2ID_STR, NULL, ASCII_CRYPT) == -1);
+		EXPECT(librecrypt_hash_(buf, 1u, "hello", 5u, ARGON2ID_PREFIX"*1000$>"ARGON2ID_STR, ctx, ASCII_CRYPT) == -1);
 		EXPECT(errno == ENOMEM);
 		EXPECT(libtest_get_alloc_failure_in() == 0u);
 
 		/* target deallocation of phrase_scratches[1] */
 		libtest_set_alloc_failure_in(SIZE_MAX);
-		EXPECT(librecrypt_hash_(buf, 1u, "hello", 5u, X3(ARGON2ID_STR), NULL, ASCII_CRYPT) > 0);
+		EXPECT(librecrypt_hash_(buf, 1u, "hello", 5u, X3(ARGON2ID_STR), ctx, ASCII_CRYPT) > 0);
 		n = SIZE_MAX - libtest_get_alloc_failure_in();
 		errno = 0;
 		libtest_set_alloc_failure_in(n);
-		EXPECT(librecrypt_hash_(buf, 1u, "hello", 5u, X3(ARGON2ID_STR), NULL, ASCII_CRYPT) == -1);
+		EXPECT(librecrypt_hash_(buf, 1u, "hello", 5u, X3(ARGON2ID_STR), ctx, ASCII_CRYPT) == -1);
 		EXPECT(errno == ENOMEM);
 		EXPECT(libtest_get_alloc_failure_in() == 0u);
 
@@ -464,33 +570,33 @@ main(void)
 
 	CANARY_FILL(buf1);
 	memset(buf1, 99, sizeof(buf1));
-	r1 = librecrypt_hash_(buf1, sizeof(buf1), NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT);
+	r1 = librecrypt_hash_(buf1, sizeof(buf1), NULL, 0u, X2(ARGON2ID_STR), ctx, ASCII_CRYPT);
 	EXPECT(r1 > 0);
 	EXPECT(r1 > 2 * (ssize_t)sizeof(ARGON2ID_STR));
-	r1b = librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X3(ARGON2ID_STR), NULL, ASCII_CRYPT);
+	r1b = librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X3(ARGON2ID_STR), ctx, ASCII_CRYPT);
 	EXPECT(r1b > 0);
 	EXPECT(r1b == r1 + 1 * (ssize_t)sizeof(ARGON2ID_STR));
-	r1c = librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X4(ARGON2ID_STR), NULL, ASCII_CRYPT);
+	r1c = librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X4(ARGON2ID_STR), ctx, ASCII_CRYPT);
 	EXPECT(r1c > 0);
 	EXPECT(r1c == r1 + 2 * (ssize_t)sizeof(ARGON2ID_STR));
 
 	CANARY_FILL(buf2);
-	EXPECT((r2 = librecrypt_hash_(buf2, sizeof(buf2), NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_HASH)) > 0);
-	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X3(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
-	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X4(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
+	EXPECT((r2 = librecrypt_hash_(buf2, sizeof(buf2), NULL, 0u, X2(ARGON2ID_STR), ctx, ASCII_HASH)) > 0);
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X3(ARGON2ID_STR), ctx, ASCII_HASH) == r2);
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X4(ARGON2ID_STR), ctx, ASCII_HASH) == r2);
 	EXPECT(r2 < r1);
 
 	CANARY_FILL(buf3);
-	EXPECT((r3 = librecrypt_hash_(buf3, sizeof(buf3), NULL, 0u, X2(ARGON2ID_STR), NULL, BINARY_HASH)) > 0);
-	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X3(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
-	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X4(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
+	EXPECT((r3 = librecrypt_hash_(buf3, sizeof(buf3), NULL, 0u, X2(ARGON2ID_STR), ctx, BINARY_HASH)) > 0);
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X3(ARGON2ID_STR), ctx, BINARY_HASH) == r3);
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), NULL, 0u, X4(ARGON2ID_STR), ctx, BINARY_HASH) == r3);
 	EXPECT(r3 < r2);
 
 	assert((size_t)r1 < sizeof(buf) - 11u);
 	for (i = (size_t)r1 + 11u; i < SIZE_MAX; i--) {
 		if (i <= (size_t)r1 + 10u) {
 			CANARY_C_FILL(88, buf);
-			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT) == r1);
+			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), ctx, ASCII_CRYPT) == r1);
 			if (i) {
 				n = MIN(i - 1u, (size_t)r1);
 				EXPECT(!memcmp(buf, buf1, n));
@@ -500,7 +606,7 @@ main(void)
 		}
 		if (i <= (size_t)r2 + 10u) {
 			CANARY_C_FILL(88, buf);
-			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
+			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), ctx, ASCII_HASH) == r2);
 			if (i) {
 				n = MIN(i - 1u, (size_t)r2);
 				EXPECT(!memcmp(buf, buf2, n));
@@ -510,7 +616,7 @@ main(void)
 		}
 		if (i <= (size_t)r3 + 10u) {
 			CANARY_C_FILL(88, buf);
-			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
+			EXPECT(librecrypt_hash_(buf, i, NULL, 0u, X2(ARGON2ID_STR), ctx, BINARY_HASH) == r3);
 			EXPECT(!memcmp(buf, buf3, MIN(i, (size_t)r3)));
 			CANARY_X_CHECK(buf, MIN(i, (size_t)r3), MIN(i, 32u));
 		}
@@ -520,23 +626,148 @@ main(void)
 	CANARY_X_CHECK(buf2, (size_t)r2, 32u);
 	CANARY_X_CHECK(buf3, (size_t)r3, 32u);
 
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_CRYPT) == r1);
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X3(ARGON2ID_STR), NULL, ASCII_CRYPT) == r1b);
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X4(ARGON2ID_STR), NULL, ASCII_CRYPT) == r1c);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X2(ARGON2ID_STR), ctx, ASCII_CRYPT) == r1);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X3(ARGON2ID_STR), ctx, ASCII_CRYPT) == r1b);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X4(ARGON2ID_STR), ctx, ASCII_CRYPT) == r1c);
 
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X2(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X3(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X4(ARGON2ID_STR), NULL, ASCII_HASH) == r2);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X2(ARGON2ID_STR), ctx, ASCII_HASH) == r2);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X3(ARGON2ID_STR), ctx, ASCII_HASH) == r2);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X4(ARGON2ID_STR), ctx, ASCII_HASH) == r2);
 
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X2(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X3(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
-	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X4(ARGON2ID_STR), NULL, BINARY_HASH) == r3);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X2(ARGON2ID_STR), ctx, BINARY_HASH) == r3);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X3(ARGON2ID_STR), ctx, BINARY_HASH) == r3);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, X4(ARGON2ID_STR), ctx, BINARY_HASH) == r3);
 #endif
+
+	if (!ctx) {
+		ctx = librecrypt_create_context();
+		assert(ctx != NULL);
+		goto start_over;
+	}
+
+	librecrypt_set_custom_algorithms(ctx, custom, ELEMSOF(custom));
+
+	errno = 0;
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$rot4$*8", ctx, ASCII_CRYPT) == -1);
+	EXPECT(errno == EINVAL);
+
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$rot4$", ctx, ASCII_CRYPT) == (ssize_t)sizeof("$rot4$") - 1 + 12);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$rot4$", ctx, ASCII_HASH) == 12);
+	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$rot4$", ctx, BINARY_HASH) == 8);
+
+#define MSG "\x12\x23\x34\x45\x56\x67\x78\x89", 8u
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$", ctx, BINARY_HASH) == 8);
+	assert(sizeof(buf) >= 8u);
+	EXPECT(!memcmp(buf, "\x21\x32\x43\x54\x65\x76\x87\x98", 8u));
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$", ctx, ASCII_HASH) == 12);
+	assert(sizeof(buf) >= 12u);
+	EXPECT(!memcmp(buf, "ITJDVGV2h5g#", 12u + sizeof("")));
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$", ctx, ASCII_CRYPT) == (ssize_t)sizeof("$rot4$") - 1 + 12);
+	assert(sizeof(buf) >= sizeof("$rot4$") + 12u);
+	EXPECT(!memcmp(buf, "$rot4$ITJDVGV2h5g#", sizeof("$rot4$") + 12u));
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$add1$", ctx, BINARY_HASH) == 8);
+	assert(sizeof(buf) >= 8u);
+	EXPECT(!memcmp(buf, "\x13\x24\x35\x46\x57\x68\x79\x8A", 8u));
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$add1$", ctx, ASCII_HASH) == 12);
+	assert(sizeof(buf) >= 12u);
+	EXPECT(!memcmp(buf, "EyQ1RldoeYo#", 12u + sizeof("")));
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$add1$", ctx, ASCII_CRYPT) == (ssize_t)sizeof("$add1$") - 1 + 12);
+	assert(sizeof(buf) >= sizeof("$add1$") + 12u);
+	EXPECT(!memcmp(buf, "$add1$EyQ1RldoeYo#", sizeof("$add1$") + 12u));
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$>$add1$", ctx, BINARY_HASH) == 8);
+	assert(sizeof(buf) >= 8u);
+	EXPECT(!memcmp(buf, "\x22\x33\x44\x55\x66\x77\x88\x99", 8u));
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$>$add1$", ctx, ASCII_HASH) == 12);
+	assert(sizeof(buf) >= 12u);
+	EXPECT(!memcmp(buf, "IjNEVWZ3iJk#", 12u + sizeof("")));
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$>$add1$", ctx, ASCII_CRYPT) == (ssize_t)sizeof("$rot4$>$add1$") - 1 + 12);
+	assert(sizeof(buf) >= sizeof("$rot4$>$add1$") + 12u);
+	EXPECT(!memcmp(buf, "$rot4$>$add1$IjNEVWZ3iJk#", sizeof("$rot4$>$add1$") + 12u));
+
+	custom[0].flexible_hash_size = 1;
+	custom[1].flexible_hash_size = 1;
+
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA", ctx, BINARY_HASH) == -1);
+	EXPECT(errno == EINVAL);
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA", ctx, ASCII_HASH) == -1);
+	EXPECT(errno == EINVAL);
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA", ctx, ASCII_CRYPT) == -1);
+	EXPECT(errno == EINVAL);
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA#A", ctx, ASCII_CRYPT) == -1);
+	EXPECT(errno == EINVAL);
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA#~", ctx, ASCII_CRYPT) == -1);
+	EXPECT(errno == EINVAL);
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAA#", ctx, ASCII_CRYPT) == -1);
+	EXPECT(errno == EINVAL);
+
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA##", ctx, BINARY_HASH) == -1);
+	EXPECT(errno == EINVAL);
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA###", ctx, ASCII_HASH) == -1);
+	EXPECT(errno == EINVAL);
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA####", ctx, ASCII_CRYPT) == -1);
+	EXPECT(errno == EINVAL);
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA#####", ctx, ASCII_CRYPT) == -1);
+	EXPECT(errno == EINVAL);
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA#", ctx, BINARY_HASH) == 8);
+	assert(sizeof(buf) >= 8u);
+	EXPECT(!memcmp(buf, "\x21\x32\x43\x54\x65\x76\x87\x98", 8u));
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA#", ctx, ASCII_HASH) == 12);
+	assert(sizeof(buf) >= 12u);
+	EXPECT(!memcmp(buf, "ITJDVGV2h5g#", 12u + sizeof("")));
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA#", ctx, ASCII_CRYPT) == (ssize_t)sizeof("$rot4$") - 1 + 12);
+	assert(sizeof(buf) >= sizeof("$rot4$") + 12u);
+	EXPECT(!memcmp(buf, "$rot4$ITJDVGV2h5g#", sizeof("$rot4$") + 12u));
+
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAA##", ctx, BINARY_HASH) == 7);
+	EXPECT(!memcmp(buf, "\x21\x32\x43\x54\x65\x76\x87", 7u));
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAA###", ctx, BINARY_HASH) == -1);
+	EXPECT(errno == EINVAL);
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAA####", ctx, ASCII_CRYPT) == -1);
+	EXPECT(errno == EINVAL);
+
+	custom[0].pad = 0;
+	custom[1].pad = 0;
+
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA#", ctx, BINARY_HASH) == -1);
+	EXPECT(errno == EINVAL);
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA#", ctx, ASCII_HASH) == -1);
+	EXPECT(errno == EINVAL);
+	errno = 0;
+	EXPECT(librecrypt_hash_(buf, sizeof(buf), MSG, "$rot4$AAAAAAAAAAA#", ctx, ASCII_CRYPT) == -1);
+	EXPECT(errno == EINVAL);
+
+#undef msg
+
+	librecrypt_free_context(ctx);
 
 	STOP_RESOURCE_TEST();
 	return 0;
 }
-/* TODO test mixed algorithm chaining */
 
 
 #endif

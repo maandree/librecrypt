@@ -202,8 +202,10 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 		algo_v10 = LIBRECRYPT_ARGON2DS_V1_0;
 		algo_v13 = LIBRECRYPT_ARGON2DS_V1_3;
 		break;
+	/* $covered{$ (impossible) */
 	default:
-		abort(); /* $covered$ (impossible) */
+		abort();
+	/* $covered}$ */
 	}
 	switch (params.version) {
 	case LIBAR2_ARGON2_VERSION_10:
@@ -212,8 +214,10 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	case LIBAR2_ARGON2_VERSION_13:
 		algo = algo_v13;
 		break;
+	/* $covered{$ (impossible) */
 	default:
-		abort(); /* $covered$ (impossible) */
+		abort();
+	/* $covered}$ */
 	}
 	pepper = librecrypt_get_pepper_(ctx, algo, 0u);
 no_pepper:

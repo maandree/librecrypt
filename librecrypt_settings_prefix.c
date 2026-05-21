@@ -60,21 +60,21 @@ out:
 
 #define CHECK_NULL(PREFIX, SUFFIX)\
 	do {\
-		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, NULL, NULL) == sizeof(PREFIX) - 1u);\
-		EXPECT(librecrypt_settings_prefix(PREFIX, NULL, NULL) == sizeof(PREFIX) - 1u); \
+		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, NULL, ctx) == sizeof(PREFIX) - 1u);\
+		EXPECT(librecrypt_settings_prefix(PREFIX, NULL, ctx) == sizeof(PREFIX) - 1u); \
 	} while (0)
 
 #define CHECK_ZERO(PREFIX, SUFFIX)\
 	do {\
 		size_t hashsize = 99999u;\
-		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, &hashsize, NULL) == sizeof(PREFIX) - 1u);\
+		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, &hashsize, ctx) == sizeof(PREFIX) - 1u);\
 		EXPECT(hashsize == 0u);\
 	} while (0)
 
 #define CHECK_HASH(PREFIX, SUFFIX, HASH)\
 	do {\
 		size_t hashsize = 99999u;\
-		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, &hashsize, NULL) == sizeof(PREFIX) - 1u);\
+		EXPECT(librecrypt_settings_prefix(PREFIX SUFFIX, &hashsize, ctx) == sizeof(PREFIX) - 1u);\
 		EXPECT(hashsize == HASH##u);\
 	} while (0)
 
@@ -97,7 +97,7 @@ static struct librecrypt_algorithm dumdum = {
 int
 main(void)
 {
-	LIBRECRYPT_CONTEXT *ctx;
+	LIBRECRYPT_CONTEXT *ctx = NULL;
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();

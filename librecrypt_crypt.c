@@ -14,9 +14,17 @@ librecrypt_crypt(char *restrict out_buffer, size_t size, const char *phrase,
 #else
 
 
+#define SP4 "    "
+#define SP20 SP4 SP4 SP4 SP4 SP4
+#define SP80 SP20 SP20 SP20 SP20
+#define SP84 SP80 SP4
+
+#define GET_ARGON2_SCRATCH_SIZE(HASHLEN) ((HASHLEN) > 64u ? ((HASHLEN) + 63u) & ~31u : (HASHLEN))
+
+
 static void
 check(const char *phrase, const char *settings, const char *chain, size_t chain_prefix, const char *hash,
-      size_t hash_prefix, size_t scratchsize)
+      size_t hash_prefix, size_t scratchsize, LIBRECRYPT_CONTEXT *ctx)
 {
 	size_t hashlen = strlen(hash);
 	size_t len = strlen(phrase);
@@ -28,45 +36,45 @@ check(const char *phrase, const char *settings, const char *chain, size_t chain_
 	assert(hashlen <= sizeof(buf));
 
 	CANARY_FILL(buf);
-	EXPECT(librecrypt_crypt(buf, sizeof(buf), phrase, len, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(librecrypt_crypt(buf, sizeof(buf), phrase, len, settings, ctx) == (ssize_t)hashlen);
 	EXPECT(!memcmp(hash, buf, hashlen + 1u));
 	CANARY_X_CHECK(buf, hashlen + 1u, scratchsize);
 
 	CANARY_FILL(buf);
-	EXPECT(librecrypt_crypt(buf, hashlen + 1u, phrase, len, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(librecrypt_crypt(buf, hashlen + 1u, phrase, len, settings, ctx) == (ssize_t)hashlen);
 	EXPECT(!memcmp(hash, buf, hashlen + 1u));
 	CANARY_X_CHECK(buf, hashlen + 1u, scratchsize);
 
 	CANARY_FILL(buf);
-	EXPECT(librecrypt_crypt(buf, hashlen, phrase, len, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(librecrypt_crypt(buf, hashlen, phrase, len, settings, ctx) == (ssize_t)hashlen);
 	EXPECT(!memcmp(hash, buf, hashlen - 1u));
 	EXPECT(!buf[hashlen - 1u]);
 	CANARY_X_CHECK(buf, hashlen, scratchsize);
 
 	CANARY_FILL(buf);
-	EXPECT(librecrypt_crypt(buf, 2u, phrase, len, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(librecrypt_crypt(buf, 2u, phrase, len, settings, ctx) == (ssize_t)hashlen);
 	EXPECT(!memcmp(hash, buf, 1u));
 	EXPECT(!buf[1u]);
 	CANARY_X_CHECK(buf, 2u, 2u);
 
 	CANARY_FILL(buf);
-	EXPECT(librecrypt_crypt(buf, 1u, phrase, len, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(librecrypt_crypt(buf, 1u, phrase, len, settings, ctx) == (ssize_t)hashlen);
 	EXPECT(!buf[0u]);
 	CANARY_X_CHECK(buf, 1u, 1u);
 
-	EXPECT(librecrypt_crypt(buf, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
-	EXPECT(librecrypt_crypt(NULL, 0u, phrase, len, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(librecrypt_crypt(buf, 0u, phrase, len, settings, ctx) == (ssize_t)hashlen);
+	EXPECT(librecrypt_crypt(NULL, 0u, phrase, len, settings, ctx) == (ssize_t)hashlen);
 
-	lut = librecrypt_get_encoding(settings, strlen(settings), &pad, &strict_pad, 1, NULL);
+	lut = librecrypt_get_encoding(settings, strlen(settings), &pad, &strict_pad, 1, ctx);
 	assert(lut);
 	r = librecrypt_decode(expected, sizeof(expected), &hash[hash_prefix], hashlen - hash_prefix, lut, pad, strict_pad);
 	assert(r > 0 && (size_t)r <= sizeof(expected));
 
 	CANARY_FILL(buf);
 	CANARY_FILL(buf2);
-	EXPECT(librecrypt_crypt(buf, sizeof(buf), expected, (size_t)r, settings, NULL) == (ssize_t)hashlen);
+	EXPECT(librecrypt_crypt(buf, sizeof(buf), expected, (size_t)r, settings, ctx) == (ssize_t)hashlen);
 	errno = 0;
-	EXPECT(librecrypt_crypt(buf2, sizeof(buf2), phrase, len, chain, NULL) == (ssize_t)(hashlen - hash_prefix + chain_prefix));
+	EXPECT(librecrypt_crypt(buf2, sizeof(buf2), phrase, len, chain, ctx) == (ssize_t)(hashlen - hash_prefix + chain_prefix));
 	EXPECT(!memcmp(buf2, chain, chain_prefix));
 	EXPECT(!memcmp(&buf[hash_prefix], &buf2[chain_prefix], hashlen - hash_prefix + 1u));
 	CANARY_X_CHECK(buf, hashlen, scratchsize);
@@ -78,12 +86,14 @@ check(const char *phrase, const char *settings, const char *chain, size_t chain_
 	do {\
 		size_t scratchsize = GET_SCRATCH_SIZE(HASHLEN);\
 		check(PHRASE, CONF HASH, CONF "*" #HASHLEN ">" CONF HASH,\
-		      sizeof(CONF "*" #HASHLEN ">" CONF) - 1u, CONF HASH, sizeof(CONF) - 1u, scratchsize);\
+		      sizeof(CONF "*" #HASHLEN ">" CONF) - 1u, CONF HASH,\
+		      sizeof(CONF) - 1u, scratchsize, ctx);\
 		check(PHRASE, CONF "*" #HASHLEN, CONF "*" #HASHLEN ">" CONF "*" #HASHLEN,\
-		      sizeof(CONF "*" #HASHLEN ">" CONF) - 1u, CONF HASH, sizeof(CONF) - 1u, scratchsize);\
+		      sizeof(CONF "*" #HASHLEN ">" CONF) - 1u, CONF HASH,\
+		      sizeof(CONF) - 1u, scratchsize, ctx);\
 		if (IS_DEFAULT_HASHLEN) {\
 			check(PHRASE, CONF, CONF ">" CONF, sizeof(CONF ">" CONF) - 1u,\
-			      CONF HASH, sizeof(CONF) - 1u, scratchsize);\
+			      CONF HASH, sizeof(CONF) - 1u, scratchsize, ctx);\
 		}\
 	} while (0)
 
@@ -91,7 +101,7 @@ check(const char *phrase, const char *settings, const char *chain, size_t chain_
 #define CHECK_BAD(ALGO)\
 	do {\
 		errno = 0;\
-		EXPECT(librecrypt_crypt(NULL, 0u, NULL, 0u, ALGO"m=0,t=999999999999999999,p=0$AAAABBBB$*0", NULL) == -1);\
+		EXPECT(librecrypt_crypt(NULL, 0u, NULL, 0u, ALGO"m=0,t=999999999999999999,p=0$AAAABBBB$*0", ctx) == -1);\
 		EXPECT(errno == EINVAL);\
 	} while (0)
 
@@ -99,7 +109,8 @@ check(const char *phrase, const char *settings, const char *chain, size_t chain_
 int
 main(void)
 {
-	char buf[1024], buf2[1024], conf[256];
+	char buf[1024], buf2[1024], conf[256], nuls[256];
+	LIBRECRYPT_CONTEXT *ctx = NULL;
 	ssize_t r;
 
 	SET_UP_ALARM();
@@ -110,12 +121,12 @@ main(void)
 	libtest_getrandom_error = ENOSYS;
 #endif
 
-#define GET_SCRATCH_SIZE(HASHLEN) ((HASHLEN) > 64u ? ((HASHLEN) + 63u) & ~31u : (HASHLEN))
+#define GET_SCRATCH_SIZE(HASHLEN) GET_ARGON2_SCRATCH_SIZE(HASHLEN)
 #if defined(SUPPORT_ARGON2I)
 	r = snprintf(conf, sizeof(conf), "$argon2i$m=256,t=8,p=1$AAAABBBBCCCC$*%zu", SIZE_MAX / 4u * 3u + 3u);
 	assert(r > 0 && (size_t)r < sizeof(conf));
 	errno = 0;
-	EXPECT(librecrypt_crypt(NULL, 0u, NULL, 0u, conf, NULL) == -1);
+	EXPECT(librecrypt_crypt(NULL, 0u, NULL, 0u, conf, ctx) == -1);
 # if SIZE_MAX > UINT32_MAX
 	EXPECT(errno == EINVAL);
 # else
@@ -123,7 +134,7 @@ main(void)
 	if (libtest_have_custom_malloc()) {
 		libtest_pretend_allocation_successful = 1;
 		errno = 0;
-		EXPECT(librecrypt_crypt(buf, sizeof(buf), NULL, 0u, conf, NULL) == -1);
+		EXPECT(librecrypt_crypt(buf, sizeof(buf), NULL, 0u, conf, ctx) == -1);
 		libtest_pretend_allocation_successful = 0;
 		EXPECT(errno == EOVERFLOW);
 	}
@@ -133,7 +144,7 @@ main(void)
 	r = snprintf(conf, sizeof(conf), "$argon2i$m=256,t=8,p=1$AAAABBBBCCCC$*%zu", (SIZE_MAX / 4u * 3u) / 2u);
 	assert(r > 0 && (size_t)r < sizeof(conf));
 	errno = 0;
-	EXPECT(librecrypt_crypt(NULL, 0u, NULL, 0u, conf, NULL) == -1);
+	EXPECT(librecrypt_crypt(NULL, 0u, NULL, 0u, conf, ctx) == -1);
 	EXPECT(errno == EOVERFLOW);
 # endif
 
@@ -141,7 +152,7 @@ main(void)
 	r = snprintf(conf, sizeof(conf), "$argon2i$m=256,t=8,p=1$AAAABBBBCCCC$*%zu", SIZE_MAX / 4u * 3u);
 	assert(r > 0 && (size_t)r < sizeof(conf));
 	errno = 0;
-	EXPECT(librecrypt_crypt(NULL, 0u, NULL, 0u, conf, NULL) == -1);
+	EXPECT(librecrypt_crypt(NULL, 0u, NULL, 0u, conf, ctx) == -1);
 	EXPECT(errno == EOVERFLOW);
 # endif
 
@@ -175,7 +186,7 @@ main(void)
 	libtest_random_pattern_length = 4u;
 	libtest_random_pattern_offset = 0u;
 	CANARY_FILL(buf);
-	r = librecrypt_crypt(buf, sizeof(buf), "", 0u, "$argon2id$v=19$m=8,t=1,p=1$*18$*33", NULL);
+	r = librecrypt_crypt(buf, sizeof(buf), "", 0u, "$argon2id$v=19$m=8,t=1,p=1$*18$*33", ctx);
 	libtest_random_pattern = NULL;
 	libtest_random_pattern_length = 0u;
 	libtest_random_pattern_offset = 0u;
@@ -185,7 +196,7 @@ main(void)
 	EXPECT((size_t)r == sizeof("$argon2id$v=19$m=8,t=1,p=1$$") - 1u + 24u + 44u);
 	EXPECT(!buf[r]);
 	CANARY_FILL(buf2);
-	EXPECT(librecrypt_crypt(buf2, sizeof(buf2), "", 0u, buf, NULL) == r);
+	EXPECT(librecrypt_crypt(buf2, sizeof(buf2), "", 0u, buf, ctx) == r);
 	EXPECT(!memcmp(buf, buf2, (size_t)r + 1u));
 	EXPECT(!memcmp(buf, "$argon2id$v=19$m=8,t=1,p=1$ABCDABCDABCDABCDABCDABCD$",
 	             sizeof("$argon2id$v=19$m=8,t=1,p=1$ABCDABCDABCDABCDABCDABCD$") - 1u));
@@ -198,7 +209,7 @@ main(void)
 	libtest_random_pattern_offset = 0u;
 	CANARY_FILL(buf);
 	r = librecrypt_crypt(buf, sizeof(buf), "", 0u, "$argon2id$v=19$m=8,t=1,p=1$*18$*33>"
-	                                               "$argon2id$v=19$m=8,t=1,p=1$*18$*33", NULL);
+	                                               "$argon2id$v=19$m=8,t=1,p=1$*18$*33", ctx);
 	libtest_random_pattern = NULL;
 	libtest_random_pattern_length = 0u;
 	libtest_random_pattern_offset = 0u;
@@ -208,7 +219,7 @@ main(void)
 	EXPECT((size_t)r == sizeof("$argon2id$v=19$m=8,t=1,p=1$$*33>$argon2id$v=19$m=8,t=1,p=1$$") - 1u + 2u * 24u + 44u);
 	EXPECT(!buf[r]);
 	CANARY_FILL(buf2);
-	EXPECT(librecrypt_crypt(buf2, sizeof(buf2), "", 0u, buf, NULL) == r);
+	EXPECT(librecrypt_crypt(buf2, sizeof(buf2), "", 0u, buf, ctx) == r);
 	EXPECT(!memcmp(buf, buf2, (size_t)r + 1u));
 	EXPECT(!memcmp(buf, "$argon2id$v=19$m=8,t=1,p=1$ABCDABCDABCDABCDABCDABCD$*33>"
 	                    "$argon2id$v=19$m=8,t=1,p=1$ABCDABCDABCDABCDABCDABCD$",
@@ -223,6 +234,38 @@ main(void)
 	libtest_getrandom_real = 1;
 	libtest_getrandom_error = 0;
 #endif
+
+	ctx = librecrypt_create_context();
+	assert(ctx != NULL);
+	memset(nuls, 0, sizeof(nuls));
+
+#if defined(SUPPORT_ARGON2I)
+# define GET_SCRATCH_SIZE(HASHLEN) GET_ARGON2_SCRATCH_SIZE(HASHLEN)
+	assert(sizeof(nuls) >= 4u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 4u) == 0);
+	CHECK(" ",  "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, 0, "Mhl4o3AkJuA");
+	CHECK(SP84, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, 0, "+hlEcRn+F3s");
+	CHECK(SP80, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, 0, "z2d6ce8UqS0");
+
+	assert(sizeof(nuls) >= 140u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 140u) == 0);
+	CHECK(SP80, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, 0, "15FAGe1KIX8");
+
+	assert(sizeof(nuls) >= 160u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 160u) == 0);
+	CHECK(SP80, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, 0, "oH3H5atuca8");
+
+	assert(sizeof(nuls) >= 128u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 128u) == 0);
+	CHECK(SP80, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, 0, "TsimqI1YC08");
+
+	assert(sizeof(nuls) >= 256u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 256u) == 0);
+	CHECK(SP80, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, 0, "mzPlVOVjVos");
+# undef GET_SCRATCH_SIZE
+#endif
+
+	librecrypt_free_context(ctx);
 
 	STOP_RESOURCE_TEST();
 	return 0;

@@ -67,45 +67,46 @@ librecrypt_verify(const char *phrase, size_t len, const char *settings, LIBRECRY
 int
 main(void)
 {
-	char conf[256];
+	LIBRECRYPT_CONTEXT *ctx = NULL;
+	char conf[256], nuls[256], spaces[256];
 	int r;
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
 
 	errno = 0;
-	EXPECT(librecrypt_verify(NULL, 0u, "$~no~such~algorithm~$", NULL) == -1);
+	EXPECT(librecrypt_verify(NULL, 0u, "$~no~such~algorithm~$", ctx) == -1);
 	EXPECT(errno == ENOSYS);
 
 #if defined(SUPPORT_ARGON2ID)
-	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", NULL) == 1);
-	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/", NULL) == 0);
-	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4x", NULL) == 0);
-	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/a", NULL) == 0);
-	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$a29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/a", NULL) == 0);
-	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$af65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", NULL) == 0);
-	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMRauIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", NULL) == 0);
+	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", ctx) == 1);
+	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/", ctx) == 0);
+	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4x", ctx) == 0);
+	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/a", ctx) == 0);
+	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$a29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/a", ctx) == 0);
+	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$af65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", ctx) == 0);
+	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMRauIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", ctx) == 0);
 
 	errno = 0;
-	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$", NULL) == -1);
+	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$", ctx) == -1);
 	EXPECT(errno == EINVAL);
 	errno = 0;
-	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$*64", NULL) == -1);
+	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$*64", ctx) == -1);
 	EXPECT(errno == EINVAL);
 	errno = 0;
-	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$*16$nf65EOgLrQMRauIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", NULL) == -1);
+	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$*16$nf65EOgLrQMRauIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", ctx) == -1);
 	EXPECT(errno == EINVAL);
 
 	if (libtest_have_custom_malloc()) {
 		libtest_set_alloc_failure_in(1u);
 		errno = 0;
-		EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", NULL) == -1);
+		EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", ctx) == -1);
 		assert(errno == ENOMEM);
 		assert(libtest_get_alloc_failure_in() == 0u);
 
 		libtest_set_alloc_failure_in(2u);
 		errno = 0;
-		EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", NULL) == -1);
+		EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", ctx) == -1);
 		assert(errno == ENOMEM);
 		assert(libtest_get_alloc_failure_in() == 0u);
 	}
@@ -113,13 +114,44 @@ main(void)
         r = snprintf(conf, sizeof(conf), "$argon2id$m=256,t=8,p=1$AAAABBBBCCCC$*%zu", SIZE_MAX / 4u * 3u + 3u);
         assert(r > 0 && (size_t)r < sizeof(conf));
         errno = 0;
-	EXPECT(librecrypt_verify(NULL, 0u, conf, NULL) == -1);
+	EXPECT(librecrypt_verify(NULL, 0u, conf, ctx) == -1);
 # if SIZE_MAX > UINT32_MAX
         EXPECT(errno == EINVAL);
 # else
         EXPECT(errno == EOVERFLOW);
 # endif
 #endif
+
+	ctx = librecrypt_create_context();
+	assert(ctx != NULL);
+	memset(nuls, 0, sizeof(nuls));
+	memset(spaces, ' ', sizeof(spaces));
+
+#if defined(SUPPORT_ARGON2I)
+	assert(sizeof(nuls) >= 4u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 4u) == 0);
+	EXPECT(librecrypt_verify(spaces,  1u, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$Mhl4o3AkJuA", ctx) == 1);
+	EXPECT(librecrypt_verify(spaces, 84u, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$+hlEcRn+F3s", ctx) == 1);
+	EXPECT(librecrypt_verify(spaces, 80u, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$z2d6ce8UqS0", ctx) == 1);
+
+	assert(sizeof(nuls) >= 140u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 140u) == 0);
+	EXPECT(librecrypt_verify(spaces, 80u, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$15FAGe1KIX8", ctx) == 1);
+
+	assert(sizeof(nuls) >= 160u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 160u) == 0);
+	EXPECT(librecrypt_verify(spaces, 80u, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$oH3H5atuca8", ctx) == 1);
+
+	assert(sizeof(nuls) >= 128u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 128u) == 0);
+	EXPECT(librecrypt_verify(spaces, 80u, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$TsimqI1YC08", ctx) == 1);
+
+	assert(sizeof(nuls) >= 256u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 256u) == 0);
+	EXPECT(librecrypt_verify(spaces, 80u, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$mzPlVOVjVos", ctx) == 1);
+#endif
+
+	librecrypt_free_context(ctx);
 
 	STOP_RESOURCE_TEST();
 	return 0;
