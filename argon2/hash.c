@@ -288,6 +288,14 @@ fail:
 #else
 
 
+#define SP4 "    "
+#define SP20 SP4 SP4 SP4 SP4 SP4
+#define SP80 SP20 SP20 SP20 SP20
+#define SP84 SP80 SP4
+
+#define GET_SCRATCH_SIZE(HASHLEN) ((HASHLEN) > 64u ? ((HASHLEN) + 63u) & ~31u : (HASHLEN))
+
+
 static int discarded_int;
 
 
@@ -337,7 +345,7 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 
 #define CHECK(PHRASE, CONF, HASHLEN, HASH)\
 	do {\
-		size_t scratchsize = GET_SCRATCH_SIZE(HASHLEN);\
+		size_t scratchsize = GET_SCRATCH_SIZE((size_t)HASHLEN);\
 		check(PHRASE, CONF HASH, HASH, (size_t)HASHLEN, scratchsize, ctx);\
 		if ((size_t)HASHLEN == argon2__HASH_SIZE)\
 			check(PHRASE, CONF, HASH, (size_t)HASHLEN, scratchsize, ctx);\
@@ -405,7 +413,7 @@ int
 main(void)
 {
 	LIBRECRYPT_CONTEXT *ctx = NULL;
-	char buf[1024];
+	char buf[1024], nuls[256];
 
 	SET_UP_ALARM();
 	INIT_TEST_ABORT();
@@ -413,7 +421,6 @@ main(void)
 
 start_over:
 
-#define GET_SCRATCH_SIZE(HASHLEN) ((HASHLEN) > 64u ? ((HASHLEN) + 63u) & ~31u : (HASHLEN))
 #if defined(SUPPORT_ARGON2I)
 # if SIZE_MAX > UINT32_MAX
 	errno = 0;
@@ -465,7 +472,6 @@ start_over:
 	                                                                    "yLKZMg+DIOXVc9z1po9ZlZG8+Gp4g5brqfza3lvkR9vw");
 	CHECK_BAD("$argon2d$");
 #endif
-#undef GET_SCRATCH_SIZE
 
 	if (!ctx) {
 		ctx = librecrypt_create_context();
@@ -473,7 +479,31 @@ start_over:
 		goto start_over;
 	}
 
-	/* TODO check with pepper */
+	memset(nuls, 0, sizeof(nuls));
+
+#if defined(SUPPORT_ARGON2I)
+	assert(sizeof(nuls) >= 4u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 4u) == 0);
+	CHECK(" ",  "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, "Mhl4o3AkJuA");
+	CHECK(SP84, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, "+hlEcRn+F3s");
+	CHECK(SP80, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, "z2d6ce8UqS0");
+
+	assert(sizeof(nuls) >= 140u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 140u) == 0);
+	CHECK(SP80, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, "15FAGe1KIX8");
+
+	assert(sizeof(nuls) >= 160u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 160u) == 0);
+	CHECK(SP80, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, "oH3H5atuca8");
+
+	assert(sizeof(nuls) >= 128u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 128u) == 0);
+	CHECK(SP80, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, "TsimqI1YC08");
+
+	assert(sizeof(nuls) >= 256u);
+	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 256u) == 0);
+	CHECK(SP80, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, "mzPlVOVjVos");
+#endif
 
 	librecrypt_free_context(ctx);
 
