@@ -34,16 +34,23 @@ CPPFLAGS_ARGON2 !=\
 	;fi;\
 	if ! $(WITH_LIBAR2SIMPLIFIED); then echo\
 		-DNO_LIBAR2SIMPLIFIED\
+	;fi;\
+	if test -n "$(ARGON2_VERSION)"; then echo\
+		-DARGON2_VERSION="$(ARGON2_VERSION)L"\
 	;fi
 
 CFLAGS_ARGON2 !=\
-	if $(SUPPORT_ANY_ARGON2) && $(WITH_LIBAR2SIMPLIFIED); then echo\
-		-pthread\
+	if $(SUPPORT_ANY_ARGON2) && $(WITH_LIBAR2SIMPLIFIED); then\
+		if test -n "$(ARGON2_VERSION)" || test -n "$(ARGON2_NO_THREADS)"; then echo\
+			-pthread\
+		;fi\
 	;fi
 
 LDFLAGS_ARGON2 !=\
 	if $(SUPPORT_ANY_ARGON2); then\
-		if $(WITH_LIBAR2SIMPLIFIED); then echo\
+		if test -n "$(ARGON2_VERSION)"; then echo\
+			-largon2\
+		;elif $(WITH_LIBAR2SIMPLIFIED); then echo\
 			-lar2simplified\
 			-lar2\
 			-lblake\

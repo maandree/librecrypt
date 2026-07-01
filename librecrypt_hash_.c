@@ -491,7 +491,7 @@ start_over:
 	EXPECT(librecrypt_hash_(NULL, 0u, NULL, 0u, "$~no~such~algorithm~$*100$", ctx, ASCII_CRYPT) == -1);
 	EXPECT(errno == ENOSYS);
 
-#if defined(SUPPORT_ARGON2ID)
+#if defined(SUPPORT_ARGON2ID) && defined(SUPPORT_ARGON2_V1_3)
 # define ARGON2ID_PREFIX "$argon2id$v=19$m=8,t=1,p=1$"
 # define ARGON2ID_STR ARGON2ID_PREFIX SALT"$*32"
 

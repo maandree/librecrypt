@@ -1,6 +1,47 @@
 /* See LICENSE file for copyright and license details. */
 /* included from "algorithms.h" */
 
+#if defined(SUPPORT_ARGON2I) || defined(SUPPORT_ARGON2D) || defined(SUPPORT_ARGON2ID) || defined(SUPPORT_ARGON2DS)
+# if !defined(ARGON2_VERSION)
+#  include <libar2.h>
+#  ifndef NO_LIBAR2SIMPLIFIED
+#   include <libar2simplified.h>
+#  else
+#   define libar2simplified_init_context init_context
+#  endif
+# else
+#  include <argon2.h>
+#  define LIBAR2_ARGON2D 0
+#  define LIBAR2_ARGON2I 1
+#  define LIBAR2_ARGON2ID 2
+#  define LIBAR2_ARGON2DS 4
+#  define LIBAR2_ARGON2_VERSION_10 0x10
+#  define LIBAR2_ARGON2_VERSION_13 0x13
+#  define LIBAR2_MIN_M_COST ARGON2_MIN_MEMORY
+#  define LIBAR2_MAX_M_COST ARGON2_MAX_MEMORY
+#  define LIBAR2_MIN_T_COST ARGON2_MIN_TIME
+#  define LIBAR2_MAX_T_COST ARGON2_MAX_TIME
+#  define LIBAR2_MIN_LANES ARGON2_MIN_LANES
+#  define LIBAR2_MAX_LANES ARGON2_MAX_LANES
+#  define LIBAR2_MIN_SALTLEN ARGON2_MIN_SALT_LENGTH
+#  define LIBAR2_MAX_SALTLEN ARGON2_MAX_SALT_LENGTH
+#  define LIBAR2_MIN_HASHLEN ARGON2_MIN_OUTLEN
+#  define LIBAR2_MAX_HASHLEN ARGON2_MAX_OUTLEN
+#  if ARGON2_VERSION < 20161029L
+#   ifdef SUPPORT_ARGON2ID
+#    undef SUPPORT_ARGON2ID
+#   endif
+#  endif
+#  if ARGON2_VERSION < 20160406L
+#   define NO_ARGON2_VERSION_13__
+#  else
+#   ifdef SUPPORT_ARGON2DS
+#    undef SUPPORT_ARGON2DS
+#   endif
+#  endif
+# endif
+#endif
+
 
 #define IF__argon2i__SUPPORTED(A)
 #define IF__argon2d__SUPPORTED(A)
@@ -76,7 +117,17 @@ HIDDEN ssize_t librecrypt__argon2ds__make_settings(char *out_buffer, size_t size
                                                    ssize_t (*rng)(void *out, size_t n, void *user), void *user);
 #endif
 
+#define IF__argon2_v1_0__SUPPORTED(A)
+#define IF__argon2_v1_3__SUPPORTED(A)
 #if defined(SUPPORT_ARGON2I) || defined(SUPPORT_ARGON2D) || defined(SUPPORT_ARGON2ID) || defined(SUPPORT_ARGON2DS)
+# undef IF__argon2_v1_0__SUPPORTED
+# define IF__argon2_v1_0__SUPPORTED(A) A
+# define SUPPORT_ARGON2_V1_0
+# ifndef NO_ARGON2_VERSION_13__
+#  undef IF__argon2_v1_3__SUPPORTED
+#  define IF__argon2_v1_3__SUPPORTED(A) A
+#  define SUPPORT_ARGON2_V1_3
+# endif
 # define argon2__HASH_SIZE 32u
 # define argon2__FLEXIBLE_HASH_SIZE 1
 # define argon2__STRICT_PAD 0
@@ -89,3 +140,14 @@ HIDDEN PURE int librecrypt__argon2__test_supported(const char *phrase, size_t le
 #  define REQUIRES_COMMON_RFC4848S4
 # endif
 #endif
+
+
+#define IF__argon2i_v1_0__SUPPORTED(A) IF__argon2_v1_0__SUPPORTED(IF__argon2i__SUPPORTED(A))
+#define IF__argon2d_v1_0__SUPPORTED(A) IF__argon2_v1_0__SUPPORTED(IF__argon2d__SUPPORTED(A))
+#define IF__argon2id_v1_0__SUPPORTED(A) IF__argon2_v1_0__SUPPORTED(IF__argon2id__SUPPORTED(A))
+#define IF__argon2ds_v1_0__SUPPORTED(A) IF__argon2_v1_0__SUPPORTED(IF__argon2ds__SUPPORTED(A))
+
+#define IF__argon2i_v1_3__SUPPORTED(A) IF__argon2_v1_3__SUPPORTED(IF__argon2i__SUPPORTED(A))
+#define IF__argon2d_v1_3__SUPPORTED(A) IF__argon2_v1_3__SUPPORTED(IF__argon2d__SUPPORTED(A))
+#define IF__argon2id_v1_3__SUPPORTED(A) IF__argon2_v1_3__SUPPORTED(IF__argon2id__SUPPORTED(A))
+#define IF__argon2ds_v1_3__SUPPORTED(A) IF__argon2_v1_3__SUPPORTED(IF__argon2ds__SUPPORTED(A))

@@ -136,36 +136,40 @@ main(void)
 	CHECK_ZERO("$~no~such~algorithm~$", "hash");
 
 	/* Check without hash and hashlen */
-#if defined(SUPPORT_ARGON2I)
+#if defined(SUPPORT_ARGON2I) && defined(SUPPORT_ARGON2_V1_0)
 	CHECK_HASH("$argon2i$m=8,t=1,p=1$*99$", "*100", 100);
 	CHECK_HASH("x$*99>$argon2i$m=8,t=1,p=1$*99$", "*100", 100);
 	CHECK_HASH("$argon2i$m=8,t=1,p=1$*99$", "NineByteHash", 9);
 	CHECK_HASH("x$*99>$argon2i$m=8,t=1,p=1$*99$", "NineByteHash", 9);
 #endif
-#if defined(SUPPORT_ARGON2ID)
+#if defined(SUPPORT_ARGON2ID) && defined(SUPPORT_ARGON2_V1_0)
 	CHECK_HASH("$argon2id$m=8,t=1,p=1$*99$", "*100", 100);
 	CHECK_HASH("x$*99>$argon2id$m=8,t=1,p=1$*99$", "*100", 100);
 	CHECK_HASH("$argon2id$m=8,t=1,p=1$*99$", "NineByteHash", 9);
 	CHECK_HASH("x$*99>$argon2id$m=8,t=1,p=1$*99$", "NineByteHash", 9);
 #endif
-#if defined(SUPPORT_ARGON2D)
+#if defined(SUPPORT_ARGON2D) && defined(SUPPORT_ARGON2_V1_0)
 	CHECK_HASH("$argon2d$m=8,t=1,p=1$*99$", "*100", 100);
 	CHECK_HASH("x$*99>$argon2d$m=8,t=1,p=1$*99$", "*100", 100);
 	CHECK_HASH("$argon2d$m=8,t=1,p=1$*99$", "NineByteHash", 9);
 	CHECK_HASH("x$*99>$argon2d$m=8,t=1,p=1$*99$", "NineByteHash", 9);
 #endif
-#if defined(SUPPORT_ARGON2DS)
+#if defined(SUPPORT_ARGON2DS) && defined(SUPPORT_ARGON2_V1_0)
 	CHECK_HASH("$argon2ds$m=8,t=1,p=1$*99$", "*100", 100);
 	CHECK_HASH("x$*99>$argon2ds$m=8,t=1,p=1$*99$", "*100", 100);
 	CHECK_HASH("$argon2ds$m=8,t=1,p=1$*99$", "NineByteHash", 9);
 	CHECK_HASH("x$*99>$argon2ds$m=8,t=1,p=1$*99$", "NineByteHash", 9);
 #endif
 
-	/* Check without invalid hash */
-	IF__argon2i__SUPPORTED(CHECK_ZERO("$argon2i$m=8,t=1,p=1$*99$", "#");)
-	IF__argon2d__SUPPORTED(CHECK_ZERO("$argon2d$m=8,t=1,p=1$*99$", "#");)
-	IF__argon2id__SUPPORTED(CHECK_ZERO("$argon2id$m=8,t=1,p=1$*99$", "#");)
-	IF__argon2ds__SUPPORTED(CHECK_ZERO("$argon2ds$m=8,t=1,p=1$*99$", "#");)
+	/* Check with invalid hash */
+	IF__argon2i_v1_0__SUPPORTED(CHECK_ZERO("$argon2i$m=8,t=1,p=1$*99$", "#");)
+	IF__argon2d_v1_0__SUPPORTED(CHECK_ZERO("$argon2d$m=8,t=1,p=1$*99$", "#");)
+	IF__argon2id_v1_0__SUPPORTED(CHECK_ZERO("$argon2id$m=8,t=1,p=1$*99$", "#");)
+	IF__argon2ds_v1_0__SUPPORTED(CHECK_ZERO("$argon2ds$m=8,t=1,p=1$*99$", "#");)
+	IF__argon2i_v1_3__SUPPORTED(CHECK_ZERO("$argon2i$v=19$m=8,t=1,p=1$*99$", "#");)
+	IF__argon2d_v1_3__SUPPORTED(CHECK_ZERO("$argon2d$v=19$m=8,t=1,p=1$*99$", "#");)
+	IF__argon2id_v1_3__SUPPORTED(CHECK_ZERO("$argon2id$v=19$m=8,t=1,p=1$*99$", "#");)
+	IF__argon2ds_v1_3__SUPPORTED(CHECK_ZERO("$argon2ds$v=19$m=8,t=1,p=1$*99$", "#");)
 
 	/* Test without flexible hash size (but with context I guess) */
 	ctx = librecrypt_create_context();

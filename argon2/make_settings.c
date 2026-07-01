@@ -1,6 +1,5 @@
 /* See LICENSE file for copyright and license details. */
 #include "../common.h"
-#include <libar2.h>
 #ifndef TEST
 
 
@@ -8,7 +7,7 @@ static ssize_t
 make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memcost, uintmax_t timecost,
               int gensalt, ssize_t (*rng)(void *out, size_t n, void *user), void *user)
 {
-	const char *p, *version = "19";
+	const char *p, *version;
 	size_t algolen, ret, min, len, i;
 	int r;
 
@@ -50,15 +49,21 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 	if (p && p[1u] == 'v') {
 		p = &p[2u];
 		if (!strncmp(p, "=16", 3u) && (!p[3u] || p[3u] == '$'))
-			version = "16";
+			version = "$v=16";
 		else if (!strncmp(p, "=19", 3u) && (!p[3u] || p[3u] == '$'))
-			version = "19";
+			version = "$v=19";
 		else
 			goto enosys;
+	} else {
+#if defined(SUPPORT_ARGON2_V1_3)
+		version = "$v=19";
+#else
+		version = "";
+#endif
 	}
 
 	/* Write algorithm and parameters */
-	r = snprintf(out_buffer, size, "%.*s$v=%s$m=%zu,t=%ju,p=1$",
+	r = snprintf(out_buffer, size, "%.*s%s$m=%zu,t=%ju,p=1$",
 	             (int)algolen, algorithm, version, memcost, timecost);
 	if (r < (int)sizeof("$argon2_$v=__$m=_,t=_,p=1$") - 1)
 		abort(); /* $covered$ (impossible) */
@@ -351,13 +356,19 @@ check_aborts(ssize_t (*gen)(char *, size_t, const char *, size_t, uintmax_t,
 }
 
 
+#if defined(SUPPORT_ARGON2_V1_3)
+# define HIGHEST "v=19$"
+#else
+# define HIGHEST ""
+#endif
+
 #define CHECK(FUNC, ALGO)\
 	do {\
-		check(&(FUNC), "$"ALGO"$v=19$", NULL);\
-		check(&(FUNC), "$"ALGO"$v=19$", "$"ALGO"$");\
-		check(&(FUNC), "$"ALGO"$v=19$", "$"ALGO);\
-		check(&(FUNC), "$"ALGO"$v=19$", "$"ALGO"$m=100,t=10,p=2$xxxx$*32");\
-		check(&(FUNC), "$"ALGO"$v=19$", "$"ALGO"$m=100,t=10,p=2$*40$");\
+		check(&(FUNC), "$"ALGO"$"HIGHEST, NULL);\
+		check(&(FUNC), "$"ALGO"$"HIGHEST, "$"ALGO"$");\
+		check(&(FUNC), "$"ALGO"$"HIGHEST, "$"ALGO);\
+		check(&(FUNC), "$"ALGO"$"HIGHEST, "$"ALGO"$m=100,t=10,p=2$xxxx$*32");\
+		check(&(FUNC), "$"ALGO"$"HIGHEST, "$"ALGO"$m=100,t=10,p=2$*40$");\
 		check(&(FUNC), "$"ALGO"$v=16$", "$"ALGO"$v=16");\
 		check(&(FUNC), "$"ALGO"$v=16$", "$"ALGO"$v=16$");\
 		check(&(FUNC), "$"ALGO"$v=16$", "$"ALGO"$v=16$m=100,t=10,p=2$xxxx$*32");\

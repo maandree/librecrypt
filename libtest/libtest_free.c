@@ -8,8 +8,7 @@ libtest_free(void *ptr, enum libtest_zero_check zero_checking)
 {
 	struct meminfo *mem;
 	int saved_errno = errno;
-	int unmap_err, memory_zeroed;
-	uint8_t *usable_area;
+	int unmap_err;
 	size_t i;
 #ifdef WITH_BACKTRACE
 	static _Thread_local int inside_free = 0;
@@ -52,10 +51,11 @@ libtest_free(void *ptr, enum libtest_zero_check zero_checking)
 	}
 	SPINUNLOCK(libtest_allocs_list_spinlock);
 
+#ifndef DONT_CHECK_MEMORY_ZEROED
 	/* Check memory is zeroed */
 	if (zero_checking && libtest_expect_zeroed && !mem->accept_leakage) {
-		usable_area = mem->usable_area;
-		memory_zeroed = 1;
+		uint8_t *usable_area = mem->usable_area;
+		int memory_zeroed = 1;
 		for (i = 0u; i < mem->usable_alloc_size; i++) {
 			if (usable_area[i]) {
 				memory_zeroed = 0;
@@ -63,7 +63,7 @@ libtest_free(void *ptr, enum libtest_zero_check zero_checking)
 				break;
 			}
 		}
-#ifdef WITH_BACKTRACE
+# ifdef WITH_BACKTRACE
 		if (!memory_zeroed && mem->backtrace) {
 			libtest_malloc_internal_usage++;
 			inside_free = 1;
@@ -72,9 +72,10 @@ libtest_free(void *ptr, enum libtest_zero_check zero_checking)
 			                        0u, mem->backtrace, NULL);
 			inside_free = 0;
 		}
-#endif
+# endif
 		assert(memory_zeroed);
 	}
+#endif
 
 	/* Optionally print out trace */
 #ifdef WITH_BACKTRACE

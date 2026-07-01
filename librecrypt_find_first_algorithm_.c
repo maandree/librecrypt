@@ -118,10 +118,15 @@ main(void)
 	EXPECT(librecrypt_find_first_algorithm_(NSA, sizeof(NSA) - 1u, NULL) == NULL);
 	EXPECT(librecrypt_find_first_algorithm_(NSA">", sizeof(NSA">") - 1u, NULL) == NULL);
 
-	IF__argon2i__SUPPORTED(CHECK("$argon2i$"));
-	IF__argon2d__SUPPORTED(CHECK("$argon2d$"));
-	IF__argon2id__SUPPORTED(CHECK("$argon2id$"));
-	IF__argon2ds__SUPPORTED(CHECK("$argon2ds$"));
+	IF__argon2i_v1_0__SUPPORTED(CHECK("$argon2i$"));
+	IF__argon2d_v1_0__SUPPORTED(CHECK("$argon2d$"));
+	IF__argon2id_v1_0__SUPPORTED(CHECK("$argon2id$"));
+	IF__argon2ds_v1_0__SUPPORTED(CHECK("$argon2ds$"));
+
+	IF__argon2i_v1_3__SUPPORTED(CHECK("$argon2i$v=19$"));
+	IF__argon2d_v1_3__SUPPORTED(CHECK("$argon2d$v=19$"));
+	IF__argon2id_v1_3__SUPPORTED(CHECK("$argon2id$v=19$"));
+	IF__argon2ds_v1_3__SUPPORTED(CHECK("$argon2ds$v=19$"));
 
 	ctx = librecrypt_create_context();
 	assert(ctx != NULL);

@@ -241,14 +241,22 @@ start_over:
 
 	EXPECT(librecrypt_realise_salts(NULL, 0u, "", NULL, NULL, ctx) == 0);
 
-#if defined(SUPPORT_ARGON2ID)
+#if defined(SUPPORT_ARGON2ID) && defined(SUPPORT_ARGON2_V1_0)
 # define ALGO "$argon2id$"
-#elif defined(SUPPORT_ARGON2I)
+#elif defined(SUPPORT_ARGON2I) && defined(SUPPORT_ARGON2_V1_0)
 # define ALGO "$argon2i$"
-#elif defined(SUPPORT_ARGON2D)
+#elif defined(SUPPORT_ARGON2D) && defined(SUPPORT_ARGON2_V1_0)
 # define ALGO "$argon2d$"
-#elif defined(SUPPORT_ARGON2DS)
+#elif defined(SUPPORT_ARGON2DS) && defined(SUPPORT_ARGON2_V1_0)
 # define ALGO "$argon2ds$"
+#elif defined(SUPPORT_ARGON2ID) && defined(SUPPORT_ARGON2_V1_3)
+# define ALGO "$argon2id$v=19$"
+#elif defined(SUPPORT_ARGON2I) && defined(SUPPORT_ARGON2_V1_3)
+# define ALGO "$argon2i$v=19$"
+#elif defined(SUPPORT_ARGON2D) && defined(SUPPORT_ARGON2_V1_3)
+# define ALGO "$argon2d$v=19$"
+#elif defined(SUPPORT_ARGON2DS) && defined(SUPPORT_ARGON2_V1_3)
+# define ALGO "$argon2ds$v=19$"
 #endif
 
 #if defined(ALGO)

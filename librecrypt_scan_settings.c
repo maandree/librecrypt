@@ -66,31 +66,31 @@ check_uint(const char *settings, size_t *off, size_t len, char min_first_digit,
  * This function does not check the value of any excess bit
  * in the base-64 encoding
  * 
- * @param   settings         The password hash string
- * @param   off              The current in `settings` where the integer
- *                           begins; will be updated to its ends (one byte
- *                           after the last character encoding the integer)
- * @param   len              The number of bytes in `settings`
- * @param   min              The least allowed number of bytes
- * @param   max              The most allowed number of bytes
- * @param   allow_empty      Whether the empty string is allowed
- *                           (no encoded bytes and no asterisk-notation)
- * @param   dlut             Alphabet reverse lookup table, shall map any valid
- *                           character (except the padding character) to the value
- *                           of that character in the encoding alphabet, and map
- *                           any other character to the value `0xFF`
- * @param   pad              The padding character to used at the end; the NUL byte if none
- * @param   strict_pad       Zero if the padding at the end is optional, non-zero otherwise
- * @param   strout           Output parameter for the beginning of the base-64 text,
- *                           set to `NULL` if asterisk-notation is used
- * @param   lenout           Output parameter for the number of bytes in `*strout`, or if
- *                           `*strout` is set to `NULL`, the asterisk-encoded number;
- *                           however if `strout` is `NULL`, the number bytes used by
- *                           the salt or hash (when in raw binary format) is stored
- * @return                   1 if the encoded value was of proper length,
- *                           a proper length was encoded using asterisk-notation, or
- *                           if `allow_empty` was non-zero, nothing was encoded;
- *                           0 otherwise
+ * @param   settings     The password hash string
+ * @param   off          The current in `settings` where the integer
+ *                       begins; will be updated to its ends (one byte
+ *                       after the last character encoding the integer)
+ * @param   len          The number of bytes in `settings`
+ * @param   min          The least allowed number of bytes
+ * @param   max          The most allowed number of bytes
+ * @param   allow_empty  Whether the empty string is allowed
+ *                       (no encoded bytes and no asterisk-notation)
+ * @param   dlut         Alphabet reverse lookup table, shall map any valid
+ *                       character (except the padding character) to the value
+ *                       of that character in the encoding alphabet, and map
+ *                       any other character to the value `0xFF`
+ * @param   pad          The padding character to used at the end; the NUL byte if none
+ * @param   strict_pad   Zero if the padding at the end is optional, non-zero otherwise
+ * @param   strout       Output parameter for the beginning of the base-64 text,
+ *                       set to `NULL` if asterisk-notation is used
+ * @param   lenout       Output parameter for the number of bytes in `*strout`, or if
+ *                       `*strout` is set to `NULL`, the asterisk-encoded number;
+ *                       however if `strout` is `NULL`, the number bytes used by
+ *                       the salt or hash (when in raw binary format) is stored
+ * @return               1 if the encoded value was of proper length,
+ *                       a proper length was encoded using asterisk-notation, or
+ *                       if `allow_empty` was non-zero, nothing was encoded;
+ *                       0 otherwise
  */
 static int
 check_data(const char *settings, size_t *off, size_t len, uintmax_t min, uintmax_t max, int allow_empty,

@@ -104,22 +104,32 @@ main(void)
 
 #define GET_SCRATCH_SIZE(HASHLEN) GET_ARGON2_SCRATCH_SIZE(HASHLEN)
 #if defined(SUPPORT_ARGON2I)
+# if defined(SUPPORT_ARGON2_V1_0)
 	CHECK("password",  "$argon2i$"   "m=256,t=2,p=1$c29tZXNhbHQ$",  32, 1, "/U3YPXYsSb3q9XxHvc0MLxur+GP960kN9j7emXX8zwY");
+# endif
+# if defined(SUPPORT_ARGON2_V1_3)
 	CHECK("password",  "$argon2i$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, 1, "iekCn0Y3spW+sCcFanM2xBT63UP2sghkUoHLIUpWRS8");
+# endif
 	CHECK_BAD("$argon2i$");
 #endif
 #if defined(SUPPORT_ARGON2ID)
+# if defined(SUPPORT_ARGON2_V1_3)
 	CHECK("password", "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, 1, "nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4");
+# endif
 	CHECK_BAD("$argon2id$");
 #endif
 #if defined(SUPPORT_ARGON2DS)
+# if defined(SUPPORT_ARGON2_V1_0)
 	CHECK("",         "$argon2ds$v=16$m=""8,t=1,p=1$ICAgICAgICA$",  32, 1, "zgdykk9ZjN5VyrW0LxGw8LmrJ1Z6fqSC+3jPQtn4n0s");
+# endif
 	CHECK_BAD("$argon2ds$");
 #endif
 #if defined(SUPPORT_ARGON2D)
+# if defined(SUPPORT_ARGON2_V1_0)
 	CHECK("",          "$argon2d$v=16$m=""8,t=1,p=1$ICAgICAgICA$", 100, 0, "NjODMrWrS7zeivNNpHsuxD9c6uDmUQ6YqPRhb8H5DSNw9"
 	                                                                       "n683FUCJZ3tyxgfJpYYANI+01WT/S5zp1UVs+qNRwnkdE"
 	                                                                       "yLKZMg+DIOXVc9z1po9ZlZG8+Gp4g5brqfza3lvkR9vw");
+# endif
 	CHECK_BAD("$argon2d$");
 #endif
 #undef GET_SCRATCH_SIZE
@@ -128,7 +138,7 @@ main(void)
 	assert(ctx != NULL);
 	memset(nuls, 0, sizeof(nuls));
 
-#if defined(SUPPORT_ARGON2I)
+#if defined(SUPPORT_ARGON2I) && defined(SUPPORT_ARGON2_V1_3)
 # define GET_SCRATCH_SIZE(HASHLEN) GET_ARGON2_SCRATCH_SIZE(HASHLEN)
 	assert(sizeof(nuls) >= 4u);
 	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 4u) == 0);

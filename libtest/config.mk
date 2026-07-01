@@ -1,6 +1,11 @@
 WITH_BACKTRACE = false
 IMPLEMENT_MMAP = true
 
+BZERO_CHECK_CPPFLAGS != \
+	if test -n "$(ARGON2_VERSION)"; then\
+		echo -DDONT_CHECK_MEMORY_ZEROED\
+	;fi
+
 TEST_CONFIGFILE = config_backtraces=$(WITH_BACKTRACE).mk
 include $(TEST_INCLUDE_PREFIX)$(TEST_CONFIGFILE)
 

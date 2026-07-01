@@ -14,6 +14,20 @@ For Argon2 support (runtime, build, and check dependencies):
 	is advisable to use WITH_LIBAR2SIMPLIFIED=false if you
 	are only going to use p=1 in the Argon2 parameters.
 
+	If you need to use the reference implementation of Argon2
+	instead, you can build with ARGON2_VERSION set to the
+	release number. Because the reference implementation does
+	not provide a stable API or ABI it is not guaranteed that
+	selecting an unsupported version or linking against another
+	version than compiled against works. Currently, up to and
+	including version 20190702 is supported. 20161029 or newer
+	is required for Argon2id. 20160406 or newer is required for
+	argon2 1.3, and older is required for Argon2ds. libar2 is
+	used unless ARGON2_VERSION is set; libar2 supports all
+	variants. If you are using the reference implementation of
+	Argon2 compiled with ARGON2_NO_THREADS, also set the macro
+	ARGON2_NO_THREADS when compiling this library.
+
 Build dependencies:
 	libc
 	make

@@ -78,7 +78,7 @@ main(void)
 	EXPECT(librecrypt_verify(NULL, 0u, "$~no~such~algorithm~$", ctx) == -1);
 	EXPECT(errno == ENOSYS);
 
-#if defined(SUPPORT_ARGON2ID)
+#if defined(SUPPORT_ARGON2ID) && defined(SUPPORT_ARGON2_V1_3)
 	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4", ctx) == 1);
 	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/", ctx) == 0);
 	EXPECT(librecrypt_verify("password", 8u, "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4x", ctx) == 0);
@@ -110,7 +110,9 @@ main(void)
 		assert(errno == ENOMEM);
 		assert(libtest_get_alloc_failure_in() == 0u);
 	}
+#endif
 
+#if defined(SUPPORT_ARGON2ID) && defined(SUPPORT_ARGON2_V1_0)
         r = snprintf(conf, sizeof(conf), "$argon2id$m=256,t=8,p=1$AAAABBBBCCCC$*%zu", SIZE_MAX / 4u * 3u + 3u);
         assert(r > 0 && (size_t)r < sizeof(conf));
         errno = 0;
@@ -127,7 +129,7 @@ main(void)
 	memset(nuls, 0, sizeof(nuls));
 	memset(spaces, ' ', sizeof(spaces));
 
-#if defined(SUPPORT_ARGON2I)
+#if defined(SUPPORT_ARGON2I) && defined(SUPPORT_ARGON2_V1_3)
 	assert(sizeof(nuls) >= 4u);
 	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 4u) == 0);
 	EXPECT(librecrypt_verify(spaces,  1u, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$Mhl4o3AkJuA", ctx) == 1);

@@ -264,7 +264,7 @@ main(void)
 		}\
 	} while (0)
 
-#if defined(SUPPORT_ARGON2I) && defined(SUPPORT_ARGON2D)
+#if defined(SUPPORT_ARGON2I) && defined(SUPPORT_ARGON2D) && defined(SUPPORT_ARGON2_V1_0)
 
 	CHECK("$argon2d$v=16$m=8,t=1,p=1$*16$*40", "$argon2i$v=19$m=16,t=4,p=2$*18$*50",
 	      "$argon2d$v=16$m=8,t=1,p=1$*16$*40>" "$argon2i$v=19$m=16,t=4,p=2$*18$*50");

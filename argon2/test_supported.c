@@ -2,8 +2,6 @@
 #include "../common.h"
 #ifndef TEST
 
-#include <libar2.h>
-
 
 #define RANGE(MIN, MAX) (uintmax_t)(MIN), (uintmax_t)(MAX)
 #define BASE64 librecrypt_common_rfc4848s4_decoding_lut_, argon2__PAD, argon2__STRICT_PAD
@@ -12,6 +10,7 @@
 int
 librecrypt__argon2__test_supported(const char *phrase, size_t len, int text, const char *settings, size_t prefix, size_t *len_out)
 {
+	const char *version;
 	uintmax_t hashlen;
 	int r;
 
@@ -21,8 +20,8 @@ librecrypt__argon2__test_supported(const char *phrase, size_t len, int text, con
 
 	/* Validate string format and parameters */
 	r = librecrypt_scan_settings(settings, prefix,
-		"$%*$%sm=%p,t=%p,p=%p$%b$%^h",
-		"v=16$", "v=19$", "", NULL,
+		"$%*$%^sm=%p,t=%p,p=%p$%b$%^h",
+		&version, "v=16$", "v=19$", "", NULL,
 		RANGE(LIBAR2_MIN_M_COST, LIBAR2_MAX_M_COST),
 		RANGE(LIBAR2_MIN_T_COST, LIBAR2_MAX_T_COST),
 		RANGE(LIBAR2_MIN_LANES, LIBAR2_MAX_LANES),
@@ -30,6 +29,12 @@ librecrypt__argon2__test_supported(const char *phrase, size_t len, int text, con
 		&hashlen, RANGE(LIBAR2_MIN_HASHLEN, LIBAR2_MAX_HASHLEN), BASE64);
 	if (!r)
 		return 0;
+
+	/* Check compatibility with library support */
+#if !defined(SUPPORT_ARGON2_V1_3)
+	if (!strcmp(version, "v=19$"))
+		return 0;
+#endif
 
 	/* Return hash size */
 	if (!hashlen)

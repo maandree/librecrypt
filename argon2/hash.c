@@ -2,20 +2,13 @@
 #include "../common.h"
 #ifndef TEST
 
-#include <libar2.h>
-#ifndef NO_LIBAR2SIMPLIFIED
-# include <libar2simplified.h>
-#else
-# define libar2simplified_init_context init_context
-#endif
-
 
 #define RANGE(MIN, MAX) (uintmax_t)(MIN), (uintmax_t)(MAX)
 #define BASE64 librecrypt_common_rfc4848s4_decoding_lut_, argon2__PAD, argon2__STRICT_PAD
 #define REMOVE_CONST(X) (*(void **)(void *)&(X))
 
 
-#ifdef NO_LIBAR2SIMPLIFIED
+#if !defined(ARGON2_VERSION) && defined(NO_LIBAR2SIMPLIFIED)
 
 static void *
 allocate(size_t num, size_t size, size_t alignment, struct libar2_context *ctx)
@@ -89,15 +82,105 @@ init_context(struct libar2_context *ctxp)
 #endif
 
 
+#if defined(ARGON2_VERSION)
+struct type_and_version {
+	unsigned type;
+	unsigned version;
+};
+
+
+# define libar2_hash librecrypt__libar2_hash
+static int
+libar2_hash(void *out_buffer, void *phrase, size_t len, struct Argon2_Context *params, struct type_and_version *params2)
+{
+	int r;
+
+# if ARGON2_VERSION < 20160406L
+	if (params2->version != LIBAR2_ARGON2_VERSION_10) {
+		errno = ENOSYS;
+		return -1;
+	}
+# endif
+
+	params->out = out_buffer;
+	params->pwd = phrase;
+	params->pwdlen = (uint32_t)len;
+# if ARGON2_VERSION >= 20160406L
+	params->version = params2->version;
+# endif
+
+# if ARGON2_VERSION >= 20160406L
+	r = argon2_ctx(params, params2->type);
+# else
+	switch (params2->type) {
+#  if defined(SUPPORT_ARGON2D)
+	case LIBAR2_ARGON2D:
+		r = argon2d_ctx(params);
+		break;
+#  endif
+#  if defined(SUPPORT_ARGON2I)
+	case LIBAR2_ARGON2I:
+		r = argon2i_ctx(params);
+		break;
+#  endif
+#  if defined(SUPPORT_ARGON2ID)
+	case LIBAR2_ARGON2ID:
+		r = argon2id_ctx(params);
+		break;
+#  endif
+#if defined(SUPPORT_ARGON2DS)
+	case LIBAR2_ARGON2DS:
+		r = argon2ds_ctx(params);
+		break;
+#  endif
+	default:
+		errno = ENOSYS;
+		return -1;
+	}
+# endif
+
+	switch (r) {
+	case ARGON2_OK:
+		return 0;
+	case ARGON2_MEMORY_ALLOCATION_ERROR:
+		errno = ENOMEM;
+		return -1;
+	case ARGON2_INCORRECT_TYPE:
+		errno = ENOSYS;
+		return -1;
+	default:
+		errno = EINVAL;
+		return -1;
+	}
+}
+
+
+# define libar2_hash_buf_size librecrypt__libar2_hash_buf_size
+static size_t
+libar2_hash_buf_size(struct Argon2_Context *params)
+{
+	return params->outlen;
+}
+#endif
+
+
 int
 librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
                          const char *settings, size_t prefix, LIBRECRYPT_CONTEXT *ctx)
 {
 	enum librecrypt_hash_algorithm algo_v10, algo_v13, algo;
+#if !defined(ARGON2_VERSION)
+# define params2 params
 	struct libar2_argon2_parameters params;
 	struct libar2_context ar2ctx;
+#else
+# define ar2ctx params2
+# define hashlen outlen
+	struct Argon2_Context params;
+	struct type_and_version params2;
+#endif
 	const char *type, *version, *salt_encoded;
-	uintmax_t mcost, tcost, lanes, saltlen, hashlen;
+	uintmax_t mcost, tcost, lanes, saltlen, taglen;
 	void *salt = NULL, *scratch = NULL;
 	size_t scratch_size;
 	struct pepper *pepper = NULL;
@@ -116,7 +199,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 		&tcost, RANGE(LIBAR2_MIN_T_COST, LIBAR2_MAX_T_COST),
 		&lanes, RANGE(LIBAR2_MIN_LANES, LIBAR2_MAX_LANES),
 		&salt_encoded, &saltlen, RANGE(LIBAR2_MIN_SALTLEN, LIBAR2_MAX_SALTLEN), BASE64,
-		&hashlen, RANGE(LIBAR2_MIN_HASHLEN, LIBAR2_MAX_HASHLEN), BASE64);
+		&taglen, RANGE(LIBAR2_MIN_HASHLEN, LIBAR2_MAX_HASHLEN), BASE64);
 	if (!r) {
 		errno = EINVAL;
 		return -1;
@@ -140,6 +223,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 		return 0;
 	}
 
+#if !defined(ARGON2_VERSION)
 	/* Gives us memory allocation and threading support;
 	 * so we don't have to implement any of that ourselves */
 	libar2simplified_init_context(&ar2ctx);
@@ -150,6 +234,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	ar2ctx.autoerase_salt = 1; /* since we are decoding the salt, we do a memory allocation,
 	                            * and our testing always checks that allocated memory is earse;
 	                            * it doesn't really matter, but it's paranoid, and that's good */
+#endif
 
 	/* Decode salt */
 	if (!salt_encoded) /* this would be if asterisk-notation is used, but it is not */
@@ -176,16 +261,17 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 	}
 
 	/* Apply `settings` */
-	params.type = type[1u] == 'd' ? LIBAR2_ARGON2ID :
-	              type[1u] == 's' ? LIBAR2_ARGON2DS :
-	              type[0u] == 'i' ? LIBAR2_ARGON2I :
-	                                LIBAR2_ARGON2D;
-	params.version = !*version            ? LIBAR2_ARGON2_VERSION_10 :
-	                   version[3u] == '9' ? LIBAR2_ARGON2_VERSION_13 : /* 19 = 0x13 = 1.3 */
-	                                        LIBAR2_ARGON2_VERSION_10;  /* 16 = 0x10 = 1.0 */
+	memset(&params, 0, sizeof(params));
+	params2.type = type[1u] == 'd' ? LIBAR2_ARGON2ID :
+	               type[1u] == 's' ? LIBAR2_ARGON2DS :
+	               type[0u] == 'i' ? LIBAR2_ARGON2I :
+	                                 LIBAR2_ARGON2D;
+	params2.version = !*version            ? LIBAR2_ARGON2_VERSION_10 :
+	                    version[3u] == '9' ? LIBAR2_ARGON2_VERSION_13 : /* 19 = 0x13 = 1.3 */
+	                                         LIBAR2_ARGON2_VERSION_10;  /* 16 = 0x10 = 1.0 */
 	if (!ctx)
 		goto no_pepper;
-	switch (params.type) {
+	switch (params2.type) {
 	case LIBAR2_ARGON2I:
 		algo_v10 = LIBRECRYPT_ARGON2I_V1_0;
 		algo_v13 = LIBRECRYPT_ARGON2I_V1_3;
@@ -207,7 +293,7 @@ librecrypt__argon2__hash(char *restrict out_buffer, size_t size, const char *phr
 		abort();
 	/* $covered}$ */
 	}
-	switch (params.version) {
+	switch (params2.version) {
 	case LIBAR2_ARGON2_VERSION_10:
 		algo = algo_v10;
 		break;
@@ -225,12 +311,25 @@ no_pepper:
 	params.m_cost = (uint_least32_t)mcost;
 	params.lanes = (uint_least32_t)lanes;
 	params.salt = salt;
+#if !defined(ARGON2_VERSION)
 	params.saltlen = (size_t)saltlen;
 	params.key = pepper ? REMOVE_CONST(pepper->data) : NULL;
 	params.keylen = pepper ? pepper->len : 0u;
+#else
+	params.saltlen = (uint32_t)saltlen;
+	params.secret = pepper ? REMOVE_CONST(pepper->data) : NULL;
+	params.secretlen = pepper ? (uint32_t)pepper->len : 0u;
+#endif
 	params.ad = NULL;
 	params.adlen = 0u;
-	params.hashlen = hashlen ? (size_t)hashlen : argon2__HASH_SIZE;
+#if !defined(ARGON2_VERSION)
+	params.hashlen = taglen ? (size_t)taglen : argon2__HASH_SIZE;
+#else
+	params.outlen = taglen ? (uint32_t)taglen : argon2__HASH_SIZE;
+	params.threads = params.lanes;
+	params.allocate_cbk = NULL;
+	params.free_cbk = NULL;
+#endif
 
 	/* Argon2 may require a larger buffer to work with for the hash than it outputs */
 	scratch_size = libar2_hash_buf_size(&params);
@@ -371,6 +470,11 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 #endif
 
 
+#if defined(ARGON2_VERSION)
+# define IF_LIBAR2(...)
+#else
+# define IF_LIBAR2(...) __VA_ARGS__
+#endif
 #define COMMON buf, 1u, NULL, 0u
 #define CHECK_BAD(ALGO)\
 	do {\
@@ -399,10 +503,12 @@ check(const char *phrase, const char *settings, const char *hash, size_t hashlen
 		EXPECT(errno == ENOMEM);\
 		\
 		/* target `libar2_hash` */\
-		libtest_set_alloc_failure_in(3u);\
-		errno = 0;\
-		EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$CCCCDDDDAAAABBBB$"), ctx) == -1);\
-		EXPECT(errno == ENOMEM);\
+		IF_LIBAR2(\
+			libtest_set_alloc_failure_in(3u);\
+			errno = 0;\
+			EXPECT(librecrypt__argon2__hash(COMMON, S(ALGO"m=1024,t=10,p=1$CCCCDDDDAAAABBBB$"), ctx) == -1);\
+			EXPECT(errno == ENOMEM);\
+		)\
 		\
 		assert(!libtest_get_alloc_failure_in());\
 	} while (0)
@@ -426,12 +532,13 @@ main(void)
 start_over:
 
 #if defined(SUPPORT_ARGON2I)
-# if SIZE_MAX > UINT32_MAX
+# if defined(SUPPORT_ARGON2_V1_0)
+#  if SIZE_MAX > UINT32_MAX
 	errno = 0;
 	EXPECT(librecrypt__argon2__hash(NULL, 0u, phony, (size_t)UINT32_MAX + 1u, "$argon2i$m=256,t=2,p=1$c29tZXNhbHQ$",
 	                                sizeof("$argon2i$m=256,t=2,p=1$c29tZXNhbHQ$"), ctx) == -1);
 	EXPECT(errno == EINVAL);
-#else
+#  else
 	if (libtest_have_custom_malloc()) {
 		char conf[256];
 		int r;
@@ -457,23 +564,32 @@ start_over:
 		libtest_set_alloc_failure_in(0u);
 	}
 
-# endif
+#  endif
 	CHECK("password",  "$argon2i$"   "m=256,t=2,p=1$c29tZXNhbHQ$",  32, "/U3YPXYsSb3q9XxHvc0MLxur+GP960kN9j7emXX8zwY");
+# endif
+# if defined(SUPPORT_ARGON2_V1_3)
 	CHECK("password",  "$argon2i$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, "iekCn0Y3spW+sCcFanM2xBT63UP2sghkUoHLIUpWRS8");
+# endif
 	CHECK_BAD("$argon2i$");
 #endif
 #if defined(SUPPORT_ARGON2ID)
+# if defined(SUPPORT_ARGON2_V1_3)
 	CHECK("password", "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$",  32, "nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4");
+# endif
 	CHECK_BAD("$argon2id$");
 #endif
 #if defined(SUPPORT_ARGON2DS)
+# if defined(SUPPORT_ARGON2_V1_0)
 	CHECK("",         "$argon2ds$v=16$m=""8,t=1,p=1$ICAgICAgICA$",  32, "zgdykk9ZjN5VyrW0LxGw8LmrJ1Z6fqSC+3jPQtn4n0s");
+# endif
 	CHECK_BAD("$argon2ds$");
 #endif
 #if defined(SUPPORT_ARGON2D)
+# if defined(SUPPORT_ARGON2_V1_0)
 	CHECK("",          "$argon2d$v=16$m=""8,t=1,p=1$ICAgICAgICA$", 100, "NjODMrWrS7zeivNNpHsuxD9c6uDmUQ6YqPRhb8H5DSNw9"
 	                                                                    "n683FUCJZ3tyxgfJpYYANI+01WT/S5zp1UVs+qNRwnkdE"
 	                                                                    "yLKZMg+DIOXVc9z1po9ZlZG8+Gp4g5brqfza3lvkR9vw");
+# endif
 	CHECK_BAD("$argon2d$");
 #endif
 
@@ -485,7 +601,7 @@ start_over:
 
 	memset(nuls, 0, sizeof(nuls));
 
-#if defined(SUPPORT_ARGON2I)
+#if defined(SUPPORT_ARGON2I) && defined(SUPPORT_ARGON2_V1_3)
 	assert(sizeof(nuls) >= 4u);
 	assert(librecrypt_set_pepper(ctx, LIBRECRYPT_ARGON2I_V1_3, nuls, 4u) == 0);
 	CHECK(" ",  "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, "Mhl4o3AkJuA");

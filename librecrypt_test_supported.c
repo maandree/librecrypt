@@ -25,7 +25,7 @@ librecrypt_test_supported(const char *phrase, size_t len, int text, const char *
 		if (!(*algo->test_supported)(phrase, len, text, settings, n, &len))
 			return 0;
 
-		/* Return just process last chained algorithm */
+		/* Return if just processed last chained algorithm */
 		if (!settings[n])
 			return 1;
 
@@ -68,10 +68,20 @@ main(void)
 	EXPECT(librecrypt_test_supported("abcdefgh", 8u, 1, ">"NSA, NULL) == 0);
 	EXPECT(librecrypt_test_supported("abcdefgh", 8u, 1, NSA">"NSA, NULL) == 0);
 
-	IF__argon2i__SUPPORTED(CHECK("$argon2i$v=19$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
-	IF__argon2d__SUPPORTED(CHECK("$argon2d$v=19$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
-	IF__argon2id__SUPPORTED(CHECK("$argon2id$v=19$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
-	IF__argon2ds__SUPPORTED(CHECK("$argon2ds$v=19$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
+	IF__argon2i_v1_3__SUPPORTED(CHECK("$argon2i$v=19$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
+	IF__argon2d_v1_3__SUPPORTED(CHECK("$argon2d$v=19$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
+	IF__argon2id_v1_3__SUPPORTED(CHECK("$argon2id$v=19$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
+	IF__argon2ds_v1_3__SUPPORTED(CHECK("$argon2ds$v=19$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
+
+	IF__argon2i_v1_0__SUPPORTED(CHECK("$argon2i$v=16$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
+	IF__argon2d_v1_0__SUPPORTED(CHECK("$argon2d$v=16$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
+	IF__argon2id_v1_0__SUPPORTED(CHECK("$argon2id$v=16$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
+	IF__argon2ds_v1_0__SUPPORTED(CHECK("$argon2ds$v=16$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
+
+	IF__argon2i_v1_0__SUPPORTED(CHECK("$argon2i$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
+	IF__argon2d_v1_0__SUPPORTED(CHECK("$argon2d$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
+	IF__argon2id_v1_0__SUPPORTED(CHECK("$argon2id$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
+	IF__argon2ds_v1_0__SUPPORTED(CHECK("$argon2ds$", "m=8,t=1,p=1$*16$*40", "m=0,t=0,p=0$*1$*1"));
 
 	STOP_RESOURCE_TEST();
 	return 0;

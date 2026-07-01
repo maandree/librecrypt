@@ -97,7 +97,7 @@ main(void)
 	EXPECT(librecrypt_make_settings(NULL, 0u, "$~no~such~algorithm~$", 0u, 0u, 0, NULL, NULL, NULL) == -1);
 	EXPECT(errno == ENOSYS);
 
-#if defined(SUPPORT_ARGON2I)
+#if defined(SUPPORT_ARGON2I) && defined(SUPPORT_ARGON2_V1_3)
 	saltbyte = 0u;
 	CANARY_FILL(buf);
 	r = librecrypt_make_settings(buf, sizeof(buf), "$argon2i$", 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte, NULL);
@@ -109,7 +109,7 @@ main(void)
 	any_salted = 1;
 #endif
 
-#if defined(SUPPORT_ARGON2D)
+#if defined(SUPPORT_ARGON2D) && defined(SUPPORT_ARGON2_V1_3)
 	saltbyte = 0u;
 	CANARY_FILL(buf);
 	r = librecrypt_make_settings(buf, sizeof(buf), "$argon2d$", 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte, NULL);
@@ -121,7 +121,7 @@ main(void)
 	any_salted = 1;
 #endif
 
-#if defined(SUPPORT_ARGON2ID)
+#if defined(SUPPORT_ARGON2ID) && defined(SUPPORT_ARGON2_V1_3)
 	saltbyte = 0u;
 	CANARY_FILL(buf);
 	r = librecrypt_make_settings(buf, sizeof(buf), "$argon2id$", 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte, NULL);
@@ -133,7 +133,7 @@ main(void)
 	any_salted = 1;
 #endif
 
-#if defined(SUPPORT_ARGON2DS)
+#if defined(SUPPORT_ARGON2DS) && defined(SUPPORT_ARGON2_V1_3)
 	saltbyte = 0u;
 	CANARY_FILL(buf);
 	r = librecrypt_make_settings(buf, sizeof(buf), "$argon2ds$", 8192u << 10, (uintmax_t)81920u, 1, &saltgen, &saltbyte, NULL);
