@@ -131,7 +131,7 @@ librecrypt.a: $(OBJ)
 	$(AR) ts $@ > /dev/null
 
 librecrypt.$(LIBEXT): $(LOBJ)
-	$(CC) $(LIBFLAGS) -o $@ $(LOBJ) $(LDFLAGS)
+	$(CC) $(LIBFLAGS) -o $@ $(LOBJ) $(ALL_LDFLAGS)
 
 libtest/libtest.a:
 	+cd libtest && $(MAKE) libtest.a
