@@ -251,6 +251,9 @@ static const struct librecrypt_algorithm trunc_algo = {
 #define TEST_HASH_ROT4_TRUNC "8j93l0@@"
 #define TEST_HASH_ROT4_TRUNC6 "8j93l6lS"
 #define TEST_HASH_TRUNC_TRUNC6 "4ycQhg00"
+#define WRONG_HASH_ROT4 "AAAAAAAAAAA#"
+#define WRONG_HASH_TRUNC "000000@@"
+#define WRONG_HASH_TRUNC6 "00000000"
 
 
 int
@@ -343,8 +346,9 @@ main(void)
 	EXPECT(librecrypt_verify(spaces, 80u, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$mzPlVOVjVos", ctx) == 1);
 #endif
 
-#define CHECK(CRYPT) EXPECT(librecrypt_verify(TEST_PHRASE, sizeof(TEST_PHRASE) - 1u, CRYPT, ctx) == 1);
 	librecrypt_set_custom_algorithms(ctx, custom, ELEMSOF(custom));
+
+#define CHECK(CRYPT) EXPECT(librecrypt_verify(TEST_PHRASE, sizeof(TEST_PHRASE) - 1u, CRYPT, ctx) == 1);
 	CHECK("$trunc$"TEST_HASH_TRUNC);
 	CHECK("$trunc$"TEST_HASH_TRUNC6);
 	CHECK("$rot4$"TEST_HASH_ROT4);
@@ -357,6 +361,21 @@ main(void)
 	CHECK("$trunc$*6>$trunc$"TEST_HASH_TRUNC);
 	CHECK("$trunc$*6>$trunc$"TEST_HASH_TRUNC6);
 	CHECK("$rot4$>$rot4$"TEST_PHRASE64_ROT4);
+#undef CHECK
+
+#define CHECK(CRYPT) EXPECT(librecrypt_verify(TEST_PHRASE, sizeof(TEST_PHRASE) - 1u, CRYPT, ctx) == 0);
+	CHECK("$trunc$"WRONG_HASH_TRUNC);
+	CHECK("$trunc$"WRONG_HASH_TRUNC6);
+	CHECK("$rot4$"WRONG_HASH_ROT4);
+	CHECK("$rot4$>$trunc$"WRONG_HASH_TRUNC);
+	CHECK("$rot4$>$trunc$"WRONG_HASH_TRUNC6);
+	CHECK("$trunc$>$rot4$"WRONG_HASH_ROT4);
+	CHECK("$trunc$*6>$rot4$"WRONG_HASH_ROT4);
+	CHECK("$trunc$>$trunc$"WRONG_HASH_TRUNC);
+	CHECK("$trunc$>$trunc$"WRONG_HASH_TRUNC6);
+	CHECK("$trunc$*6>$trunc$"WRONG_HASH_TRUNC);
+	CHECK("$trunc$*6>$trunc$"WRONG_HASH_TRUNC6);
+	CHECK("$rot4$>$rot4$"WRONG_HASH_ROT4);
 #undef CHECK
 
 	librecrypt_free_context(ctx);

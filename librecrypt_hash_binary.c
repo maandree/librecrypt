@@ -201,6 +201,9 @@ static const struct librecrypt_algorithm trunc_algo = {
 #define TEST_HASH_ROT4_TRUNC "8j93l0@@"
 #define TEST_HASH_ROT4_TRUNC6 "8j93l6lS"
 #define TEST_HASH_TRUNC_TRUNC6 "4ycQhg00"
+#define WRONG_HASH_ROT4 "AAAAAAAAAAA#"
+#define WRONG_HASH_TRUNC "000000@@"
+#define WRONG_HASH_TRUNC6 "00000000"
 
 #define SP4 "    "
 #define SP20 SP4 SP4 SP4 SP4 SP4
@@ -264,13 +267,27 @@ check(const char *phrase, const char *settings, const char *chain, const char *h
 	do {\
 		size_t scratchsize = GET_SCRATCH_SIZE(HASHLEN);\
 		if (IS_DEFAULT_HASHLEN >= 0) {\
-			check(PHRASE, CONF HASH, CONF "*" #HASHLEN ">" CONF HASH, HASH, (size_t)HASHLEN, scratchsize, ctx);\
-			check(PHRASE, CONF "*" #HASHLEN, CONF "*" #HASHLEN ">" CONF "*" #HASHLEN, HASH, (size_t)HASHLEN, scratchsize, ctx);\
+			check(PHRASE, CONF HASH, CONF "*" #HASHLEN ">" CONF HASH,\
+			      HASH, (size_t)HASHLEN, scratchsize, ctx);\
+			check(PHRASE, CONF "*" #HASHLEN, CONF "*" #HASHLEN ">" CONF "*" #HASHLEN,\
+			      HASH, (size_t)HASHLEN, scratchsize, ctx);\
 		}\
 		if (IS_DEFAULT_HASHLEN) {\
 			check(PHRASE, CONF, CONF ">" CONF, HASH, (size_t)HASHLEN, scratchsize, ctx);\
 			check(PHRASE, CONF HASH, CONF ">" CONF HASH, HASH, (size_t)HASHLEN, scratchsize, ctx);\
 		}\
+	} while (0)
+
+
+#define CHECK_DIFF(PHRASE, CONF, HASHLEN, IS_DEFAULT_HASHLEN /* -1 if fixed */, HASH, DIFFHASH)\
+	do {\
+		size_t scratchsize = GET_SCRATCH_SIZE(HASHLEN);\
+		if (IS_DEFAULT_HASHLEN >= 0) {\
+			check(PHRASE, CONF DIFFHASH, CONF "*" #HASHLEN ">" CONF DIFFHASH,\
+			      HASH, (size_t)HASHLEN, scratchsize, ctx);\
+		}\
+		if (IS_DEFAULT_HASHLEN)\
+			check(PHRASE, CONF DIFFHASH, CONF ">" CONF DIFFHASH, HASH, (size_t)HASHLEN, scratchsize, ctx);\
 	} while (0)
 
 
@@ -371,6 +388,18 @@ main(void)
 	CHECK(TEST_PHRASE, "$trunc$*6>$trunc$", 4, 1, TEST_HASH_TRUNC);
 	CHECK(TEST_PHRASE, "$trunc$*6>$trunc$", 6, 0, TEST_HASH_TRUNC6);
 	CHECK(TEST_PHRASE, "$rot4$>$rot4$", 8, -1, TEST_PHRASE64_ROT4);
+	CHECK_DIFF(TEST_PHRASE, "$trunc$", 4, 1, TEST_HASH_TRUNC, WRONG_HASH_TRUNC);
+	CHECK_DIFF(TEST_PHRASE, "$trunc$", 6, 0, TEST_HASH_TRUNC6, WRONG_HASH_TRUNC6);
+	CHECK_DIFF(TEST_PHRASE, "$rot4$", 8, -1, TEST_HASH_ROT4, WRONG_HASH_ROT4);
+	CHECK_DIFF(TEST_PHRASE, "$rot4$>$trunc$", 4, 1, TEST_HASH_ROT4_TRUNC, WRONG_HASH_TRUNC);
+	CHECK_DIFF(TEST_PHRASE, "$rot4$>$trunc$", 6, 0, TEST_HASH_ROT4_TRUNC6, WRONG_HASH_TRUNC6);
+	CHECK_DIFF(TEST_PHRASE, "$trunc$>$rot4$", 8, -1, TEST_HASH_TRUNC_ROT4, WRONG_HASH_ROT4);
+	CHECK_DIFF(TEST_PHRASE, "$trunc$*6>$rot4$", 8, -1, TEST_HASH_TRUNC6_ROT4, WRONG_HASH_ROT4);
+	CHECK_DIFF(TEST_PHRASE, "$trunc$>$trunc$", 4, 1, TEST_HASH_TRUNC, WRONG_HASH_TRUNC);
+	CHECK_DIFF(TEST_PHRASE, "$trunc$>$trunc$", 6, 0, TEST_HASH_TRUNC_TRUNC6, WRONG_HASH_TRUNC6);
+	CHECK_DIFF(TEST_PHRASE, "$trunc$*6>$trunc$", 4, 1, TEST_HASH_TRUNC, WRONG_HASH_TRUNC);
+	CHECK_DIFF(TEST_PHRASE, "$trunc$*6>$trunc$", 6, 0, TEST_HASH_TRUNC6, WRONG_HASH_TRUNC6);
+	CHECK_DIFF(TEST_PHRASE, "$rot4$>$rot4$", 8, -1, TEST_PHRASE64_ROT4, WRONG_HASH_ROT4);
 #undef GET_SCRATCH_SIZE
 
 	librecrypt_free_context(ctx);
