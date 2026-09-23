@@ -8,6 +8,8 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
                          ssize_t (*rng)(void *out, size_t n, void *user), void *user,
                          LIBRECRYPT_CONTEXT *ctx)
 {
+	/* TODO rewrite to use the string building functions */
+
 	const char *lut;
 	char pad;
 	int strict_pad, nul_term = 0;

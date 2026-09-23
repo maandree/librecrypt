@@ -442,7 +442,7 @@ struct librecrypt_algorithm {
 	 * @return              See `librecrypt_make_settings`
 	 * @throws              See `librecrypt_make_settings`
 	 * 
-	 * This function shall be MT-Safe but may be AS-Safe
+	 * This function shall be MT-Safe but may be AS-Unsafe
 	 */
 	ssize_t (*make_settings)(char *out_buffer, size_t size, const char *algorithm,
 	                         size_t memcost, uintmax_t timecost, int gensalt,

@@ -7,9 +7,9 @@ static ssize_t
 make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memcost, uintmax_t timecost,
               int gensalt, ssize_t (*rng)(void *out, size_t n, void *user), void *user)
 {
+	struct concat_state concat_state = {out_buffer, size, 0u};
 	const char *p, *version;
-	size_t algolen, ret, min, len, i;
-	int r;
+	size_t algolen, min, len, i;
 
 	/* Use default RNG if NULL is specified */
 	if (!rng)
@@ -44,7 +44,7 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 		abort(); /* $covered$ */
 	p = strchr(p, '$');
 	algolen = p ? (size_t)(p - algorithm) : strlen(algorithm);
-	if (algolen > 32u) /* just some small value absolute will fit all variants */
+	if (algolen > 32u) /* just some small value that absolutely will fit all variants */
 		abort(); /* $covered$ */
 	if (p && p[1u] == 'v') {
 		p = &p[2u];
@@ -63,21 +63,23 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 	}
 
 	/* Write algorithm and parameters */
-	r = snprintf(out_buffer, size, "%.*s%s$m=%zu,t=%ju,p=1$",
-	             (int)algolen, algorithm, version, memcost, timecost);
-	if (r < (int)sizeof("$argon2_$v=__$m=_,t=_,p=1$") - 1)
+	librecrypt_concat_mem_(&concat_state, algorithm, algolen);
+	librecrypt_concat_str_(&concat_state, version);
+	librecrypt_concat_str_(&concat_state, "$m=");
+	librecrypt_concat_uint_(&concat_state, memcost);
+	librecrypt_concat_str_(&concat_state, ",t=");
+	librecrypt_concat_uint_(&concat_state, timecost);
+	librecrypt_concat_str_(&concat_state, ",p=1$");
+	if (concat_state.len < sizeof("$argon2_$v=__$m=_,t=_,p=1$") - 1u)
 		abort(); /* $covered$ (impossible) */
-	ret = (size_t)r;
-	min = size ? MIN(ret, size - 1u) : 0u;
-	out_buffer = &out_buffer[min];
-	size -= min;
 
 	/* Add 16 bytes of salt */
 	if (gensalt) {
 		/* 16 bytes is 128 bits, and 128 = 21*6+2, so that is
 		 * 21 full base-64 characeters and 1 that only use 2 bits */
-		ret += len = 22u;
-		min = size ? MIN(len, size - 1u) : 0u;
+		out_buffer = concat_state.buf;
+		len = 22u;
+		min = librecrypt_concat_void_(&concat_state, len);
 		if (librecrypt_fill_with_random_(out_buffer, min, rng, user))
 			return -1;
 		if (min == len)
@@ -85,30 +87,13 @@ make_settings(char *out_buffer, size_t size, const char *algorithm, size_t memco
 		for (i = 0u; i < min; i++)
 			out_buffer[i] = librecrypt_common_rfc4848s4_encoding_lut_[((unsigned char *)out_buffer)[i]];
 	} else {
-		ret += len = sizeof("*16") - 1u;
-		min = size ? MIN(len, size - 1u) : 0u;
-		if (min)
-			memcpy(out_buffer, "*16", min);
+		librecrypt_concat_str_(&concat_state, "*16");
 	}
-	out_buffer = &out_buffer[min];
-	size -= min;
 
 	/* Add tag size (size of hash result) */
-	ret += len = sizeof("$*32") - 1u;
-	min = size ? MIN(len, size - 1u) : 0u;
-	if (min)
-		memcpy(out_buffer, "$*32", min);
-	out_buffer = &out_buffer[min];
-	size -= min;
+	librecrypt_concat_str_(&concat_state, "$*32");
 
-	/* NUL terminate */
-	if (size) {
-		/* We were careful to make sure size is positive at
-		 * the end if it was when the function was called */
-		*out_buffer = '\0';
-	}
-
-	return (ssize_t)ret;
+	return (ssize_t)concat_state.len;
 
 enosys:
 	errno = ENOSYS;

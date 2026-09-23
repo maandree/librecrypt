@@ -19,8 +19,8 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 
 #if defined(__GNUC__)
@@ -112,6 +112,50 @@ struct pepper {
 
 	/**
 	 * The number of bytes in `.data`
+	 */
+	size_t len;
+};
+
+
+/**
+ * Structure used for doing truncated text concatenation
+ *
+ * This structure is laid out so that `{buf, size, 0u}` will
+ * properly initialise the state to use a buffer and have
+ * it's size properly set, and have the resulting length
+ * initialised to zero. This will not change.
+ */
+struct concat_state {
+	/**
+	 * Where the function shall write to
+	 *
+	 * Update to an offset of it by the called function.
+	 * Shall be set to the beginning of the output buffer
+	 * before the first function call.
+	 */
+	char *buf;
+
+	/**
+	 * The (remaining) size of the output buffer
+	 *
+	 * This is decremented by the called function
+	 * Shall be set to the size of the output buffer
+	 * before the first function call.
+	 */
+	size_t size;
+
+	/**
+	 * The length the constructed text would
+	 * have had if it wasn't truncated
+	 *
+	 * This length does not include NUL termination
+	 * which is added by every function
+	 *
+	 * This is increased by the called function.
+	 * Should be set to 0 before the first function call.
+	 *
+	 * After the last concatenation call, this field
+	 * is read to get the final size before truncation
 	 */
 	size_t len;
 };
@@ -330,8 +374,49 @@ const struct librecrypt_algorithm *librecrypt_find_first_algorithm_(const char *
  * @throws  EINVAL  The size of the pepper is unsupported
  *                  for the hash algorithm `algo`
  */
-LIBRECRYPT_NONNULL_1__
+LIBRECRYPT_NONNULL_1__ HIDDEN
 struct pepper *librecrypt_get_pepper_(LIBRECRYPT_CONTEXT *ctx, enum librecrypt_hash_algorithm algo, size_t len);
+
+
+LIBRECRYPT_NONNULL_1__ HIDDEN
+inline size_t
+librecrypt_concat_void_(struct concat_state *state, size_t len) /* TODO doc */
+{
+	size_t n = state->size ? MIN(state->size - 1u, len) : 0u;
+	if (len > SIZE_MAX - state->len)
+		abort(); /* TODO not covered */
+	state->len += len;
+	if (n) {
+		state->buf = &state->buf[n];
+		state->size -= n;
+	}
+	if (state->size)
+		state->buf[0u] = '\0';
+	return n;
+}
+
+
+LIBRECRYPT_NONNULL_1__ LIBRECRYPT_READ_MEM__(2, 3) HIDDEN
+inline void
+librecrypt_concat_mem_(struct concat_state *state, const char *text, size_t len) /* TODO doc */
+{
+	char *buf = state->buf;
+	size_t n = librecrypt_concat_void_(state, len);
+	if (n)
+		memcpy(buf, text, n);
+}
+
+
+LIBRECRYPT_NONNULL_1__ LIBRECRYPT_READ_STR__(2) HIDDEN
+inline void
+librecrypt_concat_str_(struct concat_state *state, const char *text) /* TODO doc */
+{
+	librecrypt_concat_mem_(state, text, strlen(text));
+}
+
+
+LIBRECRYPT_NONNULL_1__ HIDDEN
+void librecrypt_concat_uint_(struct concat_state *state, uintmax_t value); /* TODO doc */
 
 
 

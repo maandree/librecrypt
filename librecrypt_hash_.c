@@ -46,6 +46,8 @@ ssize_t
 librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
                  const char *settings, LIBRECRYPT_CONTEXT *ctx, enum action action)
 {
+	/* TODO rewrite to use the string building functions */
+
 	const struct librecrypt_algorithm *algo;
 	ssize_t (*rng)(void *out, size_t n, void *user) = NULL;
 	char *settings_scratch = NULL;

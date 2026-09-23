@@ -3,19 +3,35 @@
 #ifndef TEST
 
 
-#if defined(__GNUC__)
-# pragma GCC diagnostic ignored "-Wformat-truncation=" /* we rely on snprintf(3) doing truncation */
-#endif
+static size_t
+truncated_asterisk(char *out_buffer, size_t out_buffer_size, size_t asterisk)
+{
+	struct concat_state concat_state = {out_buffer, out_buffer_size, 0u};
+	librecrypt_concat_str_(&concat_state, "*");
+	librecrypt_concat_uint_(&concat_state, asterisk);
+	if (concat_state.len < 2u)
+		abort(); /* $covered$ (impossible) */
+	return concat_state.len;
+}
+
+
+static size_t
+measure_asterisk(size_t asterisk)
+{
+	return truncated_asterisk(NULL, 0u, asterisk);
+}
 
 
 ssize_t
 librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
                          const char *restrict augment, LIBRECRYPT_CONTEXT *ctx)
 {
+	/* TODO rewrite to use the string building functions */
+
 	size_t prefix1, prefix2, min, ret, len, phraselen;
-	size_t hashsize1, hashsize2;
+	size_t hashsize1, hashsize2, asterisk_len;
 	char *phrase, pad;
-	int strict_pad, r_int, nul_term, saved_errno;
+	int strict_pad, nul_term, saved_errno;
 	const unsigned char *lut;
 	ssize_t r;
 
@@ -60,12 +76,10 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
 			out_buffer = &out_buffer[min];
 			size -= min;
 			if (hashsize2) {
-				r_int = snprintf(out_buffer, size + 1u, "*%zu", hashsize2);
-				if (r_int < 2)
-					abort(); /* $covered$ (impossible reliably) */
-				if (ret > SIZE_MAX - (size_t)r_int)
+				asterisk_len = truncated_asterisk(out_buffer, size + 1u, hashsize2);
+				if (ret > SIZE_MAX - asterisk_len)
 					abort(); /* $covered$ (impossible) */
-				ret += (size_t)r_int;
+				ret += asterisk_len;
 			} else {
 				out_buffer[0u] = '\0';
 			}
@@ -79,12 +93,10 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
 #if defined(__GNUC__)
 # pragma GCC diagnostic pop
 #endif
-			r_int = snprintf(NULL, 0u, "*%zu", hashsize2);
-			if (r_int < 2)
-				abort(); /* $covered$ (impossible reliably) */
-			if (ret > SIZE_MAX - (size_t)r_int)
+			asterisk_len = measure_asterisk(hashsize2);
+			if (ret > SIZE_MAX - asterisk_len)
 				abort(); /* $covered$ (impossible) */
-			ret += (size_t)r_int;
+			ret += asterisk_len;
 		out:
 			if (nul_term)
 				out_buffer[0u] = '\0';
@@ -100,17 +112,15 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
 
 	/* Measure size of hash size specification for `augend` */
 	if (hashsize1) {
-		r_int = snprintf(NULL, 0u, "*%zu", hashsize1);
-		if (r_int < 2)
-			abort(); /* $covered$ (impossible reliably) */
+		asterisk_len = measure_asterisk(hashsize1);
 	} else {
-		r_int = 0;
+		asterisk_len = 0;
 	}
 
 	/* Measure `augend` and '>' in output */
-	if (prefix1 > SIZE_MAX - 1u - (size_t)r_int)
+	if (prefix1 > SIZE_MAX - 1u - asterisk_len)
 		abort(); /* $covered$ (impossible) */
-	ret = prefix1 + (size_t)r_int + 1u;
+	ret = prefix1 + asterisk_len + 1u;
 
 	/* Decode the hash from base-64 to binary */
 	if (size <= ret + prefix2) {
@@ -151,9 +161,9 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
 	out_buffer = &out_buffer[min];
 	size -= min;
 	if (hashsize1 && size) {
-		if (snprintf(out_buffer, size + 1u, "*%zu", hashsize1) != r_int)
+		if (truncated_asterisk(out_buffer, size + 1u, hashsize1) != asterisk_len)
 			abort(); /* $covered$ (impossible reliably) */
-		min = MIN((size_t)r_int, size);
+		min = MIN(asterisk_len, size);
 		out_buffer = &out_buffer[min];
 		size -= min;
 	}
