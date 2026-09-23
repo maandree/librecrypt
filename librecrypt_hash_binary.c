@@ -14,6 +14,194 @@ librecrypt_hash_binary(void *restrict out_buffer, size_t size, const char *phras
 #else
 
 
+#define ALPHABET "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+#define ALT_ALPHABET "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+/"
+
+NONSTRING static const char encoding_lut[256u] = MAKE_ENCODING_LUT(ALPHABET);
+NONSTRING static const char alt_encoding_lut[256u] = MAKE_ENCODING_LUT(ALT_ALPHABET);
+
+static const unsigned char decoding_lut[256u] = {
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, 62, XX, XX, XX, 63,
+	52, 53, 54, 55, 56, 57, 58, 59, 60, 61, XX, XX, XX, XX, XX, XX,
+	XX,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+	15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, XX, XX, XX, XX, XX,
+	XX, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+	41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX
+};
+
+static const unsigned char alt_decoding_lut[256u] = {
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, 62, XX, XX, XX, 63,
+	 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, XX, XX, XX, XX, XX, XX,
+	XX, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+	51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, XX, XX, XX, XX, XX,
+	XX, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+	25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX
+};
+
+static unsigned
+rot4_is_algorithm(const char *settings, size_t len)
+{
+	if (len >= sizeof("$rot4$") - 1u)
+		if (!strncmp(settings, "$rot4$", sizeof("$rot4$") - 1u))
+			return 1u;
+	return 0u;
+}
+
+static unsigned
+trunc_is_algorithm(const char *settings, size_t len)
+{
+	if (len >= sizeof("$trunc$") - 1u)
+		if (!strncmp(settings, "$trunc$", sizeof("$trunc$") - 1u))
+			return 1u;
+	return 0u;
+}
+
+static int
+trunc_supported(const char *phrase, size_t len, int text, const char *settings,
+                size_t prefix, size_t *len_out)
+{
+	size_t i, digit, n = 0u, q, r;
+
+	(void) phrase;
+	(void) len;
+	(void) text;
+
+	if (prefix < sizeof("$trunc$") - 1u || memcmp(settings, "$trunc$", sizeof("$trunc$") - 1u))
+		return 0;
+
+	if (prefix == sizeof("$trunc$") - 1u) {
+		*len_out = 4u;
+		return 1;
+	}
+
+	if (settings[sizeof("$trunc$") - 1u] == '*') {
+		for (i = sizeof("$trunc$*") - 1u; i < prefix; i++) {
+			if ('0' > settings[i] || settings[i] > '9')
+				return 0;
+			digit = (size_t)(settings[i] - '0');
+			if (n > (SIZE_MAX - digit) / 10u)
+				return 0;
+			n = n * 10u + digit;
+		}
+	} else {
+		for (i = sizeof("$trunc$") - 1u; i < prefix; i++) {
+			if (settings[i] == '@')
+				break;
+			if (alt_decoding_lut[(unsigned char)settings[i]] == XX)
+				return 0;
+			n += 1u;
+		}
+		q = n / 4u;
+		r = n % 4u;
+		if (r == 1u)
+			return 0;
+		n = q * 3u + r;
+		if (r) {
+			n -= 1u;
+			for (; r < 4u && i < prefix; r++, i++)
+				if (settings[i] != '@')
+					break;
+			if (r != 4u || i != prefix)
+				return 0;
+		}
+	}
+	if (!n)
+		return 0;
+	*len_out = n;
+	return 1;
+}
+
+static int
+rot4_hash(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
+          const char *settings, size_t prefix, LIBRECRYPT_CONTEXT *ctx)
+{
+	size_t i;
+
+	(void) settings;
+	(void) prefix;
+	(void) ctx;
+
+	for (i = 0u; i < 8u && i < size; i++) {
+		out_buffer[i] = '\0';
+		if (i < len)
+			out_buffer[i] = (char)((((int)phrase[i] & 0x0F) << 4) | (((int)phrase[i] >> 4) & 0x0F));
+	}
+	return 0;
+}
+
+static int
+trunc_hash(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
+           const char *settings, size_t prefix, LIBRECRYPT_CONTEXT *ctx)
+{
+	size_t hash_size, i;
+
+	(void) ctx;
+
+	if (!trunc_supported(NULL, 0u, 1, settings, prefix, &hash_size)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	size = MIN(hash_size, size);
+	for (i = 0u; i < size; i++)
+		out_buffer[i] = i < len ? phrase[i] : '\0';
+
+	return 0;
+}
+
+static const struct librecrypt_algorithm rot4_algo = {
+	.is_algorithm = &rot4_is_algorithm,
+	.hash = &rot4_hash,
+	.encoding_lut = encoding_lut,
+	.decoding_lut = decoding_lut,
+	.hash_size = 8u,
+	.flexible_hash_size = 0,
+	.strict_pad = 1,
+	.pad = '#'
+};
+
+static const struct librecrypt_algorithm trunc_algo = {
+	.is_algorithm = &trunc_is_algorithm,
+	.hash = &trunc_hash,
+	.encoding_lut = alt_encoding_lut,
+	.decoding_lut = alt_decoding_lut,
+	.hash_size = 4u,
+	.flexible_hash_size = 1,
+	.strict_pad = 1,
+	.pad = '@'
+};
+
+#define TEST_PHRASE "\x12\x23\x34\x45\x56\x67\x78\x89"
+#define TEST_PHRASE64_ROT4 "EiM0RVZneIk#"
+#define TEST_HASH_ROT4 "ITJDVGV2h5g#"
+#define TEST_HASH_TRUNC "4ycQhg@@"
+#define TEST_HASH_TRUNC6 "4ycQhlpD"
+#define TEST_HASH_TRUNC_ROT4 "ITJDVAAAAAA#"
+#define TEST_HASH_TRUNC6_ROT4 "ITJDVGV2AAA#"
+#define TEST_HASH_ROT4_TRUNC "8j93l0@@"
+#define TEST_HASH_ROT4_TRUNC6 "8j93l6lS"
+#define TEST_HASH_TRUNC_TRUNC6 "4ycQhg00"
+
 #define SP4 "    "
 #define SP20 SP4 SP4 SP4 SP4 SP4
 #define SP80 SP20 SP20 SP20 SP20
@@ -67,18 +255,22 @@ check(const char *phrase, const char *settings, const char *chain, const char *h
 	errno = 0;
 	EXPECT(librecrypt_hash_binary(buf2, sizeof(buf2), phrase, len, chain, ctx) == (ssize_t)hashlen);
 	EXPECT(!memcmp(buf, buf2, hashlen));
-	CANARY_X_CHECK(buf, hashlen, scratchsize);
 	CANARY_X_CHECK(buf2, hashlen, scratchsize);
+	CANARY_X_CHECK(buf, hashlen, scratchsize);
 }
 
 
-#define CHECK(PHRASE, CONF, HASHLEN, IS_DEFAULT_HASHLEN, HASH)\
+#define CHECK(PHRASE, CONF, HASHLEN, IS_DEFAULT_HASHLEN /* -1 if fixed */, HASH)\
 	do {\
 		size_t scratchsize = GET_SCRATCH_SIZE(HASHLEN);\
-		check(PHRASE, CONF HASH, CONF "*" #HASHLEN ">" CONF HASH, HASH, (size_t)HASHLEN, scratchsize, ctx);\
-		check(PHRASE, CONF "*" #HASHLEN, CONF "*" #HASHLEN ">" CONF "*" #HASHLEN, HASH, (size_t)HASHLEN, scratchsize, ctx);\
-		if (IS_DEFAULT_HASHLEN)\
+		if (IS_DEFAULT_HASHLEN >= 0) {\
+			check(PHRASE, CONF HASH, CONF "*" #HASHLEN ">" CONF HASH, HASH, (size_t)HASHLEN, scratchsize, ctx);\
+			check(PHRASE, CONF "*" #HASHLEN, CONF "*" #HASHLEN ">" CONF "*" #HASHLEN, HASH, (size_t)HASHLEN, scratchsize, ctx);\
+		}\
+		if (IS_DEFAULT_HASHLEN) {\
 			check(PHRASE, CONF, CONF ">" CONF, HASH, (size_t)HASHLEN, scratchsize, ctx);\
+			check(PHRASE, CONF HASH, CONF ">" CONF HASH, HASH, (size_t)HASHLEN, scratchsize, ctx);\
+		}\
 	} while (0)
 
 
@@ -96,6 +288,7 @@ check(const char *phrase, const char *settings, const char *chain, const char *h
 int
 main(void)
 {
+	const struct librecrypt_algorithm custom[] = {rot4_algo, trunc_algo};
 	LIBRECRYPT_CONTEXT *ctx = NULL;
 	char nuls[256];
 
@@ -163,6 +356,22 @@ main(void)
 	CHECK(SP80, "$argon2i$v=19$m=8,t=1,p=1$ICAgICAgICA$", 8, 0, "mzPlVOVjVos");
 # undef GET_SCRATCH_SIZE
 #endif
+
+#define GET_SCRATCH_SIZE(HASHLEN) (HASHLEN)
+	librecrypt_set_custom_algorithms(ctx, custom, ELEMSOF(custom));
+	CHECK(TEST_PHRASE, "$trunc$", 4, 1, TEST_HASH_TRUNC);
+	CHECK(TEST_PHRASE, "$trunc$", 6, 0, TEST_HASH_TRUNC6);
+	CHECK(TEST_PHRASE, "$rot4$", 8, -1, TEST_HASH_ROT4);
+	CHECK(TEST_PHRASE, "$rot4$>$trunc$", 4, 1, TEST_HASH_ROT4_TRUNC);
+	CHECK(TEST_PHRASE, "$rot4$>$trunc$", 6, 0, TEST_HASH_ROT4_TRUNC6);
+	CHECK(TEST_PHRASE, "$trunc$>$rot4$", 8, -1, TEST_HASH_TRUNC_ROT4);
+	CHECK(TEST_PHRASE, "$trunc$*6>$rot4$", 8, -1, TEST_HASH_TRUNC6_ROT4);
+	CHECK(TEST_PHRASE, "$trunc$>$trunc$", 4, 1, TEST_HASH_TRUNC);
+	CHECK(TEST_PHRASE, "$trunc$>$trunc$", 6, 0, TEST_HASH_TRUNC_TRUNC6);
+	CHECK(TEST_PHRASE, "$trunc$*6>$trunc$", 4, 1, TEST_HASH_TRUNC);
+	CHECK(TEST_PHRASE, "$trunc$*6>$trunc$", 6, 0, TEST_HASH_TRUNC6);
+	CHECK(TEST_PHRASE, "$rot4$>$rot4$", 8, -1, TEST_PHRASE64_ROT4);
+#undef GET_SCRATCH_SIZE
 
 	librecrypt_free_context(ctx);
 

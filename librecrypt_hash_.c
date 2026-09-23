@@ -118,18 +118,15 @@ next:
 		/* Special case for bsdicrypt */
 		prefix = 1u; /* $covered$ (TODO we currently don't have an algorithm to trigger this) */
 	}
-	if (!algo->flexible_hash_size && prefix != n)
-		goto einval;
 
 	/* Get hash size */
-	if (!algo->flexible_hash_size) {
-		/* fixed */
-		hash_size = algo->hash_size;
-	} else if (prefix == n) {
+	if (prefix == n) {
 		/* default */
 		hash_size = algo->hash_size;
 	} else if (settings[prefix] == '*') {
-		/* hash length encoded */
+		/* hash length encoded, not allowed when fixed */
+		if (!algo->flexible_hash_size)
+			goto einval;
 		i = prefix + 1u;
 		hash_size = 0u;
 		for (; i < n; i++) {
@@ -169,6 +166,9 @@ next:
 		hash_size = quotient * 3u;
 		if (remainder)
 			hash_size += remainder - 1u;
+		/* Must align with fixed hash size when hash size is fixed */
+		if (!algo->flexible_hash_size && hash_size != algo->hash_size)
+			goto einval;
 	}
 
 	/* For `librecrypt_crypt`: copy hash configurations to output */
@@ -436,7 +436,7 @@ add1_hash(char *restrict out_buffer, size_t size, const char *phrase, size_t len
 	return 0;
 }
 
-static const struct librecrypt_algorithm rot4 = {
+static const struct librecrypt_algorithm rot4_algo = {
 	.is_algorithm = &rot4_is_algorithm,
 	.hash = &rot4_hash,
 	.encoding_lut = elut,
@@ -447,7 +447,7 @@ static const struct librecrypt_algorithm rot4 = {
 	.pad = '#'
 };
 
-static const struct librecrypt_algorithm add1 = {
+static const struct librecrypt_algorithm add1_algo = {
 	.is_algorithm = &add1_is_algorithm,
 	.hash = &add1_hash,
 	.encoding_lut = elut,
@@ -476,7 +476,7 @@ main(void)
 	size_t i, n;
 	ssize_t r, r1, r1b, r1c, r2, r3;
 	LIBRECRYPT_CONTEXT *ctx = NULL;
-	struct librecrypt_algorithm custom[] = {rot4, add1};
+	struct librecrypt_algorithm custom[] = {rot4_algo, add1_algo};
 
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();

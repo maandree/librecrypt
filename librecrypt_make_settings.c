@@ -45,6 +45,201 @@ enosys:
 #else
 
 
+#define ALPHABET "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+NONSTRING static const char encoding_lut[256u] = MAKE_ENCODING_LUT(ALPHABET);
+
+static const unsigned char decoding_lut[256u] = {
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, 62, XX, XX, XX, 63,
+	52, 53, 54, 55, 56, 57, 58, 59, 60, 61, XX, XX, XX, XX, XX, XX,
+	XX,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+	15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, XX, XX, XX, XX, XX,
+	XX, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+	41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+	XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX, XX
+};
+
+static unsigned
+rot4_is_algorithm(const char *settings, size_t len)
+{
+	if (len >= sizeof("$rot4$") - 1u)
+		if (!strncmp(settings, "$rot4$", sizeof("$rot4$") - 1u))
+			return 1u;
+	return 0u;
+}
+
+static unsigned
+trunc_is_algorithm(const char *settings, size_t len)
+{
+	if (len >= sizeof("$trunc$") - 1u)
+		if (!strncmp(settings, "$trunc$", sizeof("$trunc$") - 1u))
+			return 1u;
+	return 0u;
+}
+
+static int
+rot4_supported(const char *phrase, size_t len, int text, const char *settings,
+               size_t prefix, size_t *len_out)
+{
+	size_t i, j, n;
+
+	(void) phrase;
+	(void) len;
+	(void) text;
+
+	i = sizeof("$rot4$") - 1u;
+	if (prefix < i || memcmp(settings, "$rot4$", prefix))
+		return 0;
+	n = i - prefix;
+	if (n && n != 12u)
+		return 0;
+	if (n == 12u) {
+		for (j = 0u; j < 11u; j++, i++)
+			if (decoding_lut[(unsigned char)settings[i]] == XX)
+				return 0;
+		if (decoding_lut[(unsigned char)settings[i]] != '#')
+			return 0;
+	}
+
+	*len_out = 8u;
+	return 1;
+}
+
+static int
+trunc_supported(const char *phrase, size_t len, int text, const char *settings,
+                size_t prefix, size_t *len_out)
+{
+	size_t i, digit, n = 0u, q, r;
+
+	(void) phrase;
+	(void) len;
+	(void) text;
+
+	if (prefix < sizeof("$trunc$") - 1u || memcmp(settings, "$trunc$", sizeof("$trunc$") - 1u))
+		return 0;
+
+	if (prefix == sizeof("$trunc$") - 1u) {
+		*len_out = 4u;
+		return 1;
+	}
+
+	if (settings[sizeof("$trunc$") - 1u] == '*') {
+		for (i = sizeof("$trunc$*") - 1u; i < prefix; i++) {
+			if ('0' > settings[i] || settings[i] > '9')
+				return 0;
+			digit = (size_t)(settings[i] - '0');
+			if (n > (SIZE_MAX - digit) / 10u)
+				return 0;
+			n = n * 10u + digit;
+		}
+	} else {
+		for (i = sizeof("$trunc$") - 1u; i < prefix; i++) {
+			if (settings[i] == '@')
+				break;
+			if (decoding_lut[(unsigned char)settings[i]] == XX)
+				return 0;
+			n += 1u;
+		}
+		q = n / 4u;
+		r = n % 4u;
+		if (r == 1u)
+			return 0;
+		n = q * 3u + r;
+		if (r) {
+			n -= 1u;
+			for (; r < 4u && i < prefix; r++, i++)
+				if (settings[i] != '@')
+					break;
+			if (r != 4u || i != prefix)
+				return 0;
+		}
+	}
+	if (!n)
+		return 0;
+	*len_out = n;
+	return 1;
+}
+
+static ssize_t
+rot4_make_settings(char *out_buffer, size_t size, const char *algorithm,
+                   size_t memcost, uintmax_t timecost, int gensalt,
+                   ssize_t (*rng)(void *out, size_t n, void *user), void *user)
+{
+	size_t ret = sizeof("$rot4$") - 1u;
+
+	(void) algorithm;
+	(void) memcost;
+	(void) timecost;
+	(void) gensalt;
+	(void) rng;
+	(void) user;
+
+	if (size) {
+		size = MIN(ret, size - 1u);
+		memcpy(out_buffer, "$rot4$", size);
+		out_buffer[size] = '\0';
+	}
+
+	return (ssize_t) ret;
+}
+
+static ssize_t
+trunc_make_settings(char *out_buffer, size_t size, const char *algorithm,
+                    size_t memcost, uintmax_t timecost, int gensalt,
+                    ssize_t (*rng)(void *out, size_t n, void *user), void *user)
+{
+	size_t ret = sizeof("$trunc$*4") - 1u;
+
+	(void) algorithm;
+	(void) memcost;
+	(void) timecost;
+	(void) gensalt;
+	(void) rng;
+	(void) user;
+
+	if (size) {
+		size = MIN(ret, size - 1u);
+		memcpy(out_buffer, "$trunc$*4", size);
+		out_buffer[size] = '\0';
+	}
+
+	return (ssize_t)ret;
+}
+
+static const struct librecrypt_algorithm rot4_algo = {
+	.is_algorithm = &rot4_is_algorithm,
+	.test_supported = &rot4_supported,
+	.make_settings = &rot4_make_settings,
+	.encoding_lut = encoding_lut,
+	.decoding_lut = decoding_lut,
+	.hash_size = 8u,
+	.flexible_hash_size = 0,
+	.strict_pad = 1,
+	.pad = '#'
+};
+
+static const struct librecrypt_algorithm trunc_algo = {
+	.is_algorithm = &trunc_is_algorithm,
+	.test_supported = &trunc_supported,
+	.make_settings = &trunc_make_settings,
+	.encoding_lut = encoding_lut,
+	.decoding_lut = decoding_lut,
+	.hash_size = 4u,
+	.flexible_hash_size = 1,
+	.strict_pad = 1,
+	.pad = '@'
+};
+
+
 static unsigned char saltbyte = 0u;
 
 
@@ -72,6 +267,8 @@ saltfail(void *out, size_t n, void *user)
 int
 main(void)
 {
+	const struct librecrypt_algorithm custom[] = {rot4_algo, trunc_algo};
+	LIBRECRYPT_CONTEXT *ctx = librecrypt_create_context();
 	char buf[1024];
 	char buf2[sizeof(buf)];
 	int any_supported = 0;
@@ -194,6 +391,31 @@ main(void)
 		EXPECT(librecrypt_make_settings(NULL, 0u, NULL, 0u, 0u, 0, NULL, NULL, NULL) == -1);
 		EXPECT(errno == ENOSYS);
 	}
+
+	ctx = librecrypt_create_context();
+	assert(ctx != NULL);
+
+	librecrypt_set_custom_algorithms(ctx, custom, ELEMSOF(custom));
+
+	CANARY_FILL(buf);
+	r = librecrypt_make_settings(buf, sizeof(buf), "$rot4$", 0u, 0u, 0, NULL, NULL, ctx);
+	EXPECT(r == (ssize_t)(sizeof("$rot4$") - 1u));
+	EXPECT(!strcmp(buf, "$rot4$"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
+
+	CANARY_FILL(buf);
+	r = librecrypt_make_settings(buf, sizeof(buf), "$trunc$", 0u, 0u, 0, NULL, NULL, ctx);
+	EXPECT(r == (ssize_t)(sizeof("$trunc$*4") - 1u));
+	EXPECT(!strcmp(buf, "$trunc$*4"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
+
+	CANARY_FILL(buf);
+	r = librecrypt_make_settings(buf, sizeof(buf), "$trunc$*6", 0u, 0u, 0, NULL, NULL, ctx);
+	EXPECT(r == (ssize_t)(sizeof("$trunc$*4") - 1u));
+	EXPECT(!strcmp(buf, "$trunc$*4"));
+	CANARY_CHECK(buf, (size_t)r + 1u);
+
+	librecrypt_free_context(ctx);
 
 	STOP_RESOURCE_TEST();
 	return 0;
