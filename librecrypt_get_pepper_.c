@@ -28,6 +28,7 @@ librecrypt_get_pepper_(LIBRECRYPT_CONTEXT *ctx, enum librecrypt_hash_algorithm a
 			return NULL;
 		}
 # endif
+		(void) len;
 		return &ctx->peppers[algo];
 #endif
 
