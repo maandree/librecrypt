@@ -44,6 +44,187 @@
 # pragma clang diagnostic ignored "-Wunsafe-buffer-usage" /* as well as this one, which is completely broken */
 #endif
 
+#define LIBRECRYPT_VERSION_CMP__(A1, B1, A2, B2, A3, B3)\
+	((A1) < (B1) ? -3 : (A1) > (B1) ? +3 :\
+	 (A2) < (B2) ? -2 : (A2) > (B2) ? +2 :\
+	 (A3) < (B3) ? -1 : (A3) > (B3) ? +1 : 0)
+
+
+/**
+ * The major number of the version of librecrypt
+ * that that the application is compiled against
+ *
+ * Increased when there are backwards incompatible
+ * changes, necessitating the that the application
+ * is recompiled or even rewritten
+ *
+ * Use `#if !defined(LIBRECRYPT_VERSION_MAJOR)` to
+ * when the version number is lower than 1.2;
+ * there are no macros defined between 1.0 and 1.2,
+ * so getting the exact number is not possible.
+ *
+ * @seealso  librecrypt_version_major
+ * @seealso  LIBRECRYPT_VERSION_MINOR
+ * @seealso  LIBRECRYPT_VERSION_PATCH
+ * @seealso  LIBRECRYPT_VERSION_CMP_BUILD
+ *
+ * @since  1.2
+ */
+#define LIBRECRYPT_VERSION_MAJOR 1
+
+/**
+ * The minor number of the version of librecrypt
+ * that that the application is compiled against
+ *
+ * Increased when the API is extended
+ *
+ * @seealso  librecrypt_version_minor
+ * @seealso  LIBRECRYPT_VERSION_MAJOR
+ * @seealso  LIBRECRYPT_VERSION_PATCH
+ * @seealso  LIBRECRYPT_VERSION_CMP_BUILD
+ *
+ * @since  1.2
+ */
+#define LIBRECRYPT_VERSION_MINOR 2
+
+/**
+ * The patch number of the version of librecrypt
+ * that that the application is compiled against
+ *
+ * Incrased when the software is modified but
+ * the API and ABI are unmodified, or extended
+ * without adding new functionality proper
+ *
+ * @seealso  librecrypt_version_patch
+ * @seealso  LIBRECRYPT_VERSION_MAJOR
+ * @seealso  LIBRECRYPT_VERSION_MINOR
+ * @seealso  LIBRECRYPT_VERSION_CMP_BUILD
+ *
+ * @since  1.2
+ */
+#define LIBRECRYPT_VERSION_PATCH 0
+
+/**
+ * The major number of the version of librecrypt
+ * that that the application is linked against
+ *
+ * See `LIBRECRYPT_VERSION_MAJOR` for more information
+ *
+ * Because variable was introduced in 1.2, it
+ * is impossible to check the exact version if
+ * it is lower than 1.2, however, using weak
+ * linkage it is possible to check if the linked
+ * version is lower than 1.2: in your application
+ * define this variable with weak linkage. You
+ * can set it to 0 and let the library replace it
+ * if it has defined it, or you can simply declare
+ * it as an external symbol without providing it:
+ * then taking the address of it will return `NULL`
+ * if it doesn't exist: you can use this trick with
+ * any function may be want to use as well.
+ *
+ * @seealso  LIBRECRYPT_VERSION_MAJOR
+ * @seealso  librecrypt_version_minor
+ * @seealso  librecrypt_version_patch
+ * @seealso  LIBRECRYPT_VERSION_CMP_LINK
+ *
+ * @since  1.2
+ */
+extern const int librecrypt_version_major;
+
+/**
+ * The minor number of the version of librecrypt
+ * that that the application is linked against
+ *
+ * See `LIBRECRYPT_VERSION_MINOR` for more information
+ *
+ * @seealso  LIBRECRYPT_VERSION_MINOR
+ * @seealso  librecrypt_version_major
+ * @seealso  librecrypt_version_patch
+ * @seealso  LIBRECRYPT_VERSION_CMP_LINK
+ *
+ * @since  1.2
+ */
+extern const int librecrypt_version_minor;
+
+/**
+ * The patch number of the version of librecrypt
+ * that that the application is linked against
+ *
+ * See `LIBRECRYPT_VERSION_PATCH` for more information
+ *
+ * @seealso  LIBRECRYPT_VERSION_PATCH
+ * @seealso  librecrypt_version_major
+ * @seealso  librecrypt_version_minor
+ * @seealso  LIBRECRYPT_VERSION_CMP_LINK
+ *
+ * @since  1.2
+ */
+extern const int librecrypt_version_patch;
+
+
+/**
+ * Compare a specific version against the
+ * version of librecrypt the application is
+ * compiled against
+ *
+ * @param   MAJOR:int  The major number of the version to compare against
+ * @param   MINOR:int  The minor number of the version to compare against
+ * @param   PATCH:int  The patch number of the version to compare against
+ * @return  :int       Negative if the specified version is older than the compilation-target,
+ *                     positive if the specified version is newer than the compilation-target,
+ *                     zero if the compilation-target has the same version number
+ *                     (ignore numbers less significant than the patch number,
+ *                     which do not affect the software of the library).
+ *                     If the versions have different major numbers, the absolue value is 3,
+ *                     otherwise if the versions have different minor numbers, the absolue value is 2,
+ *                     otherwise if the versions have different patch numbers, the absolue value is 1.
+ *
+ * @seealso  LIBRECRYPT_VERSION_MAJOR
+ * @seealso  LIBRECRYPT_VERSION_MINOR
+ * @seealso  LIBRECRYPT_VERSION_PATCH
+ * @seealso  LIBRECRYPT_VERSION_CMP_LINK
+ *
+ * @since  1.2
+ */
+#define LIBRECRYPT_VERSION_CMP_BUILD(MAJOR, MINOR, PATCH)\
+	LIBRECRYPT_VERSION_CMP__(MAJOR, LIBRECRYPT_VERSION_MAJOR,\
+	                         MINOR, LIBRECRYPT_VERSION_MINOR,\
+	                         PATCH, LIBRECRYPT_VERSION_PATCH)
+
+/**
+ * Compare a specific version against the
+ * version of librecrypt the application is
+ * compiled against
+ *
+ * Note that this macro requires the linked version
+ * be version 1.2 or newer. See `librecrypt_version_major`
+ * for more information.
+ *
+ * @param   MAJOR:int  The major number of the version to compare against
+ * @param   MINOR:int  The minor number of the version to compare against
+ * @param   PATCH:int  The patch number of the version to compare against
+ * @return  :int       Negative if the specified version is older than the linked version,
+ *                     positive if the specified version is newer than the linked version,
+ *                     zero if the linked version has the same version number
+ *                     (ignore numbers less significant than the patch number,
+ *                     which do not affect the software of the library).
+ *                     If the versions have different major numbers, the absolue value is 3,
+ *                     otherwise if the versions have different minor numbers, the absolue value is 2,
+ *                     otherwise if the versions have different patch numbers, the absolue value is 1.
+ *
+ * @seealso  librecrypt_version_major
+ * @seealso  librecrypt_version_minor
+ * @seealso  librecrypt_version_patch
+ * @seealso  LIBRECRYPT_VERSION_CMP_BUILD
+ *
+ * @since  1.2
+ */
+#define LIBRECRYPT_VERSION_CMP_LINK(MAJOR, MINOR, PATCH)\
+	LIBRECRYPT_VERSION_CMP__(MAJOR, librecrypt_version_major,\
+	                         MINOR, librecrypt_version_minor,\
+	                         PATCH, librecrypt_version_patch)
+
 
 /**
  * Symbol used as a general delimiter
@@ -297,6 +478,9 @@ struct librecrypt_algorithm {
 	/**
 	 * 1 if `.hash_size` is just a default,
 	 * 0 if `.hash_size` is always used
+	 *
+	 * @since  1.1
+	 * @since  1.2  Proper support for .flexible_hash_size=0
 	 */
 	signed char flexible_hash_size;
 

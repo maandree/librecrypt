@@ -14,7 +14,8 @@ include mk/$(OS).mk
 
 
 LIB_MAJOR = 1
-LIB_MINOR = 1
+LIB_MINOR = 2
+LIB_PATCH = 0
 LIB_VERSION = $(LIB_MAJOR).$(LIB_MINOR)
 LIB_NAME = recrypt
 
@@ -45,7 +46,8 @@ OBJ_PUBLIC_NO_FUZZ =\
 	librecrypt_set_user_data.o\
 	librecrypt_get_user_data.o\
 	librecrypt_set_pepper.o\
-	librecrypt_set_custom_algorithms.o
+	librecrypt_set_custom_algorithms.o\
+	librecrypt_version.o
 
 OBJ_PUBLIC =\
 	$(OBJ_PUBLIC_FUZZ)\
@@ -91,7 +93,9 @@ all:
 
 include argon2/suffix.mk
 
-ALL_CPPFLAGS = $(CPPFLAGS) $(CPPFLAGS_MODULES) $(FUZZED_CPPFLAGS)
+VERSION_CPPFLAGS = -DLIB_MAJOR=$(LIB_MAJOR) -DLIB_MINOR=$(LIB_MINOR) -DLIB_PATCH=$(LIB_PATCH)
+
+ALL_CPPFLAGS = $(CPPFLAGS) $(CPPFLAGS_MODULES) $(FUZZED_CPPFLAGS) $(VERSION_CPPFLAGS)
 ALL_CFLAGS   = $(CFLAGS)   $(CFLAGS_MODULES)   $(FUZZED_CFLAGS)
 ALL_LDFLAGS  = $(LDFLAGS)  $(LDFLAGS_MODULES)  $(FUZZED_LDFLAGS)
 
