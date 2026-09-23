@@ -16,19 +16,11 @@
 #endif
 
 #include "librecrypt.h"
-#if defined(__linux__)
-# include <sys/auxv.h>
-# include <sys/random.h>
-#endif
-#include <sys/mman.h>
-#include <fcntl.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-#include <unistd.h>
 
 
 #if defined(__GNUC__)
@@ -44,8 +36,8 @@
 #define NONSTRING
 #if defined(__GNUC__)
 # if __GNUC__ >= 8 || defined(__clang__)
-#   undef NONSTRING
-#   define NONSTRING __attribute__((__nonstring__))
+#  undef NONSTRING
+#  define NONSTRING __attribute__((__nonstring__))
 # endif
 #endif
 
@@ -354,6 +346,8 @@ struct pepper *librecrypt_get_pepper_(LIBRECRYPT_CONTEXT *ctx, enum librecrypt_h
 # include <sys/wait.h>
 # include <setjmp.h>
 # include <signal.h>
+# include <stdio.h>
+# include <stdlib.h>
 # include <string.h>
 # include <unistd.h>
 

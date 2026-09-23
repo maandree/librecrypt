@@ -1,5 +1,13 @@
 /* See LICENSE file for copyright and license details. */
 #include "common.h"
+#if defined(__linux__)
+# include <sys/auxv.h>
+# include <sys/random.h>
+#endif
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <time.h>
+#include <unistd.h>
 #ifndef TEST
 
 
