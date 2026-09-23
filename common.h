@@ -374,11 +374,11 @@ const struct librecrypt_algorithm *librecrypt_find_first_algorithm_(const char *
  * @throws  EINVAL  The size of the pepper is unsupported
  *                  for the hash algorithm `algo`
  */
-LIBRECRYPT_NONNULL_1__ HIDDEN
+LIBRECRYPT_NONNULL_1__ LIBRECRYPT_WUR__ HIDDEN
 struct pepper *librecrypt_get_pepper_(LIBRECRYPT_CONTEXT *ctx, enum librecrypt_hash_algorithm algo, size_t len);
 
 
-LIBRECRYPT_NONNULL_1__ HIDDEN
+LIBRECRYPT_NONNULL_1__ LIBRECRYPT_WUR__ HIDDEN
 inline size_t
 librecrypt_concat_void_(struct concat_state *state, size_t len) /* TODO doc */
 {
