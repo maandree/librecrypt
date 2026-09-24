@@ -378,9 +378,33 @@ LIBRECRYPT_NONNULL_1__ LIBRECRYPT_WUR__ HIDDEN
 struct pepper *librecrypt_get_pepper_(LIBRECRYPT_CONTEXT *ctx, enum librecrypt_hash_algorithm algo, size_t len);
 
 
+/**
+ * Create a gap in a buffer to write data to
+ *
+ * @param   state  The buffer to modify, see `struct concat_state` for more information
+ * @param   len    The desired gap size
+ * @return         The number of bytes available to write to; will be at most `len`
+ *
+ * The function will compare `len` against the remaining
+ * buffer size and return how much of that is available
+ * for writing to. At the same time, buffer position and
+ * remainging size is update as if that much data was
+ * written, `state->len` in increased by `len`, and the
+ * buffer is NUL terminated. The caller must retrieve
+ * the current buffer position, `state->buf` _before_ calling
+ * this function, so that it knows where the write data to.
+ *
+ * Example:
+ *     void copy(struct concat_state *state, const char *text, size_t len)
+ *     {
+ *         char *buf = state->buf;
+ *         size_t n = librecrypt_concat_void_(state, len);
+ *         if (n) memcpy(buf, text, n);
+ *     }
+ */
 LIBRECRYPT_NONNULL_1__ LIBRECRYPT_WUR__ HIDDEN
 inline size_t
-librecrypt_concat_void_(struct concat_state *state, size_t len) /* TODO doc */
+librecrypt_concat_void_(struct concat_state *state, size_t len)
 {
 	size_t n = state->size ? MIN(state->size - 1u, len) : 0u;
 	if (len > SIZE_MAX - state->len)
@@ -396,9 +420,20 @@ librecrypt_concat_void_(struct concat_state *state, size_t len) /* TODO doc */
 }
 
 
+/**
+ * Concatenate two strings
+ *
+ * Truncation is done to ensure the resulting string
+ * does not overrun it's buffer but is still NUL
+ * terminated (assuming the buffer is not zero-sized)
+ *
+ * @param  state  The buffer to write to, see `struct concat_state` for more information
+ * @param  text   The text to copy to the buffer
+ * @param  len    The length of `text`, in bytes
+ */
 LIBRECRYPT_NONNULL_1__ LIBRECRYPT_READ_MEM__(2, 3) HIDDEN
 inline void
-librecrypt_concat_mem_(struct concat_state *state, const char *text, size_t len) /* TODO doc */
+librecrypt_concat_mem_(struct concat_state *state, const char *text, size_t len)
 {
 	char *buf = state->buf;
 	size_t n = librecrypt_concat_void_(state, len);
@@ -407,16 +442,39 @@ librecrypt_concat_mem_(struct concat_state *state, const char *text, size_t len)
 }
 
 
+/**
+ * Concatenate two strings
+ *
+ * Truncation is done to ensure the resulting string
+ * does not overrun it's buffer but is still NUL
+ * terminated (assuming the buffer is not zero-sized)
+ *
+ * @param  state  The buffer to write to, see `struct concat_state` for more information
+ * @param  text   The text to copy to the buffer
+ */
 LIBRECRYPT_NONNULL_1__ LIBRECRYPT_READ_STR__(2) HIDDEN
 inline void
-librecrypt_concat_str_(struct concat_state *state, const char *text) /* TODO doc */
+librecrypt_concat_str_(struct concat_state *state, const char *text)
 {
 	librecrypt_concat_mem_(state, text, strlen(text));
 }
 
 
+/**
+ * Concatenate an unsigned integer onto a string
+ *
+ * The integer will be formated in decimal without
+ * redundant noughts
+ *
+ * Truncation is done to ensure the resulting string
+ * does not overrun it's buffer but is still NUL
+ * terminated (assuming the buffer is not zero-sized)
+ *
+ * @param  state  The buffer to write to, see `struct concat_state` for more information
+ * @param  value  The integer to write to the buffer
+ */
 LIBRECRYPT_NONNULL_1__ HIDDEN
-void librecrypt_concat_uint_(struct concat_state *state, uintmax_t value); /* TODO doc */
+void librecrypt_concat_uint_(struct concat_state *state, uintmax_t value);
 
 
 
