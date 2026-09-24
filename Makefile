@@ -68,10 +68,15 @@ OBJ_PRIVATE =\
 	librecrypt_fill_with_random_.o\
 	librecrypt_find_first_algorithm_.o\
 	librecrypt_get_pepper_.o\
+	librecrypt_concat_void_.o\
 	librecrypt_concat_mem_.o\
 	librecrypt_concat_str_.o\
 	librecrypt_concat_uint_.o\
-	librecrypt_concat_void_.o\
+	librecrypt_concat_char_no_nul_.o\
+	librecrypt_post_concat_adjust_.o\
+	librecrypt_raw_len_to_base64_len_.o\
+	librecrypt_base64_len_to_raw_len_.o\
+	librecrypt_is_base64_properly_padded_.o\
 	$(OBJ_COMMON_RFC4848S4)
 
 USE_OBJ_COMMON_RFC4848S4 =\

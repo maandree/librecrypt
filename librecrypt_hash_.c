@@ -46,18 +46,15 @@ ssize_t
 librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, size_t len,
                  const char *settings, LIBRECRYPT_CONTEXT *ctx, enum action action)
 {
-	/* TODO rewrite to use the string building functions */
-
+	struct concat_state concat_state = {out_buffer, size, 0u};
 	const struct librecrypt_algorithm *algo;
 	ssize_t (*rng)(void *out, size_t n, void *user) = NULL;
 	char *settings_scratch = NULL;
 	char *phrase_scratches[2] = {NULL, NULL};
 	size_t phrase_scratch_sizes[2] = {0u, 0u};
-	size_t i, n, ascii_len, min, prefix, ret = 0u;
-	size_t hash_size, digit, quotient, remainder;
-	int has_next, phrase_scratch_i = 0;
+	size_t i, n, ascii_len, prefix, hash_size, digit;
+	int r, saved_errno, has_next, phrase_scratch_i = 0;
 	ssize_t r_len;
-	int r, saved_errno;
 	void *new;
 
 	/* Realise asterisk-encoded salts */
@@ -74,11 +71,11 @@ librecrypt_hash_(char *restrict out_buffer, size_t size, const char *phrase, siz
 		/* If there no output, don't waste time and entropy
 		 * generating random salts, just write generates
 		 * zeroes instead */
-		if (!size)
+		if (!concat_state.size)
 			rng = &zero_generator;
 
 		/* Generate the salts */
-		r_len = librecrypt_realise_salts(out_buffer, size, settings, rng, NULL, ctx);
+		r_len = librecrypt_realise_salts(NULL, 0u, settings, rng, NULL, ctx);
 		if (r_len < 0) {
 			if (errno == ERANGE) {
 				errno = ENOMEM;
@@ -154,20 +151,13 @@ next:
 			for (; i < n; i++)
 				if (settings[i] != algo->pad)
 					break;
-			if ((i - prefix) % 4u)
-				goto einval;
-			if (i - prefix - hash_size >= 4u)
+			if (!librecrypt_is_base64_properly_padded_(hash_size, i - prefix))
 				goto einval;
 		}
 		if (i != n)
 			goto einval;
-		quotient = hash_size / 4u;
-		remainder = hash_size % 4u;
-		if (remainder == 1u)
+		if (!librecrypt_base64_len_to_raw_len_(hash_size, &hash_size))
 			goto einval;
-		hash_size = quotient * 3u;
-		if (remainder)
-			hash_size += remainder - 1u;
 		/* Must align with fixed hash size when hash size is fixed */
 		if (!algo->flexible_hash_size && hash_size != algo->hash_size)
 			goto einval;
@@ -179,18 +169,11 @@ next:
 			/* Include hash length specification */
 			prefix = n;
 		}
-		min = size ? MIN(size - 1u, prefix) : 0u;
-		size -= min;
-		if (min)
-			memcpy(out_buffer, settings, min);
-		out_buffer = &out_buffer[min];
-		if (ret > SIZE_MAX - prefix)
-			abort(); /* $covered$ (impossible) */
-		ret += prefix;
+		librecrypt_concat_mem_(&concat_state, settings, prefix);
 	}
 
 	/* Unless output is fully truncated, ensure scratch for intermediate hash is large enough */
-	if (size && phrase_scratch_sizes[phrase_scratch_i] < hash_size) {
+	if (concat_state.size && phrase_scratch_sizes[phrase_scratch_i] < hash_size) {
 		librecrypt_wipe(phrase_scratches[phrase_scratch_i], phrase_scratch_sizes[phrase_scratch_i]);
 		new = realloc(phrase_scratches[phrase_scratch_i], hash_size);
 		if (!new) {
@@ -208,14 +191,14 @@ next:
 	if (has_next) {
 		/* Intermediate hash: write to scratch */
 	hash_to_scratch:
-		r = (*algo->hash)(size ? phrase_scratches[phrase_scratch_i] : NULL,
-		                  size ? phrase_scratch_sizes[phrase_scratch_i] : 0u,
+		r = (*algo->hash)(concat_state.size ? phrase_scratches[phrase_scratch_i] : NULL,
+		                  concat_state.size ? phrase_scratch_sizes[phrase_scratch_i] : 0u,
 		                  phrase, len, settings, n, ctx);
 	} else if (action == BINARY_HASH) {
 		/* Final hash in binary: write immediate to output */
 	hash_to_output:
-		r = (*algo->hash)(out_buffer, size, phrase, len, settings, n, ctx);
-	} else if (size < hash_size) {
+		r = (*algo->hash)(concat_state.buf, concat_state.size, phrase, len, settings, n, ctx);
+	} else if (concat_state.size < hash_size) {
 		/* Final hash in ASCII: write to scratch if output is truncated,
 		 * because it will be converted to ASCII later */
 		goto hash_to_scratch;
@@ -233,42 +216,31 @@ next:
 		if (action == BINARY_HASH) {
 			/* Binary output: we already have the has in binary,
 			 * so yes add the length to the return value */
-			if (ret != 0u)
+			if (concat_state.len != 0u)
 				abort(); /* $covered$ (impossible) */
-			ret += hash_size;
-		} else if (!size) {
+			concat_state.len += hash_size;
+		} else if (!concat_state.size) {
 			/* ASCII hash but not output: just calculate the
 			 * ASCII length and add it to the return value */
-			ascii_len = hash_size % 3u;
-			if (ascii_len) {
-				if (algo->pad && algo->strict_pad)
-					ascii_len = 4u; /* padding to for bytes */
-				else
-					ascii_len += 1u; /* 3n+m bytes: 4n+m+1 chars, unless m=0 */
-			}
-			if (hash_size / 3u > (SIZE_MAX - ascii_len) / 4u)
+			if (!librecrypt_raw_len_to_base64_len_(hash_size, algo->pad && algo->strict_pad, &ascii_len))
 				goto eoverflow; /* $covered$ (on 32-bit, impossible on wider) */
-			ascii_len += hash_size / 3u * 4u;
 			goto include_ascii;
 		} else {
 			/* ASCII output: convert from binary to ASCII,
 			 * and add ASCII length to the return value */
-			ascii_len = librecrypt_encode(out_buffer, size,
-			                              size < hash_size ? phrase_scratches[phrase_scratch_i] : out_buffer,
+			ascii_len = librecrypt_encode(concat_state.buf, concat_state.size,
+			                              concat_state.size < hash_size
+			                                  ? phrase_scratches[phrase_scratch_i] : concat_state.buf,
 			                              hash_size, algo->encoding_lut, algo->strict_pad ? algo->pad : '\0');
 			/* SIZE_MAX could mean success, however we will
-			 * fail when convert `ret` from size_t to ssize_t,
-			 * so we can treat SIZE_MAX as failure even when
-			 * it's a success */
+			 * fail when convert `concat_state.len` from size_t
+			 * to ssize_t, so we can treat SIZE_MAX as failure
+			 * even when it's a success */
 			if (ascii_len == SIZE_MAX)
 				goto eoverflow; /* $covered$ (manually) */
 	include_ascii:
-			min = size ? MIN(size - 1u, ascii_len) : 0u;
-			out_buffer = &out_buffer[min];
-			size -= min;
-			if (ret > SIZE_MAX - ascii_len)
+			if (librecrypt_post_concat_adjust_(&concat_state, ascii_len))
 				goto eoverflow; /* $covered$ (on 32-bit) */
-			ret += ascii_len;
 		}
 	} else {
 		/* Intermediate hash: */
@@ -276,7 +248,7 @@ next:
 		/* Swap scratches, so that the intermediate output
 		 * becomes the next algorithm's input, but use NULL if output is
 		 * truncated (measure only) */
-		phrase = size ? phrase_scratches[phrase_scratch_i] : NULL;
+		phrase = concat_state.size ? phrase_scratches[phrase_scratch_i] : NULL;
 		phrase_scratch_i ^= 1;
 		len = hash_size;
 
@@ -286,15 +258,8 @@ next:
 		settings++;
 
 		/* For `librecrypt_crypt`: add '>' to the password hash string */
-		if (action == ASCII_CRYPT) {
-			if (ret == SIZE_MAX)
-				abort(); /* $covered$ (impossible) */
-			ret += 1u;
-			if (size > 1u) {
-				*out_buffer++ = LIBRECRYPT_ALGORITHM_LINK_DELIMITER;
-				size -= 1u;
-			}
-		}
+		if (action == ASCII_CRYPT)
+			librecrypt_concat_char_no_nul_(&concat_state, LIBRECRYPT_ALGORITHM_LINK_DELIMITER);
 
 		/* Calculate the hash, from the intermediate output */
 		goto next;
@@ -315,16 +280,16 @@ next:
 	}
 
 	/* NUL-terminate output if it is a string (`out_buffer` is offset at every write to it) */
-	if (size && action != BINARY_HASH)
-		out_buffer[0] = '\0';
+	if (concat_state.size && action != BINARY_HASH)
+		concat_state.buf[0] = '\0';
 
-	if (ret > (size_t)SSIZE_MAX) {
+	if (concat_state.len > (size_t)SSIZE_MAX) {
 		/* $covered{$ (manually) */
 		errno = EOVERFLOW;
 		return -1;
 		/* $covered}$ */
 	}
-	return (ssize_t)ret;
+	return (ssize_t)concat_state.len;
 
 	/* $covered{$ (since we have covered gotos to this label) */
 eoverflow:

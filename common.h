@@ -452,7 +452,7 @@ librecrypt_concat_mem_(struct concat_state *state, const char *text, size_t len)
  * @param  state  The buffer to write to, see `struct concat_state` for more information
  * @param  text   The text to copy to the buffer
  */
-LIBRECRYPT_NONNULL_1__ LIBRECRYPT_READ_STR__(2) HIDDEN
+LIBRECRYPT_NONNULL__ LIBRECRYPT_READ_STR__(2) HIDDEN
 inline void
 librecrypt_concat_str_(struct concat_state *state, const char *text)
 {
@@ -476,6 +476,148 @@ librecrypt_concat_str_(struct concat_state *state, const char *text)
 LIBRECRYPT_NONNULL_1__ HIDDEN
 void librecrypt_concat_uint_(struct concat_state *state, uintmax_t value);
 
+
+/**
+ * Concatenate a single chracter onto a string
+ *
+ * NB! NUL termination will not be added
+ *
+ * Truncation is done to ensure the resulting string
+ * does not overrun it's buffer but is still has room
+ * for NUL terminnation (assuming the buffer is not
+ * zero-sized)
+ *
+ * @param  state  The buffer to write to, see `struct concat_state` for more information
+ * @param  c      The character to append
+ */
+LIBRECRYPT_NONNULL_1__ HIDDEN
+inline void
+librecrypt_concat_char_no_nul_(struct concat_state *state, char c)
+{
+	if (state->len == SIZE_MAX)
+		abort(); /* TODO not covered */
+	state->len += 1u;
+	if (state->size > 1u) {
+		*state->buf++ = c;
+		state->size -= 1u;
+	}
+}
+
+
+/**
+ * Adjust a `struct concat_state` has been modified by
+ * another function
+ *
+ * This function will not by it self modify the buffer
+ * in any way. It will not add NUL-termination. This
+ * function will only update `*state` to reflect that
+ * some function wanted to write `len` bytes (but may
+ * have written less due to the buffer being to small).
+ *
+ * @param   state  The buffer to write to, see `struct concat_state` for more information
+ * @param   len    the length of the concatenated data sans NUL-termination
+ * @return         Normally 0, -1 if `state->len` would overflow
+ *
+ * The proper error code when this function returns -1 is
+ * usually EOVERFLOW, however this function does not modify errno
+ *
+ * It is unspecified whether `state->buf` and `state->size` will
+ * be updated when -1 is returned. It is also unspecified whether
+ * `state->len` will be updated when -1 is returned.
+ *
+ * Precondition: `state->buf != NULL`
+ */
+LIBRECRYPT_NONNULL_1__ LIBRECRYPT_WUR__ HIDDEN
+inline int
+librecrypt_post_concat_adjust_(struct concat_state *state, size_t len)
+{
+	size_t n = state->size ? MIN(state->size - 1u, len) : 0u;
+	state->buf = &state->buf[n];
+	state->size -= n;
+	if (state->len > SIZE_MAX - len)
+		return -1;
+	state->len += len;
+	return 0;
+}
+
+
+/**
+ * Get the base64-encoding length for some size of data
+ *
+ * @param   raw_len        The size of the data
+ * @param   padded         Whether the base64-encoding shall be padded to a multiple of 4 bytes
+ * @param   ascii_len_out  Output parameter for the length of the base64-encoding
+ * @return                 Normally 1, 0 if the value for `*ascii_len_out` could not be represented
+ *
+ * The proper error code when this function returns 0 is
+ * usually EOVERFLOW, however this function does not modify errno
+ */
+LIBRECRYPT_WUR__ LIBRECRYPT_NONNULL__ HIDDEN
+inline int
+librecrypt_raw_len_to_base64_len_(size_t raw_len, int padded, size_t *ascii_len_out)
+{
+	size_t q = raw_len / 3u;
+	size_t r = raw_len % 3u;
+	if (r) {
+		if (padded)
+			r = 4u; /* padding to for bytes */
+		else
+			r += 1u; /* 3n+m bytes: 4n+m+1 chars, unless m=0 */
+	}
+	if (q > (SIZE_MAX - r) / 4u)
+		return 0;
+	*ascii_len_out = q * 4u + r;
+	return 1;
+}
+
+
+/**
+ * Get the size of some data based on the length of its base64-encoding
+ *
+ * @param   ascii_len    The length of the data's unpadded base64-encoding
+ * @param   raw_len_out  Output parameter for the size of the data
+ * @return               Normally 1, 0 if `ascii_len` doesn't have proper
+ *                       for a base64-encoding
+ *
+ * The proper error code when this function returns 0 is
+ * usually EINVAL, however this function does not modify errno
+ */
+LIBRECRYPT_WUR__ LIBRECRYPT_NONNULL__ HIDDEN
+inline int
+librecrypt_base64_len_to_raw_len_(size_t ascii_len, size_t *raw_len_out)
+{
+	size_t q = ascii_len / 4u;
+	size_t r = ascii_len % 4u;
+	if (r == 1u)
+		return 0;
+	*raw_len_out = q * 3u;
+	if (r)
+		*raw_len_out += r - 1u;
+	return 1;
+}
+
+
+/**
+ * Check whether a base64-encoding is padded to a multiple
+ * of 4 characters, without being excessively padded
+ *
+ * @param   unpadded_len  The length of the base64-encoding sans it's padding
+ * @param   padded_len    The length of the base64-encoding including any present padding
+ * @return                Whether the base64-encoding is appropriately padded
+ *
+ * Precondition: `padded_len >= unpadded_len`
+ * Precondition: librecrypt_base64_len_to_raw_len_(unpadded_len, _) != 0 (i.e. `unpadded_len % 4u != 1u`)
+ */
+LIBRECRYPT_WUR__ CONST HIDDEN
+inline int
+librecrypt_is_base64_properly_padded_(size_t unpadded_len, size_t padded_len)
+{
+	if (padded_len % 4u)
+		return 0;
+	if (padded_len - unpadded_len >= 4u)
+		return 0;
+	return 1;
+}
 
 
 #ifdef TEST
