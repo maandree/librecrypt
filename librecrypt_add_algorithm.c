@@ -129,7 +129,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
 		phrase = NULL;
 		phraselen = 0u;
 	} else {
-		/* Measure old ASCII hash; `strlen(augent)` will be `prefix1 + len` */
+		/* Measure old ASCII hash; `strlen(augend)` will be `prefix1 + len` */
 		len = strlen(&augend[prefix1]);
 
 		/* Get encoding information */
@@ -154,7 +154,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
 			abort(); /* $covered$ (impossible) */
 	}
 
-	/* Chain the hash algorithms: write `augent` */
+	/* Chain the hash algorithms: write `augend` */
 	min = MIN(prefix1, size);
 	if (out_buffer != augend && min)
 		memmove(out_buffer, augend, min);
