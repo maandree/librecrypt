@@ -28,10 +28,25 @@ librecrypt_concat_uint_(struct concat_state *state, uintmax_t value)
 int
 main(void)
 {
+	char buf[sizeof("0") + 3u * sizeof(uintmax_t)];
+	char expected[sizeof(buf)];
+	struct concat_state state = {buf, sizeof(buf), 0u};
+
 	SET_UP_ALARM();
 	INIT_RESOURCE_TEST();
 
-	/* TODO test */
+	memset(buf, 'x', sizeof(buf));
+	assert(sprintf(expected, "0%ju", UINTMAX_MAX) > 0);
+
+	librecrypt_concat_uint_(&state, 0u);
+	librecrypt_concat_uint_(&state, UINTMAX_MAX);
+	assert(state.len == strlen(expected));
+	assert(!strcmp(buf, expected));
+
+	state = (struct concat_state){buf, 3u, 0u};
+	librecrypt_concat_uint_(&state, 123u);
+	assert(!strcmp(buf, "12"));
+	assert(state.len == 3u);
 
 	STOP_RESOURCE_TEST();
 	return 0;

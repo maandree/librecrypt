@@ -408,7 +408,7 @@ librecrypt_concat_void_(struct concat_state *state, size_t len)
 {
 	size_t n = state->size ? MIN(state->size - 1u, len) : 0u;
 	if (len > SIZE_MAX - state->len)
-		abort(); /* TODO not covered */
+		abort(); /* $covered$ */
 	state->len += len;
 	if (n) {
 		state->buf = &state->buf[n];
@@ -495,7 +495,7 @@ inline void
 librecrypt_concat_char_no_nul_(struct concat_state *state, char c)
 {
 	if (state->len == SIZE_MAX)
-		abort(); /* TODO not covered */
+		abort(); /* $covered$ */
 	state->len += 1u;
 	if (state->size > 1u) {
 		*state->buf++ = c;

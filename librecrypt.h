@@ -187,7 +187,6 @@ extern const int librecrypt_version_patch;
  *
  * @since  1.2
  */
-/* TODO test */
 #define LIBRECRYPT_VERSION_CMP_BUILD(MAJOR, MINOR, PATCH)\
 	LIBRECRYPT_VERSION_CMP__(MAJOR, LIBRECRYPT_VERSION_MAJOR,\
 	                         MINOR, LIBRECRYPT_VERSION_MINOR,\
@@ -221,7 +220,6 @@ extern const int librecrypt_version_patch;
  *
  * @since  1.2
  */
-/* TODO test */
 #define LIBRECRYPT_VERSION_CMP_LINK(MAJOR, MINOR, PATCH)\
 	LIBRECRYPT_VERSION_CMP__(MAJOR, librecrypt_version_major,\
 	                         MINOR, librecrypt_version_minor,\
