@@ -162,4 +162,4 @@ main(void)
 
 #endif
 /* TODO maybe test */
-/* TODO maybe attempt to tracking where files are opened */
+/* TODO maybe attempt to track where files are opened */
