@@ -8,19 +8,12 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
                          ssize_t (*rng)(void *out, size_t n, void *user), void *user,
                          LIBRECRYPT_CONTEXT *ctx)
 {
-	/* TODO rewrite to use the string building functions */
-
+	struct concat_state concat_state = {out_buffer, size, 0u};
 	const char *lut;
-	char pad;
-	int strict_pad, nul_term = 0;
-	size_t i, min, nasterisks, prefix, ret = 0u;
+	char pad, *buf;
+	int strict_pad;
+	size_t i, n, nasterisks, prefix;
 	size_t count, digit, q, r, left, mid, right;
-
-	/* If we are doing output, it should be NUL-terminated */
-	if (size) {
-		nul_term = 1;
-		size -= 1u;
-	}
 
 	/* For each chained algorithm */
 	while (*settings) {
@@ -52,13 +45,8 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
 		while (nasterisks--) {
 			/* Copy text before next '*' */
 			for (i = 0u; settings[i] != '*'; i++);
-			min = MIN(i, size);
-			if (min)
-				memcpy(out_buffer, settings, min);
-			out_buffer = &out_buffer[min];
-			size -= min;
+			librecrypt_concat_mem_(&concat_state, settings, i);
 			settings = &settings[i];
-			ret += i;
 
 			/* Skip past the '*' */
 			settings++;
@@ -66,11 +54,7 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
 			/* If the '*' is not followed by an unsigned,
 			 * decimal integer include it literally */
 			if ('0' > settings[0u] || settings[0u] > '9') {
-				if (size) {
-					*out_buffer++ = '*';
-					size -= 1u;
-				}
-				ret += 1u;
+				librecrypt_concat_char_no_nul_(&concat_state, '*');
 				continue;
 			}
 
@@ -102,63 +86,43 @@ librecrypt_realise_salts(char *restrict out_buffer, size_t size, const char *set
 			/* Get total length */
 			if (q > ((size_t)SSIZE_MAX - (r + mid + right)) / 4u)
 				goto erange;
-			if (ret > (size_t)SSIZE_MAX - (left + mid + right))
+			if (concat_state.len > (size_t)SSIZE_MAX - (left + mid + right))
 				goto erange;
-			ret += left + mid + right;
-
-			/* Make sure we don't write more random characters than
-			 * we have room for; we add `mid` into `left` so we have
-			 * one variable for all random characters */
-			left += mid;
-			if (left > size) {
-				left = size;
-				mid = 0u;
-			}
 
 			/* Write random characters */
-			if (librecrypt_fill_with_random_(out_buffer, left, rng, user))
+			buf = concat_state.buf;
+			n = librecrypt_concat_void_(&concat_state, left + mid);
+			if (librecrypt_fill_with_random_(buf, n, rng, user))
 				return -1;
-			for (i = 0u; i < left; i++)
-				out_buffer[i] = lut[((unsigned char *)out_buffer)[i]];
-			if (mid) {
-				i = left - 1u;
-				out_buffer[i] = lut[((unsigned char *)out_buffer)[i] & (r == 1u ? ~15u : ~3u)];
+			if (left < n) {
+				n -= 1u;
+				buf[n] = lut[((unsigned char *)buf)[n] & (r == 1u ? ~15u : ~3u)];
 			}
-			out_buffer = &out_buffer[left];
-			size -= left;
+			for (i = 0u; i < n; i++)
+				buf[i] = lut[((unsigned char *)buf)[i]];
 
 			/* Write padding charaters */
-			right = MIN(right, size);
+			buf = concat_state.buf;
+			right = librecrypt_concat_void_(&concat_state, right);
 			for (i = 0u; i < right; i++)
-				out_buffer[i] = pad;
-			out_buffer = &out_buffer[right];
-			size -= right;
+				buf[i] = pad;
 		}
 
 		/* Copy remainder of the algorithm configuration, and the '>' if intermediate */
 		for (i = 0u; settings[i];)
 			if (settings[i++] == LIBRECRYPT_ALGORITHM_LINK_DELIMITER)
 				break;
-		min = MIN(i, size);
-		if (min)
-			memcpy(out_buffer, settings, min);
-		out_buffer = &out_buffer[min];
-		size -= min;
+		librecrypt_concat_mem_(&concat_state, settings, i);
 		settings = &settings[i];
-		ret += i;
 	}
-
-	/* NUL-terminate the output if we were doing output */
-	if (nul_term)
-		*out_buffer = '\0';
 
 	/* Return the number of written bytes (excluding NUL byte):
 	 * the length of the new password hash string, but ensure
 	 * the new salts where not so large that our return value
 	 * is out of range */
-	if (ret > (size_t)SSIZE_MAX)
+	if (concat_state.len > (size_t)SSIZE_MAX)
 		goto erange;
-	return (ssize_t)ret;
+	return (ssize_t)concat_state.len;
 
 erange:
 	errno = ERANGE;
