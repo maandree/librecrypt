@@ -1,12 +1,4 @@
 Document `struct librecrypt_algorithm` in librecrypt_set_custom_algorithms.3
-Add man pages to LIBRECRYPT_VERSION_MAJOR,
-                 LIBRECRYPT_VERSION_MINOR,
-                 LIBRECRYPT_VERSION_PATCH,
-                 librecrypt_version_major,
-                 librecrypt_version_minor,
-                 librecrypt_version_patch,
-                 LIBRECRYPT_VERSION_CMP_BUILD,
-                 LIBRECRYPT_VERSION_CMP_LINK
 Write fuzzing code for the files listed in OBJ_PUBLIC.
 Add corpuses for fuzzing.
 Add documentation similar to crypt(5).

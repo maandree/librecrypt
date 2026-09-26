@@ -132,12 +132,36 @@ chain.
 .SS Library introspection (ADVANCED):
 .TP
 .BR librecrypt_is_enabled (3)
-Check whenther the library is compiled with support
+Check whether the library is compiled with support
 for a specific hash algorithm.
 .TP
 .BR librecrypt_hash_algorithm_end (3)
 Number of hash algorithms the linked library knows
 about.
+.TP
+.BR librecrypt_version_major (3)
+.TQ
+.BR librecrypt_version_minor (3)
+.TQ
+.BR librecrypt_version_patch (3)
+Get the version of the library the application
+is linked against.
+.TP
+.BR LIBRECRYPT_VERSION_MAJOR (3)
+.TQ
+.BR LIBRECRYPT_VERSION_MINOR (3)
+.TQ
+.BR LIBRECRYPT_VERSION_PATCH (3)
+Get the version of the library the application
+is compiled against.
+.TP
+.BR LIBRECRYPT_VERSION_CMP_LINK (3)
+Compare a version number against the version of the
+library the application is linked against
+.TP
+.BR LIBRECRYPT_VERSION_CMP_BUILD (3)
+Compare a version number against the version of the
+library the application is compiled against
 .sp
 .SS Library tweaking functions (ADVANCED):
 .TP

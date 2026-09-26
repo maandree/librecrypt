@@ -46,8 +46,7 @@ OBJ_PUBLIC_NO_FUZZ =\
 	librecrypt_set_user_data.o\
 	librecrypt_get_user_data.o\
 	librecrypt_set_pepper.o\
-	librecrypt_set_custom_algorithms.o\
-	librecrypt_version.o
+	librecrypt_set_custom_algorithms.o
 
 OBJ_PUBLIC =\
 	$(OBJ_PUBLIC_FUZZ)\
@@ -78,6 +77,7 @@ OBJ_PRIVATE =\
 	librecrypt_raw_len_to_base64_len_.o\
 	librecrypt_base64_len_to_raw_len_.o\
 	librecrypt_is_base64_properly_padded_.o\
+	librecrypt_version.o\
 	$(OBJ_COMMON_RFC4848S4)
 
 USE_OBJ_COMMON_RFC4848S4 =\
@@ -91,12 +91,22 @@ HDR =\
 	common.h\
 	algorithms.h
 
+MAN3 = \
+	$(OBJ_PUBLIC:.o=.3)\
+	LIBRECRYPT_VERSION_MAJOR.3\
+	LIBRECRYPT_VERSION_MINOR.3\
+	LIBRECRYPT_VERSION_PATCH.3\
+	librecrypt_version_major.3\
+	librecrypt_version_minor.3\
+	librecrypt_version_patch.3\
+	LIBRECRYPT_VERSION_CMP_BUILD.3\
+	LIBRECRYPT_VERSION_CMP_LINK.3
+
 LOBJ = $(OBJ:.o=.lo)
 TOBJ = $(OBJ:.o=.to)
 TEST = $(OBJ:.o=.t)
 FOBJ = $(OBJ_PUBLIC_FUZZ:.o=.fo)
 FUZZ = $(OBJ_PUBLIC_FUZZ:.o=.f)
-MAN3 = $(OBJ_PUBLIC:.o=.3)
 MAN7 = librecrypt.7
 
 all:

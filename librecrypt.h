@@ -59,8 +59,8 @@
  * is recompiled or even rewritten
  *
  * Use `#if !defined(LIBRECRYPT_VERSION_MAJOR)` to
- * when the version number is lower than 1.2;
- * there are no macros defined between 1.0 and 1.2,
+ * detect when the version number is lower than 1.2.
+ * There are no macros defined between 1.0 and 1.2,
  * so getting the exact number is not possible.
  *
  * @seealso  librecrypt_version_major
@@ -76,7 +76,8 @@
  * The minor number of the version of librecrypt
  * that that the application is compiled against
  *
- * Increased when the API is extended
+ * Increased when the API is extended, or reset
+ * to zero when the major number is modified.
  *
  * @seealso  librecrypt_version_minor
  * @seealso  LIBRECRYPT_VERSION_MAJOR
@@ -91,9 +92,10 @@
  * The patch number of the version of librecrypt
  * that that the application is compiled against
  *
- * Incrased when the software is modified but
- * the API and ABI are unmodified, or extended
- * without adding new functionality proper
+ * Increased when the software is modified but
+ * the API and ABI are unmodified. It is reset
+ * to zero when the major or minor number is
+ * modified
  *
  * @seealso  librecrypt_version_patch
  * @seealso  LIBRECRYPT_VERSION_MAJOR

@@ -1,0 +1,145 @@
+.TH LIBRECRYPT_VERSION_CMP_LINK 3 LIBRECRYPT
+.SH NAME
+LIBRECRYPT_VERSION_CMP_LINK - Compare version against linked against version
+
+.SH SYNOPSIS
+.nf
+#include <librecrypt.h>
+
+extern const int \fBlibrecrypt_version_major\fP;
+extern const int \fBlibrecrypt_version_minor\fP;
+extern const int \fBlibrecrypt_version_patch\fP;
+
+#define \fBLIBRECRYPT_VERSION_CMP_LINK\fP(\fIMAJOR\fP, \fIMINOR\fP, \fIPATCH\fP) /* implementation omitted */
+
+.fi
+.PP
+Link with
+.IR -lrecrypt .
+
+.SH DESCRIPTION
+The
+.BR librecrypt_version_major ,
+.BR librecrypt_version_minor ,
+and
+.B librecrypt_version_patch
+variables describe the version number of the
+version of
+.B librecrypt
+that the application is linked against.
+.PP
+.B librecrypt_version_major
+is the major number. It is increased when there
+are backwards incompatible changes, necessitating
+the that the application is recompiled or even
+rewritten
+.PP
+.B librecrypt_version_minor
+is the minor number. It is increased when the API
+is extended. It is reset to zero when the major
+number is modified.
+.PP
+.B librecrypt_version_patch
+is the patch number. It is increased when the
+software is modified but the API and ABI are
+unmodified. It is reset to zero when the major or
+minor number is modified.
+.PP
+The
+.B LIBRECRYPT_VERSION_CMP_LINK
+macro compares
+.IR MAJOR ,
+.IR MINOR ,
+and
+.I PATCH
+against
+.BR librecrypt_version_major ,
+.BR librecrypt_version_minor ,
+and
+.BR librecrypt_version_patch .
+.PP
+If the versions are the same, the macro expands to an
+expression with the value 0 and the type
+.IR int .
+.PP
+If the specified version is newer than the version
+the application is linked against, the macro expands
+to an expression with a positive value of the type
+.IR int .
+.PP
+If the specified version is older than the version
+the application is linked against, the macro expands
+to an expression with a negative value of the type
+.IR int .
+.PP
+If the versions are different, the most most significant
+different number determines the absolute value of the
+value the macro expands to. If the major numbers are
+different, the absolute value is 3, otherwise if the
+minor numbers are different, the absolute value is 3,
+otherwise (if the patch numbers are different), the
+absolute value is 1.
+
+.SH APPLICATION USAGE
+Because these variables were introduced in version
+1.2 of
+.BR librecrypt ,
+it is impossible to check the exact version if
+it is lower than 1.2, however, using weak
+linkage it is possible to check if the linked
+version is lower than 1.2: in your application
+define this variable with weak linkage. You
+can set it to 0 and let the library replace it
+if it has defined it, or you can simply declare
+it as an external symbol without providing it:
+then taking the address of it will return
+.B NULL
+if it doesn't exist: you can use this trick with
+any function may be want to use as well.
+.PP
+Additionally, without
+.BR librecrypt_version_major ,
+.BR librecrypt_version_minor ,
+and
+.B librecrypt_version_patch
+properly linked,
+.B LIBRECRYPT_VERSION_CMP_LINK
+will fail at runtime.
+
+.SH NOTES
+The version number of
+.B librecrypt
+is formatted as
+.IR major.minor.patch.revision ,
+or
+.IR major.minor.patch
+when
+.I reversion
+is 0, or
+.IR major.minor
+when both
+.I patch
+and
+.I revision
+are 0.
+.PP
+.I revision
+cannot be tested agaist since it is only incremented
+when no changes are made to the library software but
+for example only to documentation or build script
+(or reset to 0 when any of the other numbers are modified).
+
+.SH HISTORY
+The
+.BR librecrypt_version_major ,
+.BR librecrypt_version_minor ,
+and
+.B librecrypt_version_patch
+variables and the
+.B LIBRECRYPT_VERSION_CMP_LINK
+macro were introduced in version 1.2 of
+.BR librecrypt .
+
+.SH SEE ALSO
+.BR librecrypt (7),
+.BR LIBRECRYPT_VERSION_CMP_BUILD (3)

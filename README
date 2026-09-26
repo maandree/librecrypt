@@ -108,12 +108,32 @@ DESCRIPTION
 
    Library introspection (ADVANCED):
 	librecrypt_is_enabled(3)
-		Check whenther the library is compiled with support
+		Check whether the library is compiled with support
 		for a specific hash algorithm.
 
 	librecrypt_hash_algorithm_end(3)
 		Number of hash algorithms the linked library knows
 		about.
+
+	librecrypt_version_major(3)
+	librecrypt_version_minor(3)
+	librecrypt_version_patch(3)
+		Get the version of the library the application
+		is linked against.
+
+	LIBRECRYPT_VERSION_MAJOR(3)
+	LIBRECRYPT_VERSION_MINOR(3)
+	LIBRECRYPT_VERSION_PATCH(3)
+		Get the version of the library the application
+		is compiled against.
+
+	LIBRECRYPT_VERSION_CMP_LINK(3)
+		Compare a version number against the version of the
+		library the application is linked against
+
+	LIBRECRYPT_VERSION_CMP_BUILD(3)
+		Compare a version number against the version of the
+		library the application is compiled against
 
    Library tweaking functions (ADVANCED):
 	librecrypt_create_context(3)
