@@ -268,7 +268,7 @@ int
 main(void)
 {
 	const struct librecrypt_algorithm custom[] = {rot4_algo, trunc_algo};
-	LIBRECRYPT_CONTEXT *ctx = librecrypt_create_context();
+	LIBRECRYPT_CONTEXT *ctx = NULL;
 	char buf[1024];
 	char buf2[sizeof(buf)];
 	int any_supported = 0;
