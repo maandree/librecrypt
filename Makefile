@@ -70,6 +70,7 @@ OBJ_PRIVATE =\
 	librecrypt_get_pepper_.o\
 	librecrypt_concat_void_.o\
 	librecrypt_concat_mem_.o\
+	librecrypt_concat_memmove_.o\
 	librecrypt_concat_str_.o\
 	librecrypt_concat_uint_.o\
 	librecrypt_concat_char_no_nul_.o\

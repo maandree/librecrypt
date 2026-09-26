@@ -3,7 +3,7 @@
 #ifndef TEST
 
 
-extern inline void librecrypt_concat_mem_(struct concat_state *state, const char *text, size_t len);
+extern inline void librecrypt_concat_mem_(struct concat_state *state, const char *restrict text, size_t len);
 
 
 #else

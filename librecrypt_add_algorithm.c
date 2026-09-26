@@ -4,44 +4,25 @@
 
 
 static size_t
-truncated_asterisk(char *out_buffer, size_t out_buffer_size, size_t asterisk)
-{
-	struct concat_state concat_state = {out_buffer, out_buffer_size, 0u};
-	librecrypt_concat_str_(&concat_state, "*");
-	librecrypt_concat_uint_(&concat_state, asterisk);
-	if (concat_state.len < 2u)
-		abort(); /* $covered$ (impossible) */
-	return concat_state.len;
-}
-
-
-static size_t
 measure_asterisk(size_t asterisk)
 {
-	return truncated_asterisk(NULL, 0u, asterisk);
+	struct concat_state concat_state = {NULL, 0u, 0u};
+	librecrypt_concat_uint_(&concat_state, asterisk);
+	return (sizeof("*") - 1u) + concat_state.len;
 }
 
 
 ssize_t
-librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
+librecrypt_add_algorithm(char *out_buffer0, size_t size0, const char *augend,
                          const char *restrict augment, LIBRECRYPT_CONTEXT *ctx)
 {
-	/* TODO rewrite to use the string building functions */
-
-	size_t prefix1, prefix2, min, ret, len, phraselen;
+	struct concat_state concat_state = {out_buffer0, size0, 0u};
+	size_t prefix1, prefix2, len, conf_len, phraselen;
 	size_t hashsize1, hashsize2, asterisk_len;
 	char *phrase, pad;
-	int strict_pad, nul_term, saved_errno;
+	int strict_pad, saved_errno;
 	const unsigned char *lut;
 	ssize_t r;
-
-	/* Reserve space for NUL-termination */
-	if (size) {
-		nul_term = 1;
-		size -= 1u;
-	} else {
-		nul_term = 0;
-	}
 
 	/* Get the prefix and hash size in `augend` and `augment` */
 	prefix1 = librecrypt_settings_prefix(augend, &hashsize1, ctx);
@@ -60,54 +41,31 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
 			prefix2 += strlen(&augment[prefix2]);
 			hashsize2 = 0u;
 		}
-		ret = prefix1 + 1u + prefix2;
-		if (size) {
-			min = MIN(prefix1, size);
-			if (out_buffer != augend)
-				memmove(out_buffer, augend, min);
-			out_buffer = &out_buffer[min];
-			size -= min;
-			if (size) {
-				*out_buffer++ = LIBRECRYPT_ALGORITHM_LINK_DELIMITER;
-				size -= 1u;
-			}
-			min = MIN(prefix2, size);
-			memcpy(out_buffer, augment, min);
-			out_buffer = &out_buffer[min];
-			size -= min;
-			if (hashsize2) {
-				asterisk_len = truncated_asterisk(out_buffer, size + 1u, hashsize2);
-				if (ret > SIZE_MAX - asterisk_len)
-					abort(); /* $covered$ (impossible) */
-				ret += asterisk_len;
-			} else {
-				out_buffer[0u] = '\0';
-			}
-		} else {
-#if defined(__GNUC__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-			if (!hashsize2)
-				goto out;
-#if defined(__GNUC__)
-# pragma GCC diagnostic pop
-#endif
-			asterisk_len = measure_asterisk(hashsize2);
-			if (ret > SIZE_MAX - asterisk_len)
+		switch (concat_state.size) {
+		default:
+			librecrypt_concat_memmove_(&concat_state, augend, prefix1);
+			librecrypt_concat_char_no_nul_(&concat_state, LIBRECRYPT_ALGORITHM_LINK_DELIMITER);
+			librecrypt_concat_mem_(&concat_state, augment, prefix2);
+			break;
+		case 1u:
+			concat_state.buf[0u] = '\0';
+			/* fall through */
+		case 0u:
+			if (librecrypt_post_concat_adjust_(&concat_state, prefix1 + 1u + prefix2))
 				abort(); /* $covered$ (impossible) */
-			ret += asterisk_len;
-		out:
-			if (nul_term)
-				out_buffer[0u] = '\0';
+			break;
 		}
-		if (ret > (size_t)SSIZE_MAX) {
+		if (hashsize2) {
+			librecrypt_concat_char_no_nul_(&concat_state, '*');
+			librecrypt_concat_uint_(&concat_state, hashsize2);
+		}
+		if (concat_state.len > (size_t)SSIZE_MAX) {
 			/* $covered{$ (manually) */
 			errno = EOVERFLOW;
 			return -1;
 			/* $covered}$ */
 		}
-		return (ssize_t)ret;
+		return (ssize_t)concat_state.len;
 	}
 
 	/* Measure size of hash size specification for `augend` */
@@ -117,13 +75,16 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
 		asterisk_len = 0;
 	}
 
-	/* Measure `augend` and '>' in output */
+	/* Measure `augend`, '>', and `augment` in output */
 	if (prefix1 > SIZE_MAX - 1u - asterisk_len)
 		abort(); /* $covered$ (impossible) */
-	ret = prefix1 + asterisk_len + 1u;
+	conf_len = prefix1 + asterisk_len + 1u;
+	if (prefix2 > SIZE_MAX - conf_len)
+		abort(); /* $covered$ (impossible) */
+	conf_len += prefix2;
 
 	/* Decode the hash from base-64 to binary */
-	if (size <= ret + prefix2) {
+	if (concat_state.size <= conf_len) {
 		/* If the new hash doesn't fit, don't bother;
 		 * hash sizes are independent of password size */
 		phrase = NULL;
@@ -155,27 +116,17 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
 	}
 
 	/* Chain the hash algorithms: write `augend` */
-	min = MIN(prefix1, size);
-	if (out_buffer != augend && min)
-		memmove(out_buffer, augend, min);
-	out_buffer = &out_buffer[min];
-	size -= min;
-	if (hashsize1 && size) {
-		if (truncated_asterisk(out_buffer, size + 1u, hashsize1) != asterisk_len)
-			abort(); /* $covered$ (impossible reliably) */
-		min = MIN(asterisk_len, size);
-		out_buffer = &out_buffer[min];
-		size -= min;
+	librecrypt_concat_memmove_(&concat_state, augend, prefix1);
+	if (hashsize1) {
+		librecrypt_concat_char_no_nul_(&concat_state, '*');
+		librecrypt_concat_uint_(&concat_state, hashsize1);
 	}
 
 	/* Chain the hash algorithms: write '>' */
-	if (size) {
-		*out_buffer++ = LIBRECRYPT_ALGORITHM_LINK_DELIMITER;
-		size -= 1u;
-	}
+	librecrypt_concat_char_no_nul_(&concat_state, LIBRECRYPT_ALGORITHM_LINK_DELIMITER);
 
 	/* Chain the hash algorithms: write `augment` and hash */
-	r = librecrypt_crypt(out_buffer, nul_term ? size + 1u : 0u, phrase, phraselen, augment, ctx);
+	r = librecrypt_crypt(concat_state.buf, concat_state.size, phrase, phraselen, augment, ctx);
 	if (r <= 0) {
 		saved_errno = errno;
 		librecrypt_wipe(phrase, phraselen);
@@ -185,7 +136,7 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
 		errno = saved_errno;
 		return -1;
 	}
-	if (ret > (size_t)(SSIZE_MAX - r)) {
+	if (concat_state.len > (size_t)(SSIZE_MAX - r)) {
 		/* $covered{$ (manually) */
 		librecrypt_wipe(phrase, phraselen);
 		free(phrase);
@@ -193,11 +144,11 @@ librecrypt_add_algorithm(char *out_buffer, size_t size, const char *augend,
 		return -1;
 		/* $covered}$ */
 	}
-	ret += (size_t)r;
+	concat_state.len += (size_t)r;
 
 	librecrypt_wipe(phrase, phraselen);
 	free(phrase);
-	return (ssize_t)ret;
+	return (ssize_t)concat_state.len;
 }
 
 

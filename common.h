@@ -427,13 +427,16 @@ librecrypt_concat_void_(struct concat_state *state, size_t len)
  * does not overrun it's buffer but is still NUL
  * terminated (assuming the buffer is not zero-sized)
  *
+ * If `text` may alias `state->buf`, use
+ * `librecrypt_concat_memmove_` instead
+ *
  * @param  state  The buffer to write to, see `struct concat_state` for more information
  * @param  text   The text to copy to the buffer
  * @param  len    The length of `text`, in bytes
  */
 LIBRECRYPT_NONNULL_1__ LIBRECRYPT_READ_MEM__(2, 3) HIDDEN
 inline void
-librecrypt_concat_mem_(struct concat_state *state, const char *text, size_t len)
+librecrypt_concat_mem_(struct concat_state *state, const char *restrict text, size_t len)
 {
 	char *buf = state->buf;
 	size_t n = librecrypt_concat_void_(state, len);
@@ -449,12 +452,44 @@ librecrypt_concat_mem_(struct concat_state *state, const char *text, size_t len)
  * does not overrun it's buffer but is still NUL
  * terminated (assuming the buffer is not zero-sized)
  *
+ * If `text` cannot alias `state->buf`, use
+ * `librecrypt_concat_mem_` instead
+ *
+ * @param  state  The buffer to write to, see `struct concat_state` for more information
+ * @param  text   The text to copy to the buffer
+ * @param  len    The length of `text`, in bytes
+ */
+LIBRECRYPT_NONNULL_1__ LIBRECRYPT_READ_MEM__(2, 3) HIDDEN
+inline void
+librecrypt_concat_memmove_(struct concat_state *state, const char *text, size_t len)
+{
+	char *buf = state->buf;
+	size_t n = state->size ? MIN(state->size - 1u, len) : 0u;
+	if (buf != text && n)
+		memmove(buf, text, n);
+	state->buf = &state->buf[n];
+	state->size -= n;
+	state->len += len;
+	if (state->size)
+		state->buf[0u] = '\0';
+}
+
+
+/**
+ * Concatenate two strings
+ *
+ * Truncation is done to ensure the resulting string
+ * does not overrun it's buffer but is still NUL
+ * terminated (assuming the buffer is not zero-sized)
+ *
+ * If `text` cannot alias `state->buf`
+ *
  * @param  state  The buffer to write to, see `struct concat_state` for more information
  * @param  text   The text to copy to the buffer
  */
 LIBRECRYPT_NONNULL__ LIBRECRYPT_READ_STR__(2) HIDDEN
 inline void
-librecrypt_concat_str_(struct concat_state *state, const char *text)
+librecrypt_concat_str_(struct concat_state *state, const char *restrict text)
 {
 	librecrypt_concat_mem_(state, text, strlen(text));
 }

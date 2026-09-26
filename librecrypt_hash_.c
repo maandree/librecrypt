@@ -160,7 +160,7 @@ next:
 			goto einval;
 		/* Must align with fixed hash size when hash size is fixed */
 		if (!algo->flexible_hash_size && hash_size != algo->hash_size)
-			goto einval;
+			goto einval; /* TODO not covered */
 	}
 
 	/* For `librecrypt_crypt`: copy hash configurations to output */
